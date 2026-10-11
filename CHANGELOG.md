@@ -2,6 +2,15 @@
 
 Newest first. Every release keeps the Android application ID `com.payaviator.app` and the same signing key, so it installs over the previous version without losing data. The one exception is 3.9.6, which introduced the new PayAviator signing key (see [docs/UPDATE_WITHOUT_UNINSTALL.md](docs/UPDATE_WITHOUT_UNINSTALL.md)).
 
+## Unreleased
+
+**Sign-in for bank features (Firebase)**
+- Bank linking and sync now need a PayAviator account: Continue with Google (native Credential Manager) or email and password. Bills, income, spending, backups and reminders keep working without one.
+- Every `/api/plaid/*` call sends `Authorization: Bearer <Firebase ID token>`; on a 401 the token is refreshed and the call retried once, then the app signs out and shows sign-in. The app no longer sends its own user or device ids to the backend and uses the path-less routes.
+- Banks that need attention show **Reconnect** (Plaid update mode). Connected Accounts shows the signed-in account with Sign out and Delete account; deleting removes every bank at Plaid before deleting the sign-in.
+- Banks linked before this release must be connected again once after signing in.
+- Requires the backend release with Firebase token checks (PayAviator-Backend PR #1) to go live together with this app version. Details: [docs/FIREBASE_SIGNIN.md](docs/FIREBASE_SIGNIN.md).
+
 ## 3.9.6
 
 - New release signing key (CN=PayAviator, alias `payaviator`). Phones with an earlier build must uninstall and reinstall once; Android rejects updates signed with a different key.

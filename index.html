@@ -21827,6 +21827,234 @@ body.pp821-theme-live .mb137-color-row{
 #pp920AccountsModal .pp920-note{margin-top:14px!important;padding:13px!important;border-radius:14px!important;background:rgba(0,0,0,.18)!important;color:#fff!important;line-height:1.42!important}
 [data-pp920-accounts-button="1"],#pp2059GaugeMetrics>div:first-child{cursor:pointer!important;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(24,226,235,.16)!important}
 </style>
+<!-- PayAviator Firebase sign-in (bank features only). Local bills, income and spending never need an account. -->
+<style id="payaviator-auth-css">
+/* Sign-in sheet in the 4.0 "Night Cockpit" style: page light blue, navy card, 1px soft lines, cyan primary. */
+#ppAuthSheet{position:fixed!important;inset:0!important;z-index:2147483647!important;display:none!important;align-items:flex-start!important;justify-content:center!important;padding:18px 16px calc(18px + env(safe-area-inset-bottom))!important;background:var(--pa4-page,#0c79bb)!important;overflow:auto!important;overscroll-behavior:contain!important;box-sizing:border-box!important;max-height:none!important;height:auto!important;margin:0!important;font-family:var(--pa4-font,system-ui,-apple-system,"Roboto","Segoe UI",sans-serif)!important}
+#ppAuthSheet.show{display:flex!important}
+body.ppauth-open{overflow:hidden!important}
+body.ppauth-open #mb119BottomNav,body.ppauth-open #pp925TipLauncher{visibility:hidden!important}
+#ppAuthSheet *{box-sizing:border-box!important}
+#ppAuthSheet#ppAuthSheet [hidden],#ppAuthSheet#ppAuthSheet .ppauth-hide{display:none!important}
+#ppAuthSheet .ppauth-card{position:relative!important;margin:auto 0!important;width:min(100%,440px)!important;background:var(--pa4-card,#0b234b)!important;color:var(--pa4-text,#fff)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;border-radius:24px!important;padding:24px 18px 18px!important;box-shadow:0 24px 60px -12px rgba(0,0,0,.7)!important;text-align:center!important}
+#ppAuthSheet .ppauth-close{position:absolute!important;top:12px!important;right:12px!important;width:38px!important;height:38px!important;min-height:38px!important;border-radius:50%!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;background:var(--pa4-raised,#1f4f86)!important;color:var(--pa4-text,#fff)!important;font-size:1.35rem!important;font-weight:700!important;line-height:1!important;padding:0!important;cursor:pointer!important;box-shadow:none!important}
+#ppAuthSheet .ppauth-logo{width:68px!important;height:68px!important;border-radius:18px!important;display:block!important;margin:0 auto 12px!important}
+#ppAuthSheet h2{margin:0 0 6px!important;font-size:21px!important;letter-spacing:-.015em!important;font-weight:800!important;line-height:1.2!important;color:var(--pa4-text,#fff)!important}
+#ppAuthSheet .ppauth-sub{margin:0 0 16px!important;font-size:14px!important;line-height:1.45!important;color:var(--pa4-muted,rgba(255,255,255,.72))!important}
+#ppAuthSheet .ppauth-notice{margin:0 0 14px!important;padding:11px 12px!important;border-radius:14px!important;background:var(--pa4-accent-soft,rgba(0,245,255,.14))!important;border:1px solid var(--pa4-accent-line,rgba(0,245,255,.4))!important;font-size:14px!important;line-height:1.4!important;text-align:left!important;color:var(--pa4-text,#fff)!important}
+#ppAuthSheet button{font:inherit!important;-webkit-appearance:none!important;appearance:none!important;touch-action:manipulation!important}
+#ppAuthSheet .ppauth-google{width:100%!important;min-height:48px!important;border-radius:14px!important;border:0!important;background:#fff!important;color:#1f1f1f!important;font-weight:700!important;font-size:15.5px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;cursor:pointer!important;box-shadow:none!important}
+#ppAuthSheet .ppauth-google svg{width:20px!important;height:20px!important;flex:0 0 20px!important}
+#ppAuthSheet .ppauth-or{display:flex!important;align-items:center!important;gap:10px!important;margin:14px 0!important;font-size:13px!important;color:var(--pa4-faint,rgba(255,255,255,.55))!important}
+#ppAuthSheet .ppauth-or::before,#ppAuthSheet .ppauth-or::after{content:""!important;flex:1!important;height:1px!important;background:var(--pa4-line2,rgba(255,255,255,.17))!important}
+#ppAuthSheet form{display:grid!important;gap:8px!important;text-align:left!important}
+#ppAuthSheet label{font-size:13px!important;font-weight:650!important;color:var(--pa4-muted,rgba(255,255,255,.72))!important;margin-top:2px!important}
+#ppAuthSheet input{width:100%!important;min-height:48px!important;border-radius:14px!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;background:var(--pa4-sunken,#081a37)!important;color:var(--pa4-text,#fff)!important;padding:12px 14px!important;font:inherit!important;font-size:16px!important;box-shadow:none!important}
+#ppAuthSheet input:focus{outline:none!important;border-color:var(--pa4-accent,#00f5ff)!important;box-shadow:0 0 0 3px var(--pa4-accent-soft,rgba(0,245,255,.14))!important}
+#ppAuthSheet .ppauth-primary{width:100%!important;min-height:48px!important;margin-top:8px!important;border-radius:14px!important;border:0!important;background:var(--pa4-accent,#00f5ff)!important;color:#04121f!important;font-weight:700!important;font-size:15.5px!important;cursor:pointer!important;box-shadow:0 6px 18px -8px color-mix(in srgb,var(--pa4-accent,#00f5ff) 70%,transparent)!important}
+#ppAuthSheet button:disabled{opacity:.6!important;cursor:default!important}
+#ppAuthSheet .ppauth-links{display:flex!important;justify-content:space-between!important;gap:6px 12px!important;margin-top:10px!important;flex-wrap:wrap!important}
+#ppAuthSheet .ppauth-link{background:none!important;border:0!important;color:var(--pa4-accent,#00f5ff)!important;font-weight:650!important;font-size:14px!important;padding:6px 0!important;min-height:0!important;cursor:pointer!important;box-shadow:none!important}
+#ppAuthSheet .ppauth-error{min-height:1.2em!important;margin-top:8px!important;font-size:14px!important;line-height:1.4!important;color:var(--pa4-bad,#fb7185)!important;text-align:left!important}
+#ppAuthSheet .ppauth-error.ok{color:var(--pa4-good,#3ddc97)!important}
+#ppAuthSheet .ppauth-later{width:100%!important;min-height:46px!important;margin-top:8px!important;border-radius:14px!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;background:var(--pa4-raised,#1f4f86)!important;color:var(--pa4-text,#fff)!important;font-weight:650!important;cursor:pointer!important;box-shadow:none!important}
+#ppAuthSheet .ppauth-foot{margin-top:12px!important;font-size:12.5px!important;color:var(--pa4-faint,rgba(255,255,255,.55))!important;line-height:1.4!important}
+#pp920AccountsModal .ppauth-account,#pp920AccountsModal .ppauth-needs{background:#173e76!important;border:1px solid rgba(24,226,235,.34)!important;border-radius:20px!important;margin:12px 0!important;padding:16px!important;color:#fff!important}
+#pp920AccountsModal .ppauth-needs{border-color:var(--pa4-warn,#fbbf24)!important}
+#pp920AccountsModal .ppauth-danger{border-color:color-mix(in srgb,var(--pa4-bad,#fb7185) 55%,transparent)!important;color:#ffc2cb!important}
+</style>
+<div id="ppAuthSheet" role="dialog" aria-modal="true" aria-labelledby="ppAuthTitle">
+  <div class="ppauth-card">
+    <button type="button" class="ppauth-close" aria-label="Close">×</button>
+    <img class="ppauth-logo" src="payaviator-v126-192.png" alt="">
+    <h2 id="ppAuthTitle">Sign in to connect your bank</h2>
+    <p class="ppauth-sub" id="ppAuthSub">Bills, income and spending work without an account. Signing in keeps your bank connections private to you.</p>
+    <div class="ppauth-notice" id="ppAuthNotice" hidden></div>
+    <button type="button" class="ppauth-google" id="ppAuthGoogle"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg><span>Continue with Google</span></button>
+    <div class="ppauth-or">or use email</div>
+    <form id="ppAuthForm" novalidate>
+      <label for="ppAuthEmail">Email</label>
+      <input id="ppAuthEmail" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false">
+      <label for="ppAuthPassword">Password</label>
+      <input id="ppAuthPassword" type="password" autocomplete="current-password" minlength="6">
+      <button type="submit" class="ppauth-primary" id="ppAuthSubmit">Sign in</button>
+    </form>
+    <div class="ppauth-links">
+      <button type="button" class="ppauth-link" id="ppAuthMode">New here? Create an account</button>
+      <button type="button" class="ppauth-link" id="ppAuthForgot">Forgot password?</button>
+    </div>
+    <div class="ppauth-error" id="ppAuthError" role="alert" aria-live="polite"></div>
+    <button type="button" class="ppauth-later" id="ppAuthLater">Not now</button>
+    <div class="ppauth-foot">PayAviator uses read-only bank access through Plaid. Your bank login never touches PayAviator.</div>
+  </div>
+</div>
+<script id="payaviator-auth-js">
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const UID_KEY='payaviator_auth_uid_v1';
+const BANK_CACHE_KEYS=['payaviator_connected_accounts_v1','payaviator_bank_transactions_v954','payaviator_imported_transactions_v1','payaviator_transaction_sync_status_v313','payaviator_last_bank_sync_v960','payaviator_plaid_items_v1'];
+const RECONNECT_NOTICE_KEY='payaviator_bank_reconnect_notice_v1';
+const listeners=new Set(), pending=new Map();
+let waiters=[], mode='signin', busy=false;
+function bridge(){const b=window.AndroidBridge;return b&&typeof b.authGetState==='function'?b:null}
+function readNative(){
+  const b=bridge();
+  if(!b)return{available:false,signedIn:false,platform:'web'};
+  try{return Object.assign({platform:'android'},JSON.parse(b.authGetState()||'{}'))}catch(_){return{available:false,signedIn:false,platform:'android'}}
+}
+let state=readNative();
+
+function hasBankCache(){try{const a=JSON.parse(localStorage.getItem('payaviator_connected_accounts_v1')||'[]');return Array.isArray(a)&&a.length>0}catch(_){return false}}
+function clearBankCache(){
+  BANK_CACHE_KEYS.forEach(k=>{try{localStorage.removeItem(k)}catch(_){}});
+  try{if(window.AndroidBridge&&typeof AndroidBridge.setRealAccountsConnected==='function')AndroidBridge.setRealAccountsConnected(false)}catch(_){}
+  try{window.dispatchEvent(new CustomEvent('payaviator:accounts-updated',{detail:{accounts:[],live:false}}))}catch(_){}
+  try{window.dispatchEvent(new CustomEvent('payaviator:transactions-updated',{detail:[]}))}catch(_){}
+  try{document.dispatchEvent(new CustomEvent('payaviator:gaugechange'))}catch(_){}
+}
+/* Bank data belongs to one signed-in person. A different (or first) account starts clean;
+   banks linked before sign-in existed live under old device IDs and must be reconnected. */
+function reconcileOwner(){
+  if(!state.signedIn||!state.uid)return;
+  const prev=localStorage.getItem(UID_KEY)||'';
+  if(prev===state.uid)return;
+  if(!prev&&hasBankCache())localStorage.setItem(RECONNECT_NOTICE_KEY,'1');
+  clearBankCache();
+  localStorage.setItem(UID_KEY,state.uid);
+}
+function emit(reason){
+  listeners.forEach(fn=>{try{fn(state,reason)}catch(_){}});
+  try{document.dispatchEvent(new CustomEvent('payaviator:authchange',{detail:{state,reason}}))}catch(_){}
+}
+function setState(next,reason){
+  const wasIn=!!state.signedIn;
+  state=Object.assign({platform:state.platform||'android'},next||{});
+  if(state.signedIn){reconcileOwner();const w=waiters;waiters=[];w.forEach(fn=>fn(true));if(isOpen())closeSheet()}
+  else if(wasIn||reason==='session_expired'||reason==='account_deleted'){
+    if(localStorage.getItem(UID_KEY)){clearBankCache();localStorage.removeItem(UID_KEY)}
+  }
+  if(reason==='session_expired')openSheet({notice:'Your session expired. Sign in again to keep syncing your banks.'});
+  emit(!wasIn&&state.signedIn?'signed_in':(reason||''));
+}
+window.PayAviatorAuthStateChanged=function(payload){
+  try{const d=typeof payload==='string'?JSON.parse(payload||'{}'):(payload||{});const reason=d.reason||'';delete d.reason;setState(d,reason)}catch(_){}
+};
+window.PayAviatorAuthResult=function(payload){
+  try{
+    const d=typeof payload==='string'?JSON.parse(payload||'{}'):(payload||{});
+    const p=pending.get(String(d.requestId||''));if(!p)return;
+    pending.delete(String(d.requestId||''));clearTimeout(p.timer);
+    if(d.state)setState(d.state);
+    p.resolve(d);
+  }catch(_){}
+};
+function call(method,...args){
+  return new Promise(resolve=>{
+    const b=bridge();
+    if(!b||typeof b[method]!=='function')return resolve({ok:false,code:'AUTH_UNAVAILABLE',error:'Bank sign-in is available in the PayAviator Android app.'});
+    const id='auth-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
+    const timer=setTimeout(()=>{pending.delete(id);resolve({ok:false,code:'TIMEOUT',error:'Sign-in is taking too long. Check your connection and try again.'})},method==='authSignInWithGoogle'?180000:45000);
+    pending.set(id,{resolve,timer});
+    try{b[method](id,...args)}catch(e){clearTimeout(timer);pending.delete(id);resolve({ok:false,code:'AUTH_FAILED',error:String(e?.message||e)})}
+  });
+}
+
+/* ---------- Sign-in sheet ---------- */
+function isOpen(){return !!$('ppAuthSheet')?.classList.contains('show')}
+function setError(msg,ok){const e=$('ppAuthError');if(!e)return;e.textContent=msg||'';e.classList.toggle('ok',!!ok)}
+function setBusy(on){busy=on;['ppAuthGoogle','ppAuthSubmit','ppAuthMode','ppAuthForgot'].forEach(id=>{const b=$(id);if(b)b.disabled=on})}
+function setMode(m){
+  mode=m==='create'?'create':'signin';
+  const create=mode==='create';
+  $('ppAuthSubmit').textContent=create?'Create account':'Sign in';
+  $('ppAuthMode').textContent=create?'Have an account? Sign in':'New here? Create an account';
+  $('ppAuthPassword').setAttribute('autocomplete',create?'new-password':'current-password');
+  $('ppAuthForgot').hidden=create;
+  setError('');
+}
+function openSheet(opts={}){
+  const s=$('ppAuthSheet');if(!s)return;
+  const n=$('ppAuthNotice');
+  const notice=state.available===false?(state.platform==='web'?'Bank connections are available in the PayAviator Android app.':'Sign-in is not available in this build.'):(opts.notice||'');
+  n.textContent=notice;n.hidden=!notice;
+  $('ppAuthGoogle').classList.toggle('ppauth-hide',state.googleAvailable===false||state.available===false);
+  document.querySelector('#ppAuthSheet .ppauth-or')?.classList.toggle('ppauth-hide',state.googleAvailable===false||state.available===false);
+  ['ppAuthForm'].forEach(id=>$(id)?.classList.toggle('ppauth-hide',state.available===false));
+  document.querySelector('#ppAuthSheet .ppauth-links')?.classList.toggle('ppauth-hide',state.available===false);
+  setMode(opts.mode||'signin');setBusy(false);
+  s.classList.add('show');
+  try{document.body.classList.add('ppauth-open')}catch(_){}
+}
+function closeSheet(){
+  const s=$('ppAuthSheet');if(!s)return;
+  s.classList.remove('show');
+  try{document.body.classList.remove('ppauth-open')}catch(_){}
+  if(!state.signedIn){const w=waiters;waiters=[];w.forEach(fn=>fn(false))}
+}
+async function run(method,...args){
+  setBusy(true);setError('');
+  const r=await call(method,...args);
+  setBusy(false);
+  if(!r.ok&&r.code!=='CANCELLED')setError(r.error||'Sign-in failed. Please try again.');
+  return r;
+}
+function wire(){
+  const s=$('ppAuthSheet');if(!s||s.dataset.wired)return;s.dataset.wired='1';
+  s.querySelector('.ppauth-close').addEventListener('click',e=>{e.preventDefault();closeSheet()});
+  $('ppAuthLater').addEventListener('click',e=>{e.preventDefault();closeSheet()});
+  $('ppAuthGoogle').addEventListener('click',e=>{e.preventDefault();if(!busy)run('authSignInWithGoogle')});
+  $('ppAuthMode').addEventListener('click',e=>{e.preventDefault();setMode(mode==='create'?'signin':'create')});
+  $('ppAuthForgot').addEventListener('click',async e=>{
+    e.preventDefault();if(busy)return;
+    const email=$('ppAuthEmail').value.trim();
+    if(!email){setError('Enter your email first, then tap Forgot password.');$('ppAuthEmail').focus();return}
+    const r=await run('authSendPasswordReset',email);
+    if(r.ok)setError('Check your email for a link to reset your password.',true);
+  });
+  $('ppAuthForm').addEventListener('submit',e=>{
+    e.preventDefault();if(busy)return;
+    const email=$('ppAuthEmail').value.trim(),pw=$('ppAuthPassword').value;
+    if(!email||!pw){setError('Enter your email and password.');return}
+    if(mode==='create'&&pw.length<6){setError('Use at least 6 characters for your password.');return}
+    run(mode==='create'?'authCreateAccount':'authSignInWithEmail',email,pw).then(r=>{if(r.ok)$('ppAuthPassword').value=''});
+  });
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire,{once:true});else wire();
+
+/* Android Back closes the sheet first. */
+const prevBack=window.payAviatorHandleAndroidBack;
+window.payAviatorHandleAndroidBack=function(){if(isOpen()){closeSheet();return true}return typeof prevBack==='function'?prevBack.apply(this,arguments):false};
+
+window.PayAviatorAuth={
+  getState:()=>Object.assign({},state),
+  isAvailable:()=>!!state.available,
+  isSignedIn:()=>!!state.signedIn,
+  onChange(fn){listeners.add(fn);return()=>listeners.delete(fn)},
+  /* Resolves true once signed in, false if the person closes the sheet. */
+  ensureSignedIn(opts={}){
+    if(state.signedIn)return Promise.resolve(true);
+    return new Promise(resolve=>{waiters.push(resolve);openSheet(opts)});
+  },
+  openSignIn:openSheet,
+  closeSignIn:closeSheet,
+  async signOut(){const r=await call('authSignOut');return r},
+  /* Removes every bank at Plaid (DELETE /api/plaid/user) and then the Firebase account. */
+  async deleteAccount(){
+    const r=await call('authDeleteAccount');
+    if(r.code==='REQUIRES_RECENT_LOGIN'){
+      await call('authSignOut');
+      openSheet({notice:'For your security, sign in again, then tap Delete account once more.'});
+    }
+    return r;
+  },
+  takeReconnectNotice(){const v=localStorage.getItem(RECONNECT_NOTICE_KEY)==='1';if(v)localStorage.removeItem(RECONNECT_NOTICE_KEY);return v},
+  _setStateForTest:setState
+};
+/* Pick up the native state once the page is ready (the native listener may have fired before load). */
+setState(readNative());
+})();
+</script>
 <script id="pp920-connected-accounts-js">
 (function(){
   const ACCOUNT_KEY='payaviator_connected_accounts_v1';
@@ -21909,13 +22137,7 @@ body.pp821-theme-live .mb137-color-row{
   }
 
   const PP920_PLAID_API='https://payaviator-backend-production.up.railway.app';
-  const PP920_USER_KEY='payaviator_plaid_user_id_v1';
-  function pp920UserId(){
-    try{if(window.AndroidBridge&&typeof window.AndroidBridge.getSecureDeviceId==='function'){const id=String(window.AndroidBridge.getSecureDeviceId()||'');if(id){localStorage.setItem(PP920_USER_KEY,id);return id}}}catch(_){ }
-    let id=localStorage.getItem(PP920_USER_KEY);
-    if(!id||!String(id).startsWith('ppd_')){id='ppd_'+crypto.getRandomValues(new Uint32Array(6)).join('');localStorage.setItem(PP920_USER_KEY,id)}
-    return id;
-  }
+  // Firebase sign-in replaced self-generated Plaid user ids: the backend reads the user from the ID token.
   function pp920Toast(msg){
     const text=String(msg||'');
     if(window.PayAviatorThemeNotice){
@@ -21950,7 +22172,18 @@ body.pp821-theme-live .mb137-color-row{
       }catch(err){clearTimeout(timer);pp943NativePending.delete(id);reject(err)}
     });
   }
+  // Backend errors are {error, code, request_id}: show `error`, log `request_id`.
+  function pp920ApiError(status,j){
+    const e=new Error(j.error||('Bank service returned HTTP '+status));
+    e.code=j.code||('HTTP_'+status); e.status=status; e.requestId=j.request_id||null;
+    if(e.requestId)console.warn('PayAviator bank service error',e.code,'request_id='+e.requestId);
+    return e;
+  }
+  function pp920SignInRequired(){const e=new Error('Sign in to use bank features.');e.code='SIGN_IN_REQUIRED';return e}
   async function pp920Api(path,options={}){
+    // /api/plaid/* needs a signed-in Firebase user. The ID token is attached natively by
+    // AndroidBridge.apiRequest and never enters the page.
+    if(String(path).startsWith('/api/plaid/') && !(window.PayAviatorAuth&&window.PayAviatorAuth.isSignedIn())) throw pp920SignInRequired();
     // Android: use the native HTTPS bridge. This avoids WebView CORS/origin/network
     // differences entirely while keeping credentials and Plaid secrets on Railway.
     if(window.AndroidBridge && typeof window.AndroidBridge.apiRequest==='function'){
@@ -21960,10 +22193,7 @@ body.pp821-theme-live .mb137-color-row{
         const e=new Error('Bank connection is temporarily unavailable. '+(raw.error||'You can keep using PayAviator offline.'));
         e.code='BANK_SERVICE_UNREACHABLE'; throw e;
       }
-      if(raw.status<200 || raw.status>=300){
-        const e=new Error(j.error||('Bank service returned HTTP '+raw.status));
-        e.code=j.code||('HTTP_'+raw.status); throw e;
-      }
+      if(raw.status<200 || raw.status>=300) throw pp920ApiError(raw.status,j);
       return j;
     }
     const controller=new AbortController();
@@ -21971,7 +22201,7 @@ body.pp821-theme-live .mb137-color-row{
     try{
       const r=await fetch(PP920_PLAID_API+path,Object.assign({},options,{signal:controller.signal,cache:'no-store'}));
       let j={}; try{j=await r.json()}catch(_){ }
-      if(!r.ok){const err=new Error(j.error||('Bank service returned HTTP '+r.status));err.code=j.code||('HTTP_'+r.status);throw err;}
+      if(!r.ok) throw pp920ApiError(r.status,j);
       return j;
     }catch(err){
       if(err?.name==='AbortError'){const e=new Error('PayAviator bank service timed out. Please try again.');e.code='BANK_SERVICE_TIMEOUT';throw e;}
@@ -21980,7 +22210,6 @@ body.pp821-theme-live .mb137-color-row{
     }finally{clearTimeout(timer)}
   }
   window.PayAviatorBankApi=pp920Api;
-  window.PayAviatorPlaidUserId=pp920UserId;
   function pp920LoadPlaid(){
     return new Promise((resolve,reject)=>{
       if(window.Plaid) return resolve();
@@ -21999,9 +22228,16 @@ body.pp821-theme-live .mb137-color-row{
       document.head.appendChild(x);
     });
   }
+  const PP920_ITEMS_KEY='payaviator_plaid_items_v1';
+  function pp920SaveItemHealth(data){
+    try{localStorage.setItem(PP920_ITEMS_KEY,JSON.stringify({items:Array.isArray(data?.items)?data.items:[],errors:Array.isArray(data?.errors)?data.errors:[],at:Date.now()}))}catch(_){ }
+  }
+  window.PayAviatorSavePlaidItemHealth=pp920SaveItemHealth;
+  function pp920ItemHealth(){try{const v=JSON.parse(localStorage.getItem(PP920_ITEMS_KEY)||'{}');return{items:Array.isArray(v.items)?v.items:[],errors:Array.isArray(v.errors)?v.errors:[]}}catch(_){return{items:[],errors:[]}}}
   async function pp920SyncPlaidAccounts(){
-    const uid=encodeURIComponent(pp920UserId());
-    const data=await pp920Api('/api/plaid/accounts/'+uid);
+    // The backend identifies the user from the Firebase token; never send a user id.
+    const data=await pp920Api('/api/plaid/accounts');
+    pp920SaveItemHealth(data);
     const rows=Array.isArray(data.accounts)?data.accounts:[];
     const mapped=rows.map(a=>({
       id:a.account_id||a.id,
@@ -22020,6 +22256,7 @@ body.pp821-theme-live .mb137-color-row{
     return merged;
   }
   async function pp920ConnectPlaidBank(){
+    if(!(await window.PayAviatorAuth?.ensureSignedIn?.({notice:'Sign in to connect a bank. Your bills and spending stay on this phone either way.'})))return;
     const btn=$('pp920ConnectBank');
     const original=btn?.textContent||'+ Connect another bank';
     if(btn){btn.disabled=true;btn.textContent='Opening secure bank connection…'}
@@ -22029,7 +22266,7 @@ body.pp821-theme-live .mb137-color-row{
       if(health?.plaidConfigured===false) throw new Error('Plaid is not configured on the PayAviator backend yet. Add PLAID_CLIENT_ID and PLAID_SECRET in Railway.');
       const tok=await pp920Api('/api/plaid/create-link-token',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({userId:pp920UserId(),mobile:true})
+        body:JSON.stringify({mobile:true})
       });
       if(!tok.link_token) throw new Error('No link token returned');
 
@@ -22057,7 +22294,7 @@ body.pp821-theme-live .mb137-color-row{
           try{
             await pp920Api('/api/plaid/exchange-public-token',{
               method:'POST',headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({userId:pp920UserId(),public_token,metadata})
+              body:JSON.stringify({public_token,metadata})
             });
             await pp920SyncPlaidAccounts(); render();
             pp920Toast((metadata?.institution?.name||'Bank')+' connected to PayAviator');
@@ -22084,7 +22321,7 @@ body.pp821-theme-live .mb137-color-row{
         const metadata={institution:{name:data.institution_name||'',institution_id:data.institution_id||''}};
         await pp920Api('/api/plaid/exchange-public-token',{
           method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({userId:pp920UserId(),public_token:data.public_token,metadata})
+          body:JSON.stringify({public_token:data.public_token,metadata})
         });
         await pp920SyncPlaidAccounts(); render();
         pp920Toast((data.institution_name||'Bank')+' connected to PayAviator');
@@ -22103,12 +22340,13 @@ body.pp821-theme-live .mb137-color-row{
   };
 
   async function pp941WaitForHostedStatus(){
-    const path='/api/plaid/hosted-status/'+encodeURIComponent(pp920UserId());
+    const path='/api/plaid/hosted-status';
     let last={connected:false,pending:true};
     // Plaid can take a moment to publish Hosted Link session results after redirect.
+    // Stop on success / exited / failed (or any non-pending answer).
     for(let attempt=0;attempt<6;attempt++){
       last=await pp920Api(path);
-      if(last.connected || !last.pending) return last;
+      if(last.connected || !last.pending || ['success','exited','failed','missing'].includes(String(last.status||''))) return last;
       await new Promise(r=>setTimeout(r, attempt<2?900:1500));
     }
     return last;
@@ -22122,7 +22360,11 @@ body.pp821-theme-live .mb137-color-row{
     try{
       pp920Toast('Finishing secure bank connection…');
       const result=await pp941WaitForHostedStatus();
-      if(result.connected){
+      if(result.connected && result.mode==='update'){
+        await pp920SyncPlaidAccounts(); render();
+        try{await window.PayAviatorSyncLiveBank982?.()}catch(_){ }
+        pp920Toast((result.institution||'Bank')+' reconnected to PayAviator');
+      }else if(result.connected){
         await pp920SyncPlaidAccounts(); render();
         pp920Toast((result.institution||'Bank')+' connected to PayAviator');
       }else if(result.pending){
@@ -22137,6 +22379,69 @@ body.pp821-theme-live .mb137-color-row{
       if(btn && document.body.contains(btn)){btn.disabled=false;btn.textContent='+ Connect another bank'}
     }
   };
+
+  // Item health / update mode: needs_update -> Reconnect.
+  async function pp920ReconnectItem(itemId,btn){
+    if(!itemId)return;
+    if(!(await window.PayAviatorAuth?.ensureSignedIn?.()))return;
+    const old=btn?.textContent;
+    if(btn){btn.disabled=true;btn.textContent='Opening…'}
+    try{
+      pp920Toast('Opening secure bank connection…');
+      const tok=await pp920Api('/api/plaid/update-link-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item_id:itemId})});
+      if(tok.hosted_link_url && window.AndroidBridge && typeof window.AndroidBridge.openPlaidHostedLink==='function'){
+        try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }
+        window.AndroidBridge.openPlaidHostedLink(String(tok.hosted_link_url));
+        return;
+      }
+      if(window.AndroidBridge) throw new Error('The bank service did not return a reconnect link. Please try again.');
+      // Browser/PWA fallback: Plaid Link in update mode, then confirm with the backend.
+      if(!tok.link_token) throw new Error('No link token returned');
+      await pp920LoadPlaid();
+      window.Plaid.create({token:tok.link_token,onSuccess:async()=>{try{await pp920Api('/api/plaid/update-complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item_id:itemId})});await pp920SyncPlaidAccounts();render();pp920Toast('Bank reconnected to PayAviator')}catch(err){pp920Toast('Could not finish reconnecting: '+(err?.message||err))}},onExit:()=>{}}).open();
+    }catch(err){
+      try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }
+      pp920Toast('Could not reconnect this bank: '+(err?.message||'Please try again.'));
+    }finally{if(btn && document.body.contains(btn)){btn.disabled=false;btn.textContent=old||'Reconnect'}}
+  }
+  window.PayAviatorReconnectPlaidItem=pp920ReconnectItem;
+  async function pp920DisconnectItem(itemId){
+    if(!itemId || !window.PayAviatorAuth?.isSignedIn?.())return;
+    try{await pp920Api('/api/plaid/items/'+encodeURIComponent(itemId),{method:'DELETE'})}
+    catch(err){pp920Toast('Removed from PayAviator, but the bank could not be disconnected at Plaid yet: '+(err?.message||err))}
+  }
+  function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+  function pp920AuthSection(){
+    const A=window.PayAviatorAuth; if(!A) return '';
+    const st=A.getState();
+    if(!st.signedIn){
+      return `<section class="ppauth-account"><div class="pp920-title">Sign in for bank features</div><div class="pp920-sub">Connecting and syncing banks needs a PayAviator account. Bills, income and spending keep working without one.</div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-signin>Sign in</button></div></section>`;
+    }
+    const who=st.email||st.name||'Signed in';
+    return `<section class="ppauth-account"><div class="pp920-row"><div><div class="pp920-title">Signed in</div><div class="pp920-sub">${esc(who)}${st.provider==='google'?' • Google':''}</div></div></div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-signout>Sign out</button><button type="button" class="pp920-action ppauth-danger" data-ppauth-delete>Delete account</button></div></section>`;
+  }
+  function pp920NeedsSection(){
+    if(!window.PayAviatorAuth?.isSignedIn?.()) return '';
+    const h=pp920ItemHealth();
+    const rows=h.items.filter(i=>i&&i.needs_update);
+    h.errors.filter(e=>e&&e.needs_update&&!rows.some(r=>r.item_id===e.item_id)).forEach(e=>rows.push({item_id:e.item_id,institution_name:e.institution_name,error_code:e.code,needs_update:true}));
+    if(!rows.length) return '';
+    return rows.map(i=>`<section class="ppauth-needs" data-item="${esc(i.item_id)}"><div class="pp920-title">${esc(i.institution_name||'A connected bank')} needs attention</div><div class="pp920-sub">${i.new_accounts_available&&!i.error_code?'New accounts are available to share with PayAviator.':'Sign in to your bank again to keep balances and transactions up to date.'}</div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-reconnect="${esc(i.item_id)}">Reconnect</button></div></section>`).join('');
+  }
+  function pp920WireAuth(host){
+    host.querySelector('[data-ppauth-signin]')?.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();if(await window.PayAviatorAuth.ensureSignedIn()){try{await pp920SyncPlaidAccounts()}catch(_){ }render()}});
+    host.querySelector('[data-ppauth-signout]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{await window.PayAviatorAuth.signOut();render();pp920Toast('Signed out. Your bills and spending are still on this phone.')};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Sign out?',message:'Bank data will be removed from this phone until you sign in again. Your bills, income and spending stay.',confirmText:'Sign out'},go);else go()});
+    host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{pp920Toast('Deleting your account…');const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.ok){render();pp920Toast('Your PayAviator account and bank connections were deleted.')}else if(r.code!=='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error||'Could not delete your account. Please try again.')}};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message:'This disconnects every bank from PayAviator and Plaid and deletes your sign-in. Your bills, income and spending stay on this phone.',confirmText:'Delete account'},go);else if(confirm('Delete your PayAviator account and disconnect every bank?'))go()});
+    host.querySelectorAll('[data-ppauth-reconnect]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();pp920ReconnectItem(b.getAttribute('data-ppauth-reconnect'),b)}));
+  }
+  document.addEventListener('payaviator:authchange',e=>{
+    const reason=e?.detail?.reason||'';
+    if(reason==='signed_in'){
+      if(window.PayAviatorAuth?.takeReconnectNotice?.())pp920Toast('You\'re signed in. Banks connected before sign-in need to be connected again once: tap + Connect another bank.');
+      pp920SyncPlaidAccounts().then(()=>{try{window.PayAviatorSyncLiveBank982?.()}catch(_){ }if($('pp920AccountsModal')?.classList.contains('show'))render()}).catch(err=>console.warn('PayAviator bank sync after sign-in:',err?.message||err));
+    }
+    if($('pp920AccountsModal')?.classList.contains('show'))render();
+  });
 
   function refreshGauge(){
     repairApi();
@@ -22162,7 +22467,7 @@ body.pp821-theme-live .mb137-color-row{
     const accts=loadAccounts(), used=accts.filter(isIncluded), total=used.reduce((s,a)=>s+balance(a),0);
     const groups={};accts.forEach(a=>(groups[institution(a)]||(groups[institution(a)]=[])).push(a));
     const names=Object.keys(groups);
-    host.innerHTML=`<section class="pp920-summary"><div class="pp920-row"><div><div class="pp920-title">Connected banking</div><div class="pp920-sub">${names.length} institution${names.length===1?'':'s'} • ${accts.length} account${accts.length===1?'':'s'}</div></div><div style="text-align:right"><div class="pp920-sub">Bank available</div><div class="pp920-total">${money(total)}</div></div></div></section>`+
+    host.innerHTML=pp920AuthSection()+pp920NeedsSection()+`<section class="pp920-summary"><div class="pp920-row"><div><div class="pp920-title">Connected banking</div><div class="pp920-sub">${names.length} institution${names.length===1?'':'s'} • ${accts.length} account${accts.length===1?'':'s'}</div></div><div style="text-align:right"><div class="pp920-sub">Bank available</div><div class="pp920-total">${money(total)}</div></div></div></section>`+
     names.map(name=>{const rows=groups[name],bankUsed=rows.filter(isIncluded),opened=openBank===name;return `<section class="pp920-bank ${opened?'open':''}" data-bank="${encodeURIComponent(name)}"><button class="pp920-bankhead" type="button"><div><div class="pp920-title">${name}</div><div class="pp920-sub">${bankUsed.length} of ${rows.length} included in Available Now</div></div><span style="font-weight:900;font-size:1.35rem">${opened?'⌃':'⌄'}</span></button><div class="pp920-bankbody">${rows.map(a=>{const on=isIncluded(a);return `<div class="pp920-account" data-account="${encodeURIComponent(key(a))}"><div class="pp920-row"><div><div class="pp920-title">${a.name||a.subtype||a.type||'Account'}</div><div class="pp920-sub">${a.subtype||a.type||'account'}${a.mask?' •••• '+a.mask:''}</div></div><div style="text-align:right"><div class="pp920-total">${money(balance(a))}</div><div class="pp920-sub">available balance</div></div></div><div class="pp920-pill ${on?'':'off'}">${on?'Included in Available Now':(String(a.type||'').toLowerCase()==='credit'||String(a.type||'').toLowerCase()==='loan'?'Credit/loan — excluded':String(a.subtype||'').toLowerCase()==='savings'?'Savings — protected':'Not included')}</div><div class="pp920-actions"><button class="pp920-action" type="button" data-pp920-toggle="1">${on?'Exclude from Available Now':'Include in Available Now'}</button><button class="pp920-action" type="button" data-pp920-remove="1">Disconnect</button></div></div>`}).join('')}</div></section>`}).join('')+
     '<div class="pp920-actions"><button id="pp920ConnectBank" class="pp920-action" type="button">+ Connect another bank</button><button id="pp920SyncBank" class="pp920-action" type="button">↻ Sync all accounts</button></div><div class="pp920-note"><b>Multiple banks supported:</b> connect as many institutions and accounts as you authorize. Each account can be included or excluded from Available Now independently. PayAviator uses read-only Plaid access.</div>';
 
@@ -22170,13 +22475,14 @@ body.pp821-theme-live .mb137-color-row{
     if(connectBtn){
       connectBtn.onclick=e=>{e.preventDefault();e.stopImmediatePropagation();pp920ConnectPlaidBank()};
     }
+    pp920WireAuth(host);
     const syncBtn=$('pp920SyncBank');
     if(syncBtn){
-      syncBtn.onclick=async e=>{e.preventDefault();e.stopPropagation();const oldText=syncBtn.textContent;syncBtn.disabled=true;syncBtn.textContent='Syncing…';try{await pp920SyncPlaidAccounts();render();pp920Toast('Connected accounts synced')}catch(x){pp920Toast('Sync failed: '+x.message)}finally{syncBtn.disabled=false;syncBtn.textContent=oldText}};
+      syncBtn.onclick=async e=>{e.preventDefault();e.stopPropagation();if(!(await window.PayAviatorAuth?.ensureSignedIn?.()))return;const oldText=syncBtn.textContent;syncBtn.disabled=true;syncBtn.textContent='Syncing…';try{await pp920SyncPlaidAccounts();render();pp920Toast('Connected accounts synced')}catch(x){pp920Toast('Sync failed: '+x.message)}finally{syncBtn.disabled=false;syncBtn.textContent=oldText}};
     }
         host.querySelectorAll('.pp920-bankhead').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const sec=b.closest('.pp920-bank');const n=decodeURIComponent(sec.dataset.bank);openBank=openBank===n?null:n;render()}));
     host.querySelectorAll('[data-pp920-toggle]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const row=b.closest('[data-account]');const k=decodeURIComponent(row.dataset.account);const a=loadAccounts().find(x=>key(x)===k);if(!a)return;setIncluded(a,!isIncluded(a));refreshGauge();render()}));
-    host.querySelectorAll('[data-pp920-remove]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const row=b.closest('[data-account]');const k=decodeURIComponent(row.dataset.account);const a=loadAccounts().find(x=>key(x)===k);if(!a)return;const remove=()=>{saveAccounts(loadAccounts().filter(x=>key(x)!==k));const c=ensureChoices();delete c[k];saveChoices(c);refreshGauge();render()};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Disconnect account?',message:'Remove this account from PayAviator?',confirmText:'Disconnect'},remove);else remove()}));
+    host.querySelectorAll('[data-pp920-remove]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const row=b.closest('[data-account]');const k=decodeURIComponent(row.dataset.account);const a=loadAccounts().find(x=>key(x)===k);if(!a)return;const remove=()=>{const rest=loadAccounts().filter(x=>key(x)!==k);saveAccounts(rest);const c=ensureChoices();delete c[k];saveChoices(c);refreshGauge();render();const itemId=String(a.itemId||a.item_id||'');if(itemId&&!rest.some(x=>String(x.itemId||x.item_id||'')===itemId))pp920DisconnectItem(itemId)};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Disconnect account?',message:'Remove this account from PayAviator?',confirmText:'Disconnect'},remove);else remove()}));
     m.classList.add('show');
   }
 
@@ -23012,7 +23318,7 @@ const prior=window.payAviatorHandleAndroidBack;window.payAviatorHandleAndroidBac
  async function refreshBankSpending(force){
    if(syncing)return; const now=Date.now(); if(!force&&now-last<30000){try{window.PayAviatorRenderSpending994?.()}catch(_){}return}
    syncing=true; last=now;
-   try{if(typeof window.PayAviatorSyncLiveBank982==='function')await window.PayAviatorSyncLiveBank982()}catch(e){console.warn('PayAviator bank transaction sync:',e?.message||e)}
+   try{if(typeof window.PayAviatorSyncLiveBank982==='function')await window.PayAviatorSyncLiveBank982()}catch(e){if(e?.code!=='SIGN_IN_REQUIRED')console.warn('PayAviator bank transaction sync:',e?.message||e)}
    finally{syncing=false;try{window.PayAviatorRenderSpending994?.()}catch(_){}}
  }
  window.PayAviatorRefreshBankSpending994=refreshBankSpending;
@@ -23936,7 +24242,7 @@ window.addEventListener('beforeunload',()=>{try{window.hasUnsavedChanges=false}c
 .pp-bank-transaction .mb119-ledger-title{display:flex;align-items:center;gap:4px}
 </style>
 
-<script id="payaviator-313-transaction-sync">(function(){let running=false,last=0;async function sync(force){const now=Date.now();if(running||(!force&&now-last<60000)||typeof window.PayAviatorSyncLiveBank982!=='function')return;running=true;last=now;try{await window.PayAviatorSyncLiveBank982();window.PayAviatorRenderSpending994?.()}catch(e){console.warn('PayAviator 3.1.3 transaction refresh:',e?.message||e)}finally{running=false}}document.addEventListener('payaviator:viewchange',()=>setTimeout(()=>sync(false),150));window.addEventListener('pageshow',()=>setTimeout(()=>sync(false),700));window.PayAviatorRefreshTransactions313=()=>sync(true)})();</script>
+<script id="payaviator-313-transaction-sync">(function(){let running=false,last=0;async function sync(force){const now=Date.now();if(running||(!force&&now-last<60000)||typeof window.PayAviatorSyncLiveBank982!=='function')return;running=true;last=now;try{await window.PayAviatorSyncLiveBank982();window.PayAviatorRenderSpending994?.()}catch(e){if(e?.code!=='SIGN_IN_REQUIRED')console.warn('PayAviator 3.1.3 transaction refresh:',e?.message||e)}finally{running=false}}document.addEventListener('payaviator:viewchange',()=>setTimeout(()=>sync(false),150));window.addEventListener('pageshow',()=>setTimeout(()=>sync(false),700));window.PayAviatorRefreshTransactions313=()=>sync(true)})();</script>
 
 <style id="payaviator-315-bank-sync-css">
 #pp315TxToast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:99999;
@@ -23961,7 +24267,7 @@ line-height:1.3;display:none;pointer-events:none}
      if(errs.length)toast('Bank sync: '+errs.map(e=>(e.institution_name?e.institution_name+': ':'')+(e.code||'error')+(e.message?' — '+e.message:'')).join(' | '),true);
      else toast('Bank transactions synced: '+Number(st?.count||0),false);
      window.PayAviatorRenderSpending994?.();
-   }catch(e){(function(err){try{const hasLinked=!!(localStorage.getItem('payAviator_plaid_uid_v1')||localStorage.getItem('payAviator_linked_accounts_v1')||(typeof accounts==='function'&&(accounts()||[]).length));if(!hasLinked){console.warn('Bank sync skipped (no linked accounts):',err?.message||err);return;}toast('Bank sync failed: '+(err?.message||String(err)),true);}catch(_){console.warn('Bank sync failed:',err?.message||err);}})(e)}
+   }catch(e){(function(err){try{if(err&&err.code==='SIGN_IN_REQUIRED')return;const hasLinked=!!(localStorage.getItem('payAviator_plaid_uid_v1')||localStorage.getItem('payAviator_linked_accounts_v1')||(typeof accounts==='function'&&(accounts()||[]).length));if(!hasLinked){console.warn('Bank sync skipped (no linked accounts):',err?.message||err);return;}toast('Bank sync failed: '+(err?.message||String(err)),true);}catch(_){console.warn('Bank sync failed:',err?.message||err);}})(e)}
    finally{running=false}
  }
  document.addEventListener('payaviator:viewchange',()=>setTimeout(()=>refresh(false),250));
@@ -24321,7 +24627,7 @@ function included(a){if(['savings','debt'].includes(kind(a)))return false;const 
 function wallet(){const w=read(CASH_KEY,{saved:0,spendable:0});return{saved:Math.max(0,num(w?.saved)),spendable:Math.max(0,num(w?.spendable))}}
 function cushion(){try{return Math.max(0,num(window.mb20419MoneyState?.()?.cushion))}catch(_){return 0}}
 function pendingFor(name){const rows=read(TX_KEY,[]);return (Array.isArray(rows)?rows:[]).reduce((s,t)=>{if(!t?.pending)return s;const ins=String(t.institution_name||t.institutionName||t.institution||'');if(name!=='All Spendable'&&ins!==name)return s;const a=num(t.amount);return s+(a>0?a:0)},0)}
-const PP982_API='https://payaviator-backend-production.up.railway.app',PP982_ENV_KEY='payaviator_plaid_environment_v982',PP982_USER_KEY='payaviator_plaid_user_id_v1';
+const PP982_API='https://payaviator-backend-production.up.railway.app',PP982_ENV_KEY='payaviator_plaid_environment_v982';
 function pp982CheckAvailable(){
   try{
     const d=new Date(), y=d.getFullYear(), m=d.getMonth();
@@ -24342,13 +24648,14 @@ function pp982CheckAvailable(){
   return 0;
 }
 function pp982LiveBankActive(){return String(localStorage.getItem(PP982_ENV_KEY)||'').toLowerCase()==='production'}
-function pp982UserId(){try{if(window.AndroidBridge&&typeof window.AndroidBridge.getSecureDeviceId==='function'){const id=String(window.AndroidBridge.getSecureDeviceId()||'');if(id){localStorage.setItem(PP982_USER_KEY,id);return id}}}catch(_){ }return window.PayAviatorPlaidUserId?window.PayAviatorPlaidUserId():(localStorage.getItem(PP982_USER_KEY)||'')}
 async function pp982Api(path,opt={}){if(typeof window.PayAviatorBankApi==='function')return window.PayAviatorBankApi(path,opt);const r=await fetch(PP982_API+path,Object.assign({cache:'no-store'},opt));let j={};try{j=await r.json()}catch(_){}if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
 async function pp982RefreshEnvironment(){try{const h=await pp982Api('/api/health');if(h?.plaidEnvironment)localStorage.setItem(PP982_ENV_KEY,String(h.plaidEnvironment).toLowerCase());return h}catch(_){return null}}
 async function pp982SyncLiveBank(){
-  const uid=encodeURIComponent(pp982UserId());
+  // Bank sync needs a signed-in Firebase user; background callers treat this as a quiet skip.
+  if(window.PayAviatorAuth&&!window.PayAviatorAuth.isSignedIn()){const e=new Error('Sign in to sync your banks.');e.code='SIGN_IN_REQUIRED';throw e}
   const health=await pp982RefreshEnvironment();
-  const ad=await pp982Api('/api/plaid/accounts/'+uid);
+  const ad=await pp982Api('/api/plaid/accounts');
+  try{window.PayAviatorSavePlaidItemHealth?.(ad)}catch(_){}
   const rows=Array.isArray(ad.accounts)?ad.accounts:[];
   const old=accounts(), oldBy=new Map(old.map(a=>[rawId(a),a]));
   const mappedRaw=rows.map(a=>{const prev=oldBy.get(String(a.account_id||a.id||''))||{};return Object.assign({},prev,{id:a.account_id||a.id,name:a.name||a.official_name||'Account',officialName:a.official_name||'',institution:a.institution_name||a.institution||'Connected institution',institutionName:a.institution_name||a.institution||'Connected institution',mask:a.mask||'',type:a.type||'',subtype:a.subtype||'',current:num(a.balances?.current??a.current),available:num(a.balances?.available??a.balances?.current??a.available??a.current),creditLimit:num(a.credit_limit??a.balances?.limit??a.limit),availableCredit:(a.available_credit??a.balances?.available??null),balanceUsed:num(a.balance_used??a.balances?.current??a.current),utilizationPercent:(a.utilization_percent??null),balanceSource:a.balance_source||'plaid_accounts_get',itemId:a.item_id||'',lastSync:new Date().toISOString(),source:'plaid'});});const mapped=[...new Map(mappedRaw.map(a=>[key(a),a])).values()];
@@ -24360,7 +24667,7 @@ async function pp982SyncLiveBank(){
     if(window.AndroidBridge&&typeof AndroidBridge.setRealAccountsConnected==='function') AndroidBridge.setRealAccountsConnected(realConnected);
   }catch(_){}
   let td={transactions:[]};
-  try{td=await pp982Api('/api/plaid/transactions/'+uid+'?limit=250')}catch(e){td={transactions:[],errors:[{code:'request_failed',message:e?.message||String(e)}]};console.warn('PayAviator transaction sync failed:',e?.message||e)}
+  try{td=await pp982Api('/api/plaid/transactions?limit=250')}catch(e){td={transactions:[],errors:[{code:'request_failed',message:e?.message||String(e)}]};console.warn('PayAviator transaction sync failed:',e?.message||e)}
   const freshTx=Array.isArray(td.transactions)?td.transactions:[];
   const tx=freshTx;
   // 3.1.5: keep only a lightweight recent cache on-device. PostgreSQL is authoritative.
