@@ -2,7 +2,7 @@
 
 Newest first. Every release keeps the Android application ID `com.payaviator.app` and the same signing key, so it installs over the previous version without losing data. The one exception is 3.9.6, which introduced the new PayAviator signing key (see [docs/UPDATE_WITHOUT_UNINSTALL.md](docs/UPDATE_WITHOUT_UNINSTALL.md)).
 
-## Unreleased
+## 3.9.7
 
 **Sign-in for bank features (Firebase)**
 - Bank linking and sync now need a PayAviator account: Continue with Google (native Credential Manager) or email and password. Bills, income, spending, backups and reminders keep working without one.
