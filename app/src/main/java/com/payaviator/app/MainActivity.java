@@ -563,7 +563,7 @@ public class MainActivity extends Activity {
 
     /**
      * One HTTPS call to the PayAviator backend. /api/plaid/* calls carry
-     * "Authorization: Bearer <Firebase ID token>"; the device-id header is informational only.
+     * "Authorization: Bearer <Firebase ID token>". No device or user id is sent.
      */
     private AuthedRequest.Response executeBackendCall(String verb, String safePath, String body, String bearerToken) throws IOException {
         HttpURLConnection conn = null;
@@ -574,7 +574,6 @@ public class MainActivity extends Activity {
             conn.setReadTimeout(20000);
             conn.setUseCaches(false);
             conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("X-PayAviator-Device-Id", getSecureDeviceId());
             if (bearerToken != null && !bearerToken.isEmpty()) {
                 conn.setRequestProperty("Authorization", "Bearer " + bearerToken);
             }
