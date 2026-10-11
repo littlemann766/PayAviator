@@ -21083,7 +21083,7 @@ body.pp821-theme-live .mb137-color-row{
     window.PayAviatorConnectedAccounts.includedBalance=canonical;
   }
 
-  const PLAID_API='https://payaviator-backend-production.up.railway.app';
+  const PLAID_API='https://api.payaviator.app';
   const USER_KEY='payaviator_plaid_user_id_v1';
   function plaidUserId(){let id=localStorage.getItem(USER_KEY);if(!id){id='pp-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12);localStorage.setItem(USER_KEY,id)}return id}
   async function api(path,options){const r=await fetch(PLAID_API+path,options);let j={};try{j=await r.json()}catch(_){ }if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
@@ -22162,7 +22162,7 @@ setState(readNative());
     window.PayAviatorIncludedAccounts909=includedAccounts;
   }
 
-  const PP920_PLAID_API='https://payaviator-backend-production.up.railway.app';
+  const PP920_PLAID_API='https://api.payaviator.app';
   // Firebase sign-in replaced self-generated Plaid user ids: the backend reads the user from the ID token.
   function pp920Toast(msg){
     const text=String(msg||'');
@@ -24803,7 +24803,7 @@ function included(a){if(['savings','debt'].includes(kind(a)))return false;const 
 function wallet(){const w=read(CASH_KEY,{saved:0,spendable:0});return{saved:Math.max(0,num(w?.saved)),spendable:Math.max(0,num(w?.spendable))}}
 function cushion(){try{return Math.max(0,num(window.mb20419MoneyState?.()?.cushion))}catch(_){return 0}}
 function pendingFor(name){const rows=read(TX_KEY,[]);return (Array.isArray(rows)?rows:[]).reduce((s,t)=>{if(!t?.pending)return s;const ins=String(t.institution_name||t.institutionName||t.institution||'');if(name!=='All Spendable'&&ins!==name)return s;const a=num(t.amount);return s+(a>0?a:0)},0)}
-const PP982_API='https://payaviator-backend-production.up.railway.app',PP982_ENV_KEY='payaviator_plaid_environment_v982';
+const PP982_API='https://api.payaviator.app',PP982_ENV_KEY='payaviator_plaid_environment_v982';
 function pp982CheckAvailable(){
   try{
     const d=new Date(), y=d.getFullYear(), m=d.getMonth();

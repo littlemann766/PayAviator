@@ -541,7 +541,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static final String PAYAVIATOR_API_BASE = "https://payaviator-backend-production.up.railway.app";
+    private static final String PAYAVIATOR_API_BASE = "https://api.payaviator.app";
     private static final String DEVICE_PREFS = "payaviator_device_security_v1";
     private static final String DEVICE_ID_KEY = "device_id";
 
