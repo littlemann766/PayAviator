@@ -22482,14 +22482,19 @@ setState(readNative());
 
   /* Android Back: while Connected Accounts is open it joins the shared sheet head (after the sign-in and consent
      sheets), so Back closes the topmost of the three. A themed notice shown over the sheet is closed first. */
+  /* Taps work whenever Connected Accounts opens: fix layer 3.4.8 (hardUnlock, run on bottom-tab taps and when the
+     app returns to the foreground) leaves inline display:none / pointer-events:none on the closed sheet, and the
+     !important display rule let it reappear while ignoring every tap. Clear both on every open. */
+  function enableTaps(m){if(m.style.pointerEvents==='none')m.style.removeProperty('pointer-events');if(m.style.display==='none')m.style.removeProperty('display')}
   function watchBack(m){
-    const SB=window.PayAviatorSheetBack;if(!m||!SB||m.dataset.paSheetBack)return;m.dataset.paSheetBack='1';
+    if(!m||m.dataset.paSheetBack)return;m.dataset.paSheetBack='1';
+    const SB=window.PayAviatorSheetBack;
     const shown=()=>m.classList.contains('show');
-    SB.register('accounts',shown,()=>{
+    if(SB)SB.register('accounts',shown,()=>{
       if($('ppThemeNoticeOverlay')){try{window.PayAviatorCloseThemeNotice?.()}catch(_){}$('ppThemeNoticeOverlay')?.remove();return}
       const x=m.querySelector('.pp920-close');if(x)x.click();else m.classList.remove('show');
     },3);
-    const sync=()=>{if(shown())SB.install();else SB.remove()};
+    const sync=()=>{if(shown()){enableTaps(m);SB&&SB.install()}else SB&&SB.remove()};
     new MutationObserver(sync).observe(m,{attributes:true,attributeFilter:['class']});sync();
   }
   function ensureModal(){
@@ -22680,6 +22685,9 @@ setState(readNative());
     try{window.openPayAviatorConnectedAccounts920?.()}catch(_){return}
     const m=$('pp920AccountsModal');
     if(m){
+      /* Re-enable taps a hidden-sheet cleanup may have switched off (see enableTaps in the 9.2.2 accounts module). */
+      if(m.style.pointerEvents==='none')m.style.removeProperty('pointer-events');
+      if(m.style.display==='none')m.style.removeProperty('display');
       m.classList.add('show');
       m.scrollTop=0;
       const sh=m.querySelector('.pp920-sheet');if(sh)sh.scrollTop=0;
