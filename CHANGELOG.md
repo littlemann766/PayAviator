@@ -1,0 +1,118 @@
+# Changelog
+
+Newest first. Every release keeps the Android application ID `com.payaviator.app` and the same signing key, so it installs over the previous version without losing data. The one exception is 3.9.6, which introduced the new PayAviator signing key (see [docs/UPDATE_WITHOUT_UNINSTALL.md](docs/UPDATE_WITHOUT_UNINSTALL.md)).
+
+## 3.9.6
+
+- New release signing key (CN=PayAviator, alias `payaviator`). Phones with an earlier build must uninstall and reinstall once; Android rejects updates signed with a different key.
+
+**Bank linking fixed**
+- The app was still calling the backend host from before the rename. That host now returns 404, so bank linking and sync were broken in 3.9.5. `MainActivity.java` and the Plaid API constants in `index.html` now use `https://payaviator-backend-production.up.railway.app`.
+
+**Rename finished**
+- The leftover drawable is now `payaviator_app_icon.png`, and the docs are cleaned up. The repository no longer contains the old name. The signing certificate was also replaced (see above), so the old name is gone from the APK too.
+- The migration from the pre-rename storage keys was removed (approved). Anyone who opened any recent version was already migrated. Someone updating straight from a very old build would start with an empty bill list.
+
+**Signing secrets renamed: action needed**
+- Both workflows read only `PAYAVIATOR_KEYSTORE_HEX` and `PAYAVIATOR_KEYSTORE_PASSWORD`, which hold the PayAviator release key introduced in 3.9.6. Signing fails if they're missing. From now on, always sign with this same key.
+
+**Visual refresh and fixes**
+- Cleaner layout in the app's original colors (light-blue page, navy cards, cyan accents, all driven by App Colors). Hairline borders, one sheet per pop-up, tinted status pills, larger touch targets.
+- Home gauge labels no longer read "$0 / $0 / $1" when no custom scale is saved.
+- Payoff Planner:
+  - Uses the saved minimum instead of a hard-coded $25 and no longer overwrites it.
+  - "Extra monthly payoff" is visible again and is applied as a full snowball: the extra plus freed-up minimums go to the smallest balance first.
+  - The needle follows the selected card, and the utilization preview includes a month of interest.
+  - Hand-checked: Visa $3,240.55 @ 24.99%, $180 minimum + $150 extra → 12 months, $501.34 interest.
+- Credit gauge: the needle and both ends of the scale are visible. The needle is hidden when the limit is unknown. With no card connected it says "No credit card connected".
+- One-time repair of minimum payments that older builds overwrote to $25 (flag `payaviator_min_payment_repair_v1`).
+  - A minimum is only changed when it is exactly $25 and a month's interest on that balance is at least $25, since such a payment could never pay the card down. It is reset to 3% of the balance, at least $25.
+  - It can't tell a $25 typed on purpose from one the old bug wrote. Any other $25 is left alone, and re-entering $25 after the repair sticks.
+  - Credit sync no longer forces linked cards' minimums to $25.
+- First-time setup:
+  - Tips and the lightbulb stay hidden while setup is open. The first tip, and the PIN-lock tip, appear only after setup closes.
+  - Only the setup sheet's content scrolls. The X stays pinned at the top, and Back / Continue / Finish stay visible above the keyboard.
+- Budget tracked-spending rows read properly. The spending donut labels its remainder "Other categories". Cut-off Home text and stray literal `\n` characters are fixed.
+
+**Other**
+- `sw.js` cache renamed `payaviator-3.9.6`, so web/PWA installs drop the old cache on activate. The install step fetches with `cache: 'reload'` so it never stores a stale `index.html`.
+- Repository tidy-up:
+  - Dead `app.css` and `app.js` removed. `index.html` never loaded them.
+  - Release notes merged into this file. Docs moved to `docs/`. README rewritten.
+- Known: web/PWA builds still can't reach the bank backend because of the page's `connect-src 'self'` CSP. Android uses the native bridge.
+
+## 3.9.5
+
+- **Bill list and deleting bills.** `render()` crashed on every run because a later layer deleted `#incomeHourlyWage`. As a result, new bills didn't appear until restart and deleted bills came back. Four more scoping errors that interrupted rendering were also fixed (`addHealthStrip`, `state.hourlyWage`, `PP9173_VERSION`, `openSavings`), and the Home Savings card opens again.
+- **CPU and battery.** Legacy layers rewrote the DOM even when nothing changed and re-triggered each other's page-wide observers every frame, keeping the main thread 100% busy. Writes now happen only when a value changes (`paSetText`, `paSetHTML`, `paAddClass`, `paRemoveClass`), and two layers that fought over the same elements were stopped. Idle CPU went from 100% to about 0–1%, and "Finish & Add My First Bill" opens instantly instead of after about 13 s.
+- Bill status pills render and are readable on the dark theme.
+- **Build.** Source moved to the repository root with workflows in `.github/workflows/`. Both workflows set versionCode to `400000 + run number` (never below `ANDROID_VERSION_CODE.txt`), install platform 36 and build-tools 35.0.0, and verify APK assets and signature. Any keystore alias is accepted.
+
+## 3.9.4
+
+- New Android update pipeline. versionCode is now independent of the display version and starts at 400000; each signed-update run gets `400000 + run number`, above 3.9.3's code of 30903.
+- Added the `payaviator-signed-update.yml` workflow, which refuses to build without the existing signing secrets.
+- Based on the real 3.9.3 source. App data, banking and bill logic are unchanged.
+
+## 3.9.3
+
+- Edits to one-time bills now save the bill and any moved or override records before redrawing. Before, a widget error could leave the old date saved while the calendar showed the new one.
+
+## 3.9.2
+
+- Every bill edit is also saved to Android app-private storage, and a newer snapshot is restored at startup.
+- Snapshots are frozen and IndexedDB writes serialized, so older writes can't overwrite newer edits.
+- Editing a recurring bill asks which dates to change: future dates (default), only this occurrence, or the entire schedule.
+- Save results are verified, and a failed save is shown instead of being reported as saved.
+
+## 3.9.1
+
+- A moved recurring occurrence (for example Oct 5 → Oct 12) is saved as a stable one-time replacement. The series stays intact, the original date stays hidden, and moving it again no longer reverts after a restart.
+- "This and future dates" splits the series at the selected date and keeps earlier occurrences.
+
+## 3.2.4
+
+- Bills list shows the **remaining** amount for partly paid bills.
+- Merchant and bank logos load (CSP allows https images), with a letter mark as fallback.
+- Clearer wording in the cushion dialog and gauge-scale help, and shorter work-day picker labels.
+
+## 3.2.3
+
+- Paychecks from hours × wage are rounded to the cent. Money formatting, bills-paid totals and debt simulation results are also cent-rounded.
+- `paycheckOnDate` supports one-time, weekly, biweekly, monthly (end-of-month clamp) and semi-monthly schedules. Before, every non-weekly schedule was treated as biweekly.
+
+## 3.2.2
+
+- Credit limit: Edit Balance saves both `creditLimit` and `limit` and marks the value as manual, so bank sync no longer overwrites it.
+- Monthly Snapshot "Bills paid" counts bills marked paid through older overrides or paid flags again.
+
+## 3.2.1
+
+- Monthly bills due on the 29th–31st fall on the last day of shorter months.
+- Salary estimates support weekly, biweekly, semi-monthly and monthly pay, rounded to cents.
+- Layout: Home actions clear the bottom nav, and buttons no longer clip labels.
+- Bank-sync error toasts are hidden when no bank is linked.
+
+## Earlier releases (8.0.0 – 20.4.12)
+
+The display version was reset to the 3.x line after 20.4.12. That's why versionCode now comes from `ANDROID_VERSION_CODE.txt` plus the run number rather than from the version number.
+
+- **20.4.12:**
+  - The calculator uses a built-in arithmetic parser instead of eval, keeping the strict CSP.
+  - Page titles follow the active tab, and refunds are classified correctly.
+  - Budget and work-hours controls fit the phone width.
+- **20.1.9:** PIN Lock is off by default and relocks only after 5 minutes in the background.
+- **20.1.6: cleanup and security foundation.**
+  - Hardening: cleartext traffic, WebView debugging, file-URL access, mixed content and third-party cookies disabled. External pages open in the browser, and a restrictive CSP is applied.
+  - Android auto-backup disabled in favor of the app's own backup.
+  - Targets API 36 and produces a signed APK plus Play Store AAB.
+  - Guided first-run setup (hourly or salary income, ending with "Finish & Add My First Bill").
+  - Accessibility: 44–48 px touch targets, focus outlines, reduced motion, safe-area padding.
+  - Event-driven navigation replaces duplicate listeners.
+- **9.8.9: security hardening.**
+  - Banking calls go through the native HTTPS bridge.
+  - Each install gets a random device ID and secret, kept in private storage and never exposed to JavaScript.
+  - Backend access is limited to the device's own profile.
+  - Details: [docs/SECURITY-HARDENING-9.8.9.md](docs/SECURITY-HARDENING-9.8.9.md).
+- **9.2.10:** fixed the GitHub Actions build (`VERSION.txt` format, versionCode 90210).
+- **8.0.0:** first official PayAviator release with its own signing identity and the airplane-and-money launcher icon.

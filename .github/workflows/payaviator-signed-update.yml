@@ -1,0 +1,125 @@
+name: PayAviator Signed Update APK
+
+# Manual, APK-only build for installing over an existing PayAviator.
+# Note: GitHub keeps a separate run counter per workflow, so versionCodes from this
+# workflow and from "Build PayAviator Release" are independent. Keep using ONE of the two
+# for the APKs you install, or Android may see a lower versionCode and refuse the update.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out the PayAviator source
+        uses: actions/checkout@v4
+
+      - name: Check repository layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in settings.gradle app/build.gradle VERSION.txt ANDROID_VERSION_CODE.txt tools/verify-foundation.py; do
+            test -f "$f" || { echo "::error::Missing $f at the repository root. Upload the unzipped PayAviator source, not a ZIP."; exit 1; }
+          done
+
+      - name: Use Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK tools
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+
+      - name: Install Android platform 36 and build tools
+        shell: bash
+        run: sdkmanager --install "platforms;android-36" "build-tools;35.0.0" "platform-tools"
+
+      - name: Install Gradle 8.11.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Restore current PayAviator release keystore
+        shell: bash
+        env:
+          KEY_HEX: ${{ secrets.PAYAVIATOR_KEYSTORE_HEX }}
+          KEY_PASSWORD: ${{ secrets.PAYAVIATOR_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$KEY_HEX" || -z "$KEY_PASSWORD" ]]; then
+            echo '::error::Set the existing PAYAVIATOR_KEYSTORE_HEX and PAYAVIATOR_KEYSTORE_PASSWORD secrets. They must hold the current PayAviator release key (introduced in 3.9.6); always sign with that same key.'
+            exit 1
+          fi
+          KEYSTORE_PATH="$RUNNER_TEMP/payaviator-release.keystore"
+          printf '%s' "$KEY_HEX" | tr -d '[:space:]' | xxd -r -p > "$KEYSTORE_PATH"
+          chmod 600 "$KEYSTORE_PATH"
+          if [[ ! -s "$KEYSTORE_PATH" ]]; then
+            echo '::error::The saved keystore could not be decoded.'
+            exit 1
+          fi
+          # Accept any alias: only this temporary runner copy is renamed to "payaviator".
+          if ! keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEY_PASSWORD" -alias payaviator > /dev/null 2>&1; then
+            OLD_ALIAS="$(keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEY_PASSWORD" 2>/dev/null | awk -F, '/PrivateKeyEntry/ {gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1; exit}')"
+            if [[ -z "$OLD_ALIAS" ]]; then
+              echo '::error::The existing PayAviator keystore or password is invalid. Use the current PayAviator release key.'
+              exit 1
+            fi
+            keytool -changealias -keystore "$KEYSTORE_PATH" -storepass "$KEY_PASSWORD" -keypass "$KEY_PASSWORD" \
+              -alias "$OLD_ALIAS" -destalias payaviator
+          fi
+          echo "PAYAVIATOR_KEYSTORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+          echo 'Current PayAviator release key loaded. No new key generated.'
+
+      - name: Determine increasing Android update code
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          FLOOR="$(tr -d '[:space:]' < ANDROID_VERSION_CODE.txt)"
+          VERSION_CODE=$((400000 + GITHUB_RUN_NUMBER))
+          if (( VERSION_CODE < FLOOR )); then VERSION_CODE=$FLOOR; fi
+          if (( VERSION_CODE <= 30903 || VERSION_CODE > 2100000000 )); then
+            echo '::error::Invalid Android update code.'
+            exit 1
+          fi
+          VERSION="$(sed -E 's/^[Vv]ersion:[[:space:]]*//' VERSION.txt | tr -d '\r' | xargs)"
+          echo "PAYAVIATOR_ANDROID_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building PayAviator $VERSION (Android versionCode $VERSION_CODE)"
+
+      - name: Verify source foundation
+        run: python3 tools/verify-foundation.py
+
+      - name: Build signed RELEASE APK
+        env:
+          PAYAVIATOR_KEYSTORE_PASSWORD: ${{ secrets.PAYAVIATOR_KEYSTORE_PASSWORD }}
+        run: gradle --no-daemon :app:assembleRelease
+
+      - name: Verify bundled files and APK signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/release/app-release.apk
+          python3 tools/verify-apk-assets.py "$APK"
+          SIGNER=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -type f -name apksigner | sort -V | tail -1)
+          if [[ -z "$SIGNER" ]]; then
+            echo '::error::Android apksigner not found.'
+            exit 1
+          fi
+          "$SIGNER" verify --verbose --print-certs "$APK"
+          echo "SHA256: $(sha256sum "$APK")"
+
+      - name: Upload install-over-existing APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PayAviator-${{ steps.version.outputs.version }}-SIGNED-UPDATE
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30

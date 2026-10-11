@@ -1,0 +1,109 @@
+plugins { id 'com.android.application' }
+
+def payAviatorKeystoreFile = System.getenv('PAYAVIATOR_KEYSTORE_FILE')
+def payAviatorKeystorePassword = System.getenv('PAYAVIATOR_KEYSTORE_PASSWORD')
+
+def payAviatorVersionFile = rootProject.file('VERSION.txt')
+if (!payAviatorVersionFile.exists()) {
+    throw new GradleException('VERSION.txt is required and is the single source of truth for PayAviator versioning.')
+}
+def payAviatorVersion = payAviatorVersionFile.text.trim().replaceFirst(/(?i)^Version:\s*/, '').trim()
+def parts = payAviatorVersion.tokenize('.')
+if (parts.size() != 3 || !parts.every { it ==~ /\d+/ }) {
+    throw new GradleException('VERSION.txt must contain Version: MAJOR.MINOR.PATCH')
+}
+def major = parts[0] as int
+def minor = parts[1] as int
+def patch = parts[2] as int
+if (minor > 99 || patch > 9) throw new GradleException('Minor must be 0-99 and patch must be 0-9.')
+
+// Android update codes must never decrease, even when the public version is reset.
+// A workflow run gets 400000 + GITHUB_RUN_NUMBER; locally the safe floor is 400000.
+// Do not change the applicationId or keystore: Android requires both to match the installed app.
+def versionCodeFloorFile = rootProject.file('ANDROID_VERSION_CODE.txt')
+if (!versionCodeFloorFile.exists()) {
+    throw new GradleException('ANDROID_VERSION_CODE.txt is required for install-over-existing builds.')
+}
+def versionCodeFloorText = versionCodeFloorFile.text.trim()
+if (!(versionCodeFloorText ==~ /\d+/)) {
+    throw new GradleException('ANDROID_VERSION_CODE.txt must contain a positive integer.')
+}
+def versionCodeFloor = versionCodeFloorText.toLong()
+def versionCodeOverride = System.getenv('PAYAVIATOR_ANDROID_VERSION_CODE')?.trim()
+if (versionCodeOverride && !(versionCodeOverride ==~ /\d+/)) {
+    throw new GradleException('PAYAVIATOR_ANDROID_VERSION_CODE must be a positive integer.')
+}
+def payAviatorVersionCode = versionCodeOverride ? versionCodeOverride.toLong() : versionCodeFloor
+if (payAviatorVersionCode < versionCodeFloor || payAviatorVersionCode > 2100000000L) {
+    throw new GradleException("Unsafe Android versionCode ${payAviatorVersionCode}; floor ${versionCodeFloor}.")
+}
+payAviatorVersionCode = payAviatorVersionCode as int
+
+def generatedWebAssetsDir = layout.buildDirectory.dir('generated/payaviatorWebAssets')
+def payAviatorWebAssetNames = [
+    'index.html','payaviator.css','manifest.webmanifest',
+    'payaviator-v126-192.png','payaviator-v126-512.png','payaviator-v126-favicon.png','VERSION.txt'
+]
+
+tasks.register('syncPayAviatorWebAssets', Sync) {
+    from(rootProject.projectDir) {
+        include payAviatorWebAssetNames
+    }
+    into generatedWebAssetsDir
+    doLast {
+        payAviatorWebAssetNames.each { name ->
+            def source = rootProject.file(name)
+            def generated = generatedWebAssetsDir.get().file(name).asFile
+            if (!source.exists()) throw new GradleException("Missing authoritative web asset: ${name}")
+            if (!generated.exists()) throw new GradleException("Generated Android asset missing: ${name}")
+            if (!java.util.Arrays.equals(source.bytes, generated.bytes)) {
+                throw new GradleException("Generated Android asset differs from source: ${name}")
+            }
+        }
+    }
+}
+
+android {
+    namespace 'com.payaviator.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.payaviator.app'
+        minSdk 26
+        targetSdk 36
+        versionCode payAviatorVersionCode
+        versionName payAviatorVersion
+    }
+
+    // CRITICAL: Android never packages app/src/main/assets anymore.
+    // It packages only assets freshly generated from the authoritative root files.
+    sourceSets {
+        main {
+            assets.srcDirs = [generatedWebAssetsDir.get().asFile]
+        }
+    }
+
+    signingConfigs {
+        release {
+            if (payAviatorKeystoreFile && payAviatorKeystorePassword) {
+                storeFile file(payAviatorKeystoreFile)
+                storePassword payAviatorKeystorePassword
+                keyAlias 'payaviator'
+                keyPassword payAviatorKeystorePassword
+            }
+        }
+    }
+
+    buildTypes {
+        debug { }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+}
+
+tasks.named('preBuild').configure { dependsOn tasks.named('syncPayAviatorWebAssets') }
+
+dependencies { }
