@@ -22256,7 +22256,7 @@ setState(readNative());
     return merged;
   }
   async function pp920ConnectPlaidBank(){
-    if(!(await window.PayAviatorAuth?.ensureSignedIn?.({notice:'Sign in to connect a bank. Your bills and spending stay on this phone either way.'})))return;
+    if(!(await window.PayAviatorAuth?.ensureSignedIn?.({notice:'Sign in to connect a bank. Bills you add stay on this phone. Connected bank data is stored securely on our servers so it can sync.'})))return;
     const btn=$('pp920ConnectBank');
     const original=btn?.textContent||'+ Connect another bank';
     if(btn){btn.disabled=true;btn.textContent='Opening secure bank connection…'}
@@ -22431,7 +22431,7 @@ setState(readNative());
   function pp920WireAuth(host){
     host.querySelector('[data-ppauth-signin]')?.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();if(await window.PayAviatorAuth.ensureSignedIn()){try{await pp920SyncPlaidAccounts()}catch(_){ }render()}});
     host.querySelector('[data-ppauth-signout]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{await window.PayAviatorAuth.signOut();render();pp920Toast('Signed out. Your bills and spending are still on this phone.')};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Sign out?',message:'Bank data will be removed from this phone until you sign in again. Your bills, income and spending stay.',confirmText:'Sign out'},go);else go()});
-    host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{pp920Toast('Deleting your account…');const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.ok){render();pp920Toast('Your PayAviator account and bank connections were deleted.')}else if(r.code!=='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error||'Could not delete your account. Please try again.')}};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message:'This disconnects every bank from PayAviator and Plaid and deletes your sign-in. Your bills, income and spending stay on this phone.',confirmText:'Delete account'},go);else if(confirm('Delete your PayAviator account and disconnect every bank?'))go()});
+    host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{pp920Toast('Deleting your account…');const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.ok){render();pp920Toast('Your PayAviator account and bank connections were deleted.')}else if(r.code!=='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error||'Could not delete your account. Please try again.')}};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message:'This disconnects every bank from PayAviator and Plaid, deletes the bank data stored on our servers, and deletes your sign-in. Bills, income and spending you added stay on this phone.',confirmText:'Delete account'},go);else if(confirm('Delete your PayAviator account and disconnect every bank?'))go()});
     host.querySelectorAll('[data-ppauth-reconnect]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();pp920ReconnectItem(b.getAttribute('data-ppauth-reconnect'),b)}));
   }
   document.addEventListener('payaviator:authchange',e=>{
