@@ -21868,7 +21868,7 @@ body.ppauth-open #mb119BottomNav,body.ppauth-open #pp925TipLauncher{visibility:h
     <button type="button" class="ppauth-close" aria-label="Close">×</button>
     <img class="ppauth-logo" src="payaviator-v126-192.png" alt="">
     <h2 id="ppAuthTitle">Sign in to connect your bank</h2>
-    <p class="ppauth-sub" id="ppAuthSub">Bills, income and spending work without an account. Signing in keeps your bank connections private to you.</p>
+    <p class="ppauth-sub" id="ppAuthSub">Bills, income and spending work without an account. Signing in keeps your bank connections private to you. Bills you add stay on this phone. Connected bank data is stored securely on our servers so it can sync.</p>
     <div class="ppauth-notice" id="ppAuthNotice" hidden></div>
     <button type="button" class="ppauth-google" id="ppAuthGoogle"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg><span>Continue with Google</span></button>
     <div class="ppauth-or">or use email</div>
@@ -21877,15 +21877,17 @@ body.ppauth-open #mb119BottomNav,body.ppauth-open #pp925TipLauncher{visibility:h
       <input id="ppAuthEmail" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false">
       <label for="ppAuthPassword">Password</label>
       <input id="ppAuthPassword" type="password" autocomplete="current-password" minlength="6">
-      <button type="submit" class="ppauth-primary" id="ppAuthSubmit">Sign in</button>
     </form>
     <div class="ppauth-links">
       <button type="button" class="ppauth-link" id="ppAuthMode">New here? Create an account</button>
       <button type="button" class="ppauth-link" id="ppAuthForgot">Forgot password?</button>
     </div>
     <div class="ppauth-error" id="ppAuthError" role="alert" aria-live="polite"></div>
-    <button type="button" class="ppauth-later" id="ppAuthLater">Not now</button>
-    <div class="ppauth-foot">PayAviator uses read-only bank access through Plaid. Your bank login never touches PayAviator.</div>
+    <div class="ppauth-foot">PayAviator uses read-only bank access through Plaid. Your bank login never touches PayAviator. <a href="https://littlemann766.github.io/PayAviator-Website/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>Privacy Policy</a></div>
+    <div class="ppauth-actions">
+      <button type="submit" form="ppAuthForm" class="ppauth-primary" id="ppAuthSubmit">Sign in</button>
+      <button type="button" class="ppauth-later" id="ppAuthLater">Not now</button>
+    </div>
   </div>
 </div>
 <script id="payaviator-auth-js">
@@ -21980,7 +21982,7 @@ function openSheet(opts={}){
   n.textContent=notice;n.hidden=!notice;
   $('ppAuthGoogle').classList.toggle('ppauth-hide',state.googleAvailable===false||state.available===false);
   document.querySelector('#ppAuthSheet .ppauth-or')?.classList.toggle('ppauth-hide',state.googleAvailable===false||state.available===false);
-  ['ppAuthForm'].forEach(id=>$(id)?.classList.toggle('ppauth-hide',state.available===false));
+  ['ppAuthForm','ppAuthSubmit'].forEach(id=>$(id)?.classList.toggle('ppauth-hide',state.available===false));
   document.querySelector('#ppAuthSheet .ppauth-links')?.classList.toggle('ppauth-hide',state.available===false);
   setMode(opts.mode||'signin');setBusy(false);
   s.classList.add('show');
@@ -22256,7 +22258,9 @@ setState(readNative());
     return merged;
   }
   async function pp920ConnectPlaidBank(){
-    if(!(await window.PayAviatorAuth?.ensureSignedIn?.({notice:'Sign in to connect a bank. Bills you add stay on this phone. Connected bank data is stored securely on our servers so it can sync.'})))return;
+    if(!(await window.PayAviatorAuth?.ensureSignedIn?.()))return;
+    // 3.9.7: consent screen before Plaid Link (web Link and Android Hosted Link). Nothing extra goes to the backend.
+    if(!(await window.PayAviatorPlaidConsent?.ask?.('connect')))return;
     const btn=$('pp920ConnectBank');
     const original=btn?.textContent||'+ Connect another bank';
     if(btn){btn.disabled=true;btn.textContent='Opening secure bank connection…'}
@@ -22384,6 +22388,7 @@ setState(readNative());
   async function pp920ReconnectItem(itemId,btn){
     if(!itemId)return;
     if(!(await window.PayAviatorAuth?.ensureSignedIn?.()))return;
+    if(!(await window.PayAviatorPlaidConsent?.ask?.('reconnect')))return;
     const old=btn?.textContent;
     if(btn){btn.disabled=true;btn.textContent='Opening…'}
     try{
@@ -24369,6 +24374,129 @@ line-height:1.3;display:none;pointer-events:none}
 })();
 </script>
 
+<!-- PayAviator 3.9.7: Plaid consent screen + Privacy Policy links. Consent is recorded on this phone only
+     (payaviator_plaid_consent_v1); nothing extra is sent to the backend. -->
+<style id="payaviator-consent-privacy-css">
+/* Plaid consent sheet: same look as the sign-in sheet (light-blue page, navy card, thin lines, cyan primary). */
+#ppConsentSheet{position:fixed!important;inset:0!important;z-index:2147483647!important;display:none!important;align-items:flex-start!important;justify-content:center!important;padding:18px 16px 0!important;background:var(--pa4-page,#0c79bb)!important;overflow:auto!important;overscroll-behavior:contain!important;box-sizing:border-box!important;scroll-padding-bottom:110px!important;max-height:none!important;height:auto!important;margin:0!important;font-family:var(--pa4-font,system-ui,-apple-system,"Roboto","Segoe UI",sans-serif)!important}
+#ppConsentSheet.show{display:flex!important}
+body.ppconsent-open{overflow:hidden!important}
+body.ppconsent-open #mb119BottomNav,body.ppconsent-open #pp925TipLauncher,body.ppconsent-open #pp925TipPopup{visibility:hidden!important}
+#ppConsentSheet *{box-sizing:border-box!important}
+#ppConsentSheet .ppc-card{position:relative!important;margin:auto 0 0!important;width:min(100%,440px)!important;background:var(--pa4-card,#0b234b)!important;color:var(--pa4-text,#fff)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;border-bottom:0!important;border-radius:24px 24px 0 0!important;padding:24px 18px 0!important;box-shadow:0 24px 60px -12px rgba(0,0,0,.7)!important;text-align:left!important}
+#ppConsentSheet .ppc-close{position:absolute!important;top:12px!important;right:12px!important;width:38px!important;height:38px!important;min-height:38px!important;border-radius:50%!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;background:var(--pa4-raised,#1f4f86)!important;color:var(--pa4-text,#fff)!important;font:inherit!important;font-size:1.35rem!important;font-weight:700!important;line-height:1!important;padding:0!important;cursor:pointer!important;box-shadow:none!important}
+#ppConsentSheet .ppc-badge{width:52px!important;height:52px!important;border-radius:16px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:var(--pa4-accent-soft,rgba(0,245,255,.14))!important;margin:0 0 12px!important}
+#ppConsentSheet .ppc-badge svg{width:28px!important;height:28px!important;stroke:var(--pa4-accent,#00f5ff)!important}
+#ppConsentSheet h2{margin:0 44px 6px 0!important;font-size:21px!important;letter-spacing:-.015em!important;font-weight:800!important;line-height:1.2!important;color:var(--pa4-text,#fff)!important}
+#ppConsentSheet .ppc-sub{margin:0 0 14px!important;font-size:15px!important;line-height:1.45!important;color:var(--pa4-muted,rgba(255,255,255,.72))!important}
+#ppConsentSheet .ppc-points{list-style:none!important;margin:0!important;padding:0!important;display:grid!important;gap:10px!important}
+#ppConsentSheet .ppc-points li{margin:0!important;padding:12px 14px!important;border-radius:14px!important;background:var(--pa4-sunken,#081a37)!important;border:1px solid var(--pa4-line,rgba(255,255,255,.12))!important;font-size:14px!important;line-height:1.45!important;color:var(--pa4-muted,rgba(255,255,255,.72))!important}
+#ppConsentSheet .ppc-points b{display:block!important;margin-bottom:2px!important;color:var(--pa4-text,#fff)!important;font-size:14.5px!important;font-weight:700!important}
+#ppConsentSheet .ppc-links{margin:14px 0 0!important;font-size:13.5px!important;line-height:1.5!important;color:var(--pa4-muted,rgba(255,255,255,.72))!important}
+#ppConsentSheet a,#ppAuthSheet .ppauth-foot a{color:var(--pa4-accent,#00f5ff)!important;font-weight:650!important;text-decoration:underline!important;text-underline-offset:2px!important}
+/* Pinned action rows (consent + sign-in): always visible at the bottom, also above the keyboard. */
+#ppConsentSheet .ppc-actions,#ppAuthSheet .ppauth-actions{position:sticky!important;bottom:0!important;z-index:3!important;display:grid!important;gap:8px!important;margin:16px -18px 0!important;padding:12px 18px calc(14px + env(safe-area-inset-bottom))!important;background:var(--pa4-card,#0b234b)!important;border-top:1px solid var(--pa4-line,rgba(255,255,255,.12))!important;box-shadow:0 -10px 18px -12px rgba(0,0,0,.6)!important}
+#ppConsentSheet .ppc-primary{width:100%!important;min-height:48px!important;border-radius:14px!important;border:0!important;background:var(--pa4-accent,#00f5ff)!important;color:#04121f!important;font:inherit!important;font-weight:700!important;font-size:15.5px!important;cursor:pointer!important;box-shadow:none!important}
+#ppConsentSheet .ppc-later{width:100%!important;min-height:46px!important;border-radius:14px!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;background:var(--pa4-raised,#1f4f86)!important;color:var(--pa4-text,#fff)!important;font:inherit!important;font-weight:650!important;cursor:pointer!important;box-shadow:none!important}
+#ppConsentSheet button{-webkit-appearance:none!important;appearance:none!important;touch-action:manipulation!important}
+/* Sign-in sheet: card runs to the bottom so the pinned row sits on the screen edge. */
+#ppAuthSheet{padding-bottom:0!important;scroll-padding-bottom:120px!important}
+#ppAuthSheet .ppauth-card{margin:auto 0 0!important;border-bottom:0!important;border-radius:24px 24px 0 0!important;padding-bottom:0!important}
+#ppAuthSheet .ppauth-actions .ppauth-primary,#ppAuthSheet .ppauth-actions .ppauth-later{margin-top:0!important}
+/* Settings: About list with the Privacy Policy row (same row style as the Settings list). */
+.pa397-about{display:block!important;background:var(--pa4-card,#0b234b)!important;border:1px solid var(--pa4-line,rgba(255,255,255,.12))!important;border-radius:var(--pa4-r-lg,20px)!important;box-shadow:var(--pa4-shadow,none)!important;overflow:hidden!important;margin:0 0 14px!important}
+.pa397-about > a{position:relative!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:flex-start!important;width:100%!important;min-height:60px!important;padding:0 44px 0 62px!important;color:var(--pa4-text,#fff)!important;font-size:16px!important;font-weight:650!important;text-decoration:none!important;box-sizing:border-box!important;-webkit-tap-highlight-color:rgba(24,226,235,.16)!important}
+.pa397-about > a::before,.pa397-about > a::after{content:""!important;position:absolute!important;top:50%!important;transform:translateY(-50%)!important}
+.pa397-about > a::before{left:26px!important;width:20px!important;height:20px!important;background:var(--pa4-accent,#00f5ff)!important;-webkit-mask:var(--pa397-i-shield) center/contain no-repeat!important;mask:var(--pa397-i-shield) center/contain no-repeat!important}
+.pa397-about > a::after{right:18px!important;width:16px!important;height:16px!important;background:var(--pa4-faint,rgba(255,255,255,.55))!important;-webkit-mask:var(--pa397-i-ext) center/contain no-repeat!important;mask:var(--pa397-i-ext) center/contain no-repeat!important}
+.pa397-about small{display:block!important;font-size:12.5px!important;font-weight:500!important;color:var(--pa4-muted,rgba(255,255,255,.72))!important;margin-top:2px!important}
+:root{--pa397-i-shield:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z'/%3E%3Cpath d='M9 12l2 2 4-4'/%3E%3C/svg%3E");--pa397-i-ext:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h6v6'/%3E%3Cpath d='M20 4l-9 9'/%3E%3Cpath d='M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5'/%3E%3C/svg%3E")}
+</style>
+<div id="ppConsentSheet" role="dialog" aria-modal="true" aria-labelledby="ppConsentTitle">
+  <div class="ppc-card">
+    <button type="button" class="ppc-close" aria-label="Close">×</button>
+    <div class="ppc-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8"/><path d="M3 20h18"/></svg></div>
+    <h2 id="ppConsentTitle">Connect your bank with Plaid</h2>
+    <p class="ppc-sub">PayAviator uses Plaid to connect your bank with read-only access.</p>
+    <ul class="ppc-points">
+      <li><b>Your bank login goes to Plaid</b>You sign in to your bank on Plaid's secure screen. Your bank username and password go to Plaid, never to PayAviator.</li>
+      <li><b>What PayAviator stores</b>An encrypted bank token, your bank's name, the connection status, and the transactions synced from your bank. This is kept on PayAviator's servers and linked to your account.</li>
+      <li><b>You're in control</b>You can disconnect a bank or delete your account at any time in Connected Accounts. That removes the data stored for it.</li>
+    </ul>
+    <p class="ppc-links">Learn more in the <a href="https://littlemann766.github.io/PayAviator-Website/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>PayAviator Privacy Policy</a> and <a href="https://plaid.com/legal/#end-user-privacy-policy" target="_blank" rel="noopener noreferrer">Plaid's End User Privacy Policy</a>.</p>
+    <div class="ppc-actions">
+      <button type="button" class="ppc-primary" id="ppConsentContinue">Continue</button>
+      <button type="button" class="ppc-later" id="ppConsentLater">Not now</button>
+    </div>
+  </div>
+</div>
+<script id="payaviator-consent-privacy-js">
+(function(){
+'use strict';
+/* Shown before Plaid Link every time a bank is connected or reconnected.
+   ask(context) resolves true on Continue, false on Not now / close / Back. */
+const CONSENT_KEY='payaviator_plaid_consent_v1';   // new key; existing keys are not touched
+const POLICY_VERSION='2026-10';                     // PayAviator Privacy Policy, effective October 2026
+const $=id=>document.getElementById(id);
+let resolver=null;
+function appVersion(){try{if(window.AndroidBridge&&typeof AndroidBridge.getAppVersionName==='function')return String(AndroidBridge.getAppVersionName()||'')}catch(_){}return ''}
+function record(context){
+  let d={};try{d=JSON.parse(localStorage.getItem(CONSENT_KEY)||'{}')||{}}catch(_){d={}}
+  const list=Array.isArray(d.records)?d.records:[];
+  const r={acceptedAt:new Date().toISOString(),policyVersion:POLICY_VERSION,context:context,appVersion:appVersion()};
+  list.push(r);
+  try{localStorage.setItem(CONSENT_KEY,JSON.stringify({records:list.slice(-50),last:r}))}catch(_){}
+}
+function isOpen(){return !!$('ppConsentSheet')?.classList.contains('show')}
+function finish(ok,context){
+  const s=$('ppConsentSheet');if(!s)return;
+  if(ok)record(context);
+  s.classList.remove('show');
+  try{document.body.classList.remove('ppconsent-open')}catch(_){}
+  removeBack();
+  const r=resolver;resolver=null;if(r)r(!!ok);
+}
+function ask(context){
+  context=context==='reconnect'?'reconnect':'connect';
+  const s=$('ppConsentSheet');
+  if(!s)return Promise.resolve(false);
+  if(resolver){const r=resolver;resolver=null;r(false)}
+  $('ppConsentTitle').textContent=context==='reconnect'?'Reconnect your bank with Plaid':'Connect your bank with Plaid';
+  s.dataset.context=context;
+  s.scrollTop=0;
+  installBack();
+  s.classList.add('show');
+  try{document.body.classList.add('ppconsent-open')}catch(_){}
+  setTimeout(()=>{try{$('ppConsentContinue').focus({preventScroll:true})}catch(_){}},60);
+  return new Promise(res=>{resolver=res});
+}
+function wire(){
+  const s=$('ppConsentSheet');if(!s||s.dataset.wired)return;s.dataset.wired='1';
+  $('ppConsentContinue').addEventListener('click',e=>{e.preventDefault();if(resolver)finish(true,s.dataset.context||'connect')});
+  $('ppConsentLater').addEventListener('click',e=>{e.preventDefault();finish(false)});
+  s.querySelector('.ppc-close').addEventListener('click',e=>{e.preventDefault();finish(false)});
+  /* Settings > About > Privacy Policy row. Links open in the device browser on Android (MainActivity hands web links to ACTION_VIEW). */
+  const settings=$('mb119Settings');
+  if(settings&&!settings.querySelector('.pa397-about')){
+    const box=document.createElement('div');box.className='pa397-about';
+    box.innerHTML='<a href="https://littlemann766.github.io/PayAviator-Website/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>Privacy Policy<small>How PayAviator handles your data</small></a>';
+    const ver=$('mb119Version');if(ver&&ver.parentNode===settings)settings.insertBefore(box,ver);else settings.appendChild(box);
+  }
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire,{once:true});else wire();
+/* Android Back closes the consent sheet first (same as Not now). Other modules replace the Back handler after
+   load, so it is put at the head of the chain only while the sheet is open, and taken out again when it closes. */
+let prevBack=null;
+function backHead(){if(isOpen()){finish(false);return true}return typeof prevBack==='function'?prevBack.apply(this,arguments):false}
+function installBack(){const cur=window.payAviatorHandleAndroidBack;if(cur!==backHead){prevBack=cur;window.payAviatorHandleAndroidBack=backHead}}
+function removeBack(){if(window.payAviatorHandleAndroidBack===backHead)window.payAviatorHandleAndroidBack=prevBack}
+/* Keep a focused field visible when the keyboard opens on the sign-in sheet. */
+function keep(){const a=document.activeElement;if(a&&a.matches&&a.matches('#ppAuthSheet input')){try{a.scrollIntoView({block:'center'})}catch(_){}}}
+document.addEventListener('focusin',e=>{if(e.target?.matches?.('#ppAuthSheet input'))setTimeout(keep,350)});
+if(window.visualViewport)visualViewport.addEventListener('resize',keep);
+window.PayAviatorPlaidConsent={ask,isOpen,storageKey:CONSENT_KEY,policyVersion:POLICY_VERSION};
+})();
+</script>
 </body>
 
 <script>
