@@ -27,8 +27,8 @@ render.experimental.xml
 *.jks
 *.keystore
 
-# Google Services (e.g. APIs or Firebase)
-google-services.json
+# Google Services: app/google-services.json is intentionally committed (Firebase client config, not a secret;
+# CI builds need it). Do not ignore it.
 
 # Android Profiling
 *.hprof

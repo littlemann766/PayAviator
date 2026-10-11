@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "1015603414892",
+    "project_id": "payaviator-app",
+    "storage_bucket": "payaviator-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1015603414892:android:3abc1c629259bc5aec5549",
+        "android_client_info": {
+          "package_name": "com.payaviator.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1015603414892-eidha6hlh52gkokjsnha9eran79e1oa6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.payaviator.app",
+            "certificate_hash": "9e934c92bee038909b29b54f6ee0f1e70b70b69c"
+          }
+        },
+        {
+          "client_id": "1015603414892-gefdmriffs5gn6cj6nkkknb7fhnl82b5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.payaviator.app",
+            "certificate_hash": "1057f5b5fa0f8700fb1489c11b2baee4bf274021"
+          }
+        },
+        {
+          "client_id": "1015603414892-8ujdk6i42i8q7cq5njp50ifq8ng0iqaq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJ72nfiPWkccGTAzMd0XGODCjabSqFRyM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1015603414892-8ujdk6i42i8q7cq5njp50ifq8ng0iqaq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

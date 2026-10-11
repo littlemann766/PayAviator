@@ -43,6 +43,10 @@ import android.webkit.WebViewClient;
 import android.webkit.WebResourceError;
 import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.payaviator.app.auth.AuthedRequest;
+import com.payaviator.app.auth.FirebaseSignIn;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -93,10 +97,16 @@ public class MainActivity extends Activity {
     private String pendingTextExport;
     private String pendingTextFilename;
     private boolean pendingTextBase64 = false;
+    private FirebaseSignIn signIn;
+    private final FirebaseAuth.AuthStateListener authStateListener = a -> pushAuthState(null);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Firebase sign-in only gates bank (Plaid) features; local bill tracking never needs it.
+        signIn = new FirebaseSignIn(this, getString(com.payaviator.app.R.string.default_web_client_id));
+        signIn.addStateListener(authStateListener);
 
         Uri launchData = getIntent() == null ? null : getIntent().getData();
         if (isPlaidReturnUri(launchData)) {
@@ -534,7 +544,6 @@ public class MainActivity extends Activity {
     private static final String PAYAVIATOR_API_BASE = "https://payaviator-backend-production.up.railway.app";
     private static final String DEVICE_PREFS = "payaviator_device_security_v1";
     private static final String DEVICE_ID_KEY = "device_id";
-    private static final String DEVICE_SECRET_KEY = "device_secret";
 
     private String secureRandomToken(int bytes) {
         byte[] raw = new byte[bytes];
@@ -552,19 +561,157 @@ public class MainActivity extends Activity {
         return id;
     }
 
-    private synchronized String getSecureDeviceSecret() {
-        SharedPreferences prefs = getSharedPreferences(DEVICE_PREFS, MODE_PRIVATE);
-        String secret = prefs.getString(DEVICE_SECRET_KEY, "");
-        if (secret == null || secret.length() < 40) {
-            secret = secureRandomToken(48);
-            prefs.edit().putString(DEVICE_SECRET_KEY, secret).apply();
+    /**
+     * One HTTPS call to the PayAviator backend. /api/plaid/* calls carry
+     * "Authorization: Bearer <Firebase ID token>"; the device-id header is informational only.
+     */
+    private AuthedRequest.Response executeBackendCall(String verb, String safePath, String body, String bearerToken) throws IOException {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(PAYAVIATOR_API_BASE + safePath);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(20000);
+            conn.setUseCaches(false);
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("X-PayAviator-Device-Id", getSecureDeviceId());
+            if (bearerToken != null && !bearerToken.isEmpty()) {
+                conn.setRequestProperty("Authorization", "Bearer " + bearerToken);
+            }
+            conn.setRequestMethod(verb);
+            if (!"GET".equals(verb) && !"HEAD".equals(verb) && !"DELETE".equals(verb)) {
+                conn.setDoOutput(true);
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                byte[] bytes = (body == null ? "" : body).getBytes(StandardCharsets.UTF_8);
+                try (OutputStream out = conn.getOutputStream()) { out.write(bytes); }
+            }
+            int status = conn.getResponseCode();
+            InputStream in = status >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            java.io.ByteArrayOutputStream raw = new java.io.ByteArrayOutputStream();
+            if (in != null) {
+                byte[] buf = new byte[4096];
+                int n;
+                while ((n = in.read(buf)) != -1) raw.write(buf, 0, n);
+                in.close();
+            }
+            return new AuthedRequest.Response(status, new String(raw.toByteArray(), StandardCharsets.UTF_8));
+        } finally {
+            if (conn != null) conn.disconnect();
         }
-        return secret;
     }
 
-    private void applyDeviceAuth(HttpURLConnection conn) {
-        conn.setRequestProperty("X-PayAviator-Device-Id", getSecureDeviceId());
-        conn.setRequestProperty("Authorization", "Bearer " + getSecureDeviceSecret());
+    private static String errorBody(String message, String code) {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("error", message);
+            o.put("code", code);
+            o.put("request_id", JSONObject.NULL);
+            return o.toString();
+        } catch (Exception e) {
+            return "{}";
+        }
+    }
+
+    /** Runs a backend call under the Firebase token contract (see AuthedRequest). Blocking; background thread only. */
+    private AuthedRequest.Response callBackend(String method, String path, String body) throws Exception {
+        final String safePath = (path == null || !path.startsWith("/")) ? "/api/health" : path;
+        final String verb = (method == null || method.trim().isEmpty()) ? "GET" : method.trim().toUpperCase(Locale.US);
+        if (!AuthedRequest.requiresAuth(safePath)) {
+            return executeBackendCall(verb, safePath, body, null);
+        }
+        AuthedRequest.Result r = AuthedRequest.run(
+                signIn,
+                token -> executeBackendCall(verb, safePath, body, token),
+                this::onSessionInvalid);
+        switch (r.outcome) {
+            case SIGN_IN_REQUIRED:
+                runOnUiThread(() -> pushAuthState("sign_in_required"));
+                return new AuthedRequest.Response(401, errorBody("Sign in to use bank features.", "SIGN_IN_REQUIRED"));
+            case SESSION_EXPIRED:
+                return new AuthedRequest.Response(401, errorBody("Your session expired. Please sign in again.", "SESSION_EXPIRED"));
+            default:
+                return r.response;
+        }
+    }
+
+    /** Second 401 (or a revoked session): sign out and ask the web layer to show sign-in. */
+    private void onSessionInvalid(String reason) {
+        runOnUiThread(() -> {
+            if (signIn != null) signIn.signOut();
+            pushAuthState("session_expired");
+        });
+    }
+
+    /** Pushes sign-in state (never tokens) to the WebView. */
+    private void pushAuthState(String reason) {
+        if (webView == null || signIn == null) return;
+        try {
+            JSONObject state = signIn.stateJson();
+            if (reason != null) state.put("reason", reason);
+            final String payload = JSONObject.quote(state.toString());
+            runOnUiThread(() -> {
+                if (webView != null) webView.evaluateJavascript(
+                        "window.PayAviatorAuthStateChanged&&window.PayAviatorAuthStateChanged(" + payload + ");", null);
+            });
+        } catch (Exception ignored) { }
+    }
+
+    private void deliverAuthResult(String requestId, boolean ok, String code, String message) {
+        if (webView == null) return;
+        try {
+            JSONObject out = new JSONObject();
+            out.put("requestId", requestId == null ? "" : requestId);
+            out.put("ok", ok);
+            out.put("code", code == null ? "" : code);
+            out.put("error", message == null ? "" : message);
+            out.put("state", signIn == null ? new JSONObject() : signIn.stateJson());
+            final String payload = JSONObject.quote(out.toString());
+            runOnUiThread(() -> {
+                if (webView != null) webView.evaluateJavascript(
+                        "window.PayAviatorAuthResult&&window.PayAviatorAuthResult(" + payload + ");", null);
+            });
+        } catch (Exception ignored) { }
+    }
+
+    /**
+     * Account deletion: DELETE /api/plaid/user (removes every bank at Plaid and all stored data)
+     * must succeed before the Firebase user is deleted, so no Item is orphaned at Plaid.
+     */
+    private void deleteAccountFlow(final String requestId) {
+        if (signIn == null || signIn.currentUser() == null) {
+            deliverAuthResult(requestId, false, "SIGN_IN_REQUIRED", "Sign in first.");
+            return;
+        }
+        if (!signIn.hasRecentLogin()) {
+            // Ask for a fresh sign-in BEFORE removing banks, so we never end up with banks
+            // deleted but the Firebase user still present.
+            deliverAuthResult(requestId, false, "REQUIRES_RECENT_LOGIN",
+                    "For your security, sign in again, then delete your account.");
+            return;
+        }
+        new Thread(() -> {
+            try {
+                AuthedRequest.Response r = callBackend("DELETE", "/api/plaid/user", "");
+                if (r.status < 200 || r.status >= 300) {
+                    String msg = "Could not remove your bank connections. Please try again.";
+                    String code = "DELETE_BANKS_FAILED";
+                    try {
+                        JSONObject j = new JSONObject(r.body);
+                        if (j.optString("code").length() > 0) code = j.optString("code");
+                        if (j.optString("error").length() > 0) msg = j.optString("error");
+                        if (j.has("request_id")) android.util.Log.w("PayAviatorAuth", "delete user failed request_id=" + j.optString("request_id"));
+                    } catch (Exception ignored) { }
+                    deliverAuthResult(requestId, false, code, msg);
+                    return;
+                }
+                runOnUiThread(() -> signIn.deleteFirebaseUser((ok, code, message) -> {
+                    deliverAuthResult(requestId, ok, code, message);
+                    pushAuthState(ok ? "account_deleted" : null);
+                }));
+            } catch (Exception e) {
+                deliverAuthResult(requestId, false, "NETWORK", "Couldn't reach PayAviator. Check your connection and try again.");
+            }
+        }, "PayAviatorDeleteAccount").start();
     }
 
     private void deliverNativeApiResult(final String requestId, final int status, final String body, final String error) {
@@ -625,40 +772,54 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void apiRequest(final String requestId, final String method, final String path, final String body) {
             new Thread(() -> {
-                HttpURLConnection conn = null;
                 try {
-                    String safePath = (path == null || !path.startsWith("/")) ? "/api/health" : path;
-                    URL url = new URL(PAYAVIATOR_API_BASE + safePath);
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(15000);
-                    conn.setReadTimeout(20000);
-                    conn.setUseCaches(false);
-                    conn.setRequestProperty("Accept", "application/json");
-                    applyDeviceAuth(conn);
-                    String verb = (method == null || method.trim().isEmpty()) ? "GET" : method.trim().toUpperCase(Locale.US);
-                    conn.setRequestMethod(verb);
-                    if (!"GET".equals(verb) && !"HEAD".equals(verb)) {
-                        conn.setDoOutput(true);
-                        conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-                        byte[] bytes = (body == null ? "" : body).getBytes(StandardCharsets.UTF_8);
-                        try (OutputStream out = conn.getOutputStream()) { out.write(bytes); }
-                    }
-                    int status = conn.getResponseCode();
-                    InputStream in = status >= 400 ? conn.getErrorStream() : conn.getInputStream();
-                    StringBuilder text = new StringBuilder();
-                    if (in != null) {
-                        byte[] buf = new byte[4096];
-                        int n;
-                        while ((n = in.read(buf)) != -1) text.append(new String(buf, 0, n, StandardCharsets.UTF_8));
-                        in.close();
-                    }
-                    deliverNativeApiResult(requestId, status, text.toString(), "");
+                    AuthedRequest.Response r = callBackend(method, path, body);
+                    deliverNativeApiResult(requestId, r.status, r.body, "");
                 } catch (Exception e) {
                     deliverNativeApiResult(requestId, 0, "", e.getClass().getSimpleName() + ": " + (e.getMessage() == null ? "Network request failed" : e.getMessage()));
-                } finally {
-                    if (conn != null) conn.disconnect();
                 }
             }, "PayAviatorApi").start();
+        }
+
+        // ---- Firebase sign-in (bank features only). Tokens never cross into the WebView. ----
+
+        @JavascriptInterface
+        public String authGetState() {
+            return signIn == null ? "{\"available\":false,\"signedIn\":false}" : signIn.stateJson().toString();
+        }
+
+        @JavascriptInterface
+        public void authSignInWithGoogle(final String requestId) {
+            runOnUiThread(() -> signIn.signInWithGoogle((ok, code, msg) -> deliverAuthResult(requestId, ok, code, msg)));
+        }
+
+        @JavascriptInterface
+        public void authSignInWithEmail(final String requestId, final String email, final String password) {
+            runOnUiThread(() -> signIn.signInWithEmail(email, password, (ok, code, msg) -> deliverAuthResult(requestId, ok, code, msg)));
+        }
+
+        @JavascriptInterface
+        public void authCreateAccount(final String requestId, final String email, final String password) {
+            runOnUiThread(() -> signIn.createAccount(email, password, (ok, code, msg) -> deliverAuthResult(requestId, ok, code, msg)));
+        }
+
+        @JavascriptInterface
+        public void authSendPasswordReset(final String requestId, final String email) {
+            runOnUiThread(() -> signIn.sendPasswordReset(email, (ok, code, msg) -> deliverAuthResult(requestId, ok, code, msg)));
+        }
+
+        @JavascriptInterface
+        public void authSignOut(final String requestId) {
+            runOnUiThread(() -> {
+                signIn.signOut();
+                deliverAuthResult(requestId, true, "", "");
+                pushAuthState("signed_out");
+            });
+        }
+
+        @JavascriptInterface
+        public void authDeleteAccount(final String requestId) {
+            runOnUiThread(() -> deleteAccountFlow(requestId));
         }
 
         @JavascriptInterface
@@ -1439,6 +1600,12 @@ public class MainActivity extends Activity {
             }
             pendingBackupJson = null;
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (signIn != null) signIn.removeStateListener(authStateListener);
+        super.onDestroy();
     }
 
     @Override
