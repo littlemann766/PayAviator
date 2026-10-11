@@ -21883,7 +21883,7 @@ body.ppauth-open #mb119BottomNav,body.ppauth-open #pp925TipLauncher{visibility:h
       <button type="button" class="ppauth-link" id="ppAuthForgot">Forgot password?</button>
     </div>
     <div class="ppauth-error" id="ppAuthError" role="alert" aria-live="polite"></div>
-    <div class="ppauth-foot">PayAviator uses read-only bank access through Plaid. Your bank login never touches PayAviator. <a href="https://littlemann766.github.io/PayAviator-Website/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>Privacy Policy</a></div>
+    <div class="ppauth-foot">PayAviator uses read-only bank access through Plaid. Your bank login never touches PayAviator. <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>Privacy Policy</a></div>
     <div class="ppauth-actions">
       <button type="submit" form="ppAuthForm" class="ppauth-primary" id="ppAuthSubmit">Sign in</button>
       <button type="button" class="ppauth-later" id="ppAuthLater">Not now</button>
@@ -21987,11 +21987,13 @@ function openSheet(opts={}){
   setMode(opts.mode||'signin');setBusy(false);
   s.classList.add('show');
   try{document.body.classList.add('ppauth-open')}catch(_){}
+  try{window.PayAviatorSheetBack&&window.PayAviatorSheetBack.install()}catch(_){}
 }
 function closeSheet(){
   const s=$('ppAuthSheet');if(!s)return;
   s.classList.remove('show');
   try{document.body.classList.remove('ppauth-open')}catch(_){}
+  try{window.PayAviatorSheetBack&&window.PayAviatorSheetBack.remove()}catch(_){}
   if(!state.signedIn){const w=waiters;waiters=[];w.forEach(fn=>fn(false))}
 }
 async function run(method,...args){
@@ -22024,9 +22026,31 @@ function wire(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire,{once:true});else wire();
 
-/* Android Back closes the sheet first. */
-const prevBack=window.payAviatorHandleAndroidBack;
-window.payAviatorHandleAndroidBack=function(){if(isOpen()){closeSheet();return true}return typeof prevBack==='function'?prevBack.apply(this,arguments):false};
+/* Android Back closes the topmost sheet first: sign-in sheet, then the Plaid consent sheet, then Connected
+   Accounts, then whatever the older handlers manage. Other modules replace window.payAviatorHandleAndroidBack
+   after load (the theme module does it on DOMContentLoaded), so a wrapper installed here at load time was lost and
+   Back closed Connected Accounts behind the sign-in sheet. Like the consent sheet, the head is put at the front of
+   the chain only while one of these is open, and taken out when the last one closes. One shared head serves all
+   three, so the chain can't loop when they open and close in any order. */
+window.PayAviatorSheetBack=window.PayAviatorSheetBack||(function(){
+  const sheets=[];let prev=null;
+  const openNow=s=>{try{return !!s.isOpen()}catch(_){return false}};
+  function head(){
+    /* A modal <dialog> (confirm prompts) sits above every sheet: let the existing handlers close it first. */
+    let modal=false;try{modal=!!document.querySelector('dialog:modal')}catch(_){}
+    if(!modal)for(const s of sheets){if(openNow(s)){try{s.close()}catch(_){}return true}}
+    return typeof prev==='function'?prev.apply(this,arguments):false;
+  }
+  return{
+    register(name,isOpenFn,closeFn,priority){if(!sheets.some(s=>s.name===name)){sheets.push({name,isOpen:isOpenFn,close:closeFn,priority:priority||0});sheets.sort((a,b)=>a.priority-b.priority)}},
+    install(){const cur=window.payAviatorHandleAndroidBack;if(cur!==head){prev=cur;window.payAviatorHandleAndroidBack=head}},
+    remove(){if(sheets.some(openNow))return;if(window.payAviatorHandleAndroidBack===head)window.payAviatorHandleAndroidBack=prev},
+    isHead(){return window.payAviatorHandleAndroidBack===head}
+  };
+})();
+window.PayAviatorSheetBack.register('signin',isOpen,closeSheet,1);
+/* A sheet opened before the later Back modules finished loading is put back at the front once the page has loaded. */
+window.addEventListener('load',()=>{if(isOpen())window.PayAviatorSheetBack.install()});
 
 window.PayAviatorAuth={
   getState:()=>Object.assign({},state),
@@ -22456,14 +22480,27 @@ setState(readNative());
     try{document.dispatchEvent(new CustomEvent('payaviator:gaugechange'))}catch(_){ }
   }
 
+  /* Android Back: while Connected Accounts is open it joins the shared sheet head (after the sign-in and consent
+     sheets), so Back closes the topmost of the three. A themed notice shown over the sheet is closed first. */
+  function watchBack(m){
+    const SB=window.PayAviatorSheetBack;if(!m||!SB||m.dataset.paSheetBack)return;m.dataset.paSheetBack='1';
+    const shown=()=>m.classList.contains('show');
+    SB.register('accounts',shown,()=>{
+      if($('ppThemeNoticeOverlay')){try{window.PayAviatorCloseThemeNotice?.()}catch(_){}$('ppThemeNoticeOverlay')?.remove();return}
+      const x=m.querySelector('.pp920-close');if(x)x.click();else m.classList.remove('show');
+    },3);
+    const sync=()=>{if(shown())SB.install();else SB.remove()};
+    new MutationObserver(sync).observe(m,{attributes:true,attributeFilter:['class']});sync();
+  }
   function ensureModal(){
     let m=$('pp920AccountsModal');
-    if(m)return m;
+    if(m){watchBack(m);return m}
     m=document.createElement('div');m.id='pp920AccountsModal';
     m.innerHTML='<div class="pp920-sheet"><div class="pp920-head"><h2>Connected Accounts</h2><button class="pp920-close" type="button" aria-label="Close">×</button></div><div id="pp920AccountsBody"></div></div>';
     document.body.appendChild(m);
     m.querySelector('.pp920-close').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();m.classList.remove('show')});
     m.addEventListener('click',e=>{if(e.target===m){e.preventDefault();e.stopPropagation();m.classList.remove('show')}});
+    watchBack(m);
     return m;
   }
 
@@ -24378,7 +24415,7 @@ line-height:1.3;display:none;pointer-events:none}
      (payaviator_plaid_consent_v1); nothing extra is sent to the backend. -->
 <style id="payaviator-consent-privacy-css">
 /* Plaid consent sheet: same look as the sign-in sheet (light-blue page, navy card, thin lines, cyan primary). */
-#ppConsentSheet{position:fixed!important;inset:0!important;z-index:2147483647!important;display:none!important;align-items:flex-start!important;justify-content:center!important;padding:18px 16px 0!important;background:var(--pa4-page,#0c79bb)!important;overflow:auto!important;overscroll-behavior:contain!important;box-sizing:border-box!important;scroll-padding-bottom:110px!important;max-height:none!important;height:auto!important;margin:0!important;font-family:var(--pa4-font,system-ui,-apple-system,"Roboto","Segoe UI",sans-serif)!important}
+#ppConsentSheet{position:fixed!important;inset:0!important;z-index:2147483646!important;display:none!important;align-items:flex-start!important;justify-content:center!important;padding:18px 16px 0!important;background:var(--pa4-page,#0c79bb)!important;overflow:auto!important;overscroll-behavior:contain!important;box-sizing:border-box!important;scroll-padding-bottom:110px!important;max-height:none!important;height:auto!important;margin:0!important;font-family:var(--pa4-font,system-ui,-apple-system,"Roboto","Segoe UI",sans-serif)!important}
 #ppConsentSheet.show{display:flex!important}
 body.ppconsent-open{overflow:hidden!important}
 body.ppconsent-open #mb119BottomNav,body.ppconsent-open #pp925TipLauncher,body.ppconsent-open #pp925TipPopup{visibility:hidden!important}
@@ -24423,7 +24460,7 @@ body.ppconsent-open #mb119BottomNav,body.ppconsent-open #pp925TipLauncher,body.p
       <li><b>What PayAviator stores</b>An encrypted bank token, your bank's name, the connection status, and the transactions synced from your bank. This is kept on PayAviator's servers and linked to your account.</li>
       <li><b>You're in control</b>You can disconnect a bank or delete your account at any time in Connected Accounts. That removes the data stored for it.</li>
     </ul>
-    <p class="ppc-links">Learn more in the <a href="https://littlemann766.github.io/PayAviator-Website/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>PayAviator Privacy Policy</a> and <a href="https://plaid.com/legal/#end-user-privacy-policy" target="_blank" rel="noopener noreferrer">Plaid's End User Privacy Policy</a>.</p>
+    <p class="ppc-links">Learn more in the <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>PayAviator Privacy Policy</a> and <a href="https://plaid.com/legal/#end-user-privacy-policy" target="_blank" rel="noopener noreferrer">Plaid's End User Privacy Policy</a>.</p>
     <div class="ppc-actions">
       <button type="button" class="ppc-primary" id="ppConsentContinue">Continue</button>
       <button type="button" class="ppc-later" id="ppConsentLater">Not now</button>
@@ -24479,17 +24516,20 @@ function wire(){
   const settings=$('mb119Settings');
   if(settings&&!settings.querySelector('.pa397-about')){
     const box=document.createElement('div');box.className='pa397-about';
-    box.innerHTML='<a href="https://littlemann766.github.io/PayAviator-Website/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>Privacy Policy<small>How PayAviator handles your data</small></a>';
+    box.innerHTML='<a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>Privacy Policy<small>How PayAviator handles your data</small></a>';
     const ver=$('mb119Version');if(ver&&ver.parentNode===settings)settings.insertBefore(box,ver);else settings.appendChild(box);
   }
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire,{once:true});else wire();
 /* Android Back closes the consent sheet first (same as Not now). Other modules replace the Back handler after
-   load, so it is put at the head of the chain only while the sheet is open, and taken out again when it closes. */
+   load, so it is put at the head of the chain only while the sheet is open, and taken out again when it closes.
+   It shares one head with the sign-in sheet (PayAviatorSheetBack): sign-in sheet first, then this sheet. */
+const SB=window.PayAviatorSheetBack;
+if(SB)SB.register('consent',isOpen,()=>finish(false),2);
 let prevBack=null;
 function backHead(){if(isOpen()){finish(false);return true}return typeof prevBack==='function'?prevBack.apply(this,arguments):false}
-function installBack(){const cur=window.payAviatorHandleAndroidBack;if(cur!==backHead){prevBack=cur;window.payAviatorHandleAndroidBack=backHead}}
-function removeBack(){if(window.payAviatorHandleAndroidBack===backHead)window.payAviatorHandleAndroidBack=prevBack}
+function installBack(){if(SB){SB.install();return}const cur=window.payAviatorHandleAndroidBack;if(cur!==backHead){prevBack=cur;window.payAviatorHandleAndroidBack=backHead}}
+function removeBack(){if(SB){SB.remove();return}if(window.payAviatorHandleAndroidBack===backHead)window.payAviatorHandleAndroidBack=prevBack}
 /* Keep a focused field visible when the keyboard opens on the sign-in sheet. */
 function keep(){const a=document.activeElement;if(a&&a.matches&&a.matches('#ppAuthSheet input')){try{a.scrollIntoView({block:'center'})}catch(_){}}}
 document.addEventListener('focusin',e=>{if(e.target?.matches?.('#ppAuthSheet input'))setTimeout(keep,350)});

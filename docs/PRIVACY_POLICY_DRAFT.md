@@ -29,4 +29,6 @@ You can delete information within the app or clear the application's storage thr
 If a future version adds cloud sync, accounts, analytics, advertising, or other network features, this policy and the app's disclosures must be updated before those features are released.
 
 ## Contact
-Before public release, replace this section with a real support email or website controlled by the developer.
+Questions or requests about your data: support@payaviator.app
+
+The current privacy policy is published at https://payaviator.app/privacy.html
