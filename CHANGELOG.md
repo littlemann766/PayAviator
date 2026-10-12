@@ -1,3 +1,9 @@
+## 4.0.1 — Budget sheets, in-app confirmations, date-move fix
+- Budget sheets refreshed (Copy Previous Month confirm sheet, collapsible Categories, Monthly Snapshot, Payment History) and Back closes them in order (Beth).
+- No native alert/confirm/prompt pop-ups; every question uses the app's own sheet. The duplicate-bill warning stays (Cancel / Add anyway) (Beth).
+- Fixed: moving a repeating bill "only this date" and then the same date "this date and future months" left two copies (e.g. two Rents on Nov 3). The future edit now absorbs the earlier single-date move; regression test tools/test-move-absorb.py.
+- Version 4.0.1 everywhere; service-worker cache payaviator-4.0.1; Android versionCode floor 400201.
+
 ## 4.0.0 — Official base release
 - Budget tiles: tools open on the tap's click only (removed the pointerup early-open that let the follow-up click land on the new sheet's backdrop and close Savings Goals / Paycheck Planner on phones).
 - Budget tiles: each tool runs once per tap (two extra click layers re-ran every tool, so Export Summary opened three save pickers).
