@@ -74,7 +74,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='3.10.5';
+  const BUNDLED_VERSION='4.0.0';
   const code=n=>{const p=String(n||'').replace(/^Version:\s*/i,'').trim().split('.').map(Number);return p.length===3&&p.every(Number.isFinite)?p[0]*10000+p[1]*100+p[2]:0};
   const S={name:BUNDLED_VERSION,code:code(BUNDLED_VERSION)};
   function paint(root=document){
@@ -12245,6 +12245,11 @@ function openAvailableNowSpendingV88(){
 
 <script id="mb2037-fixes">
 (function(){
+  // 4.0.0: assignmentId lives in another script's closure; define the same key format here.
+  const assignmentId=(payIso,id,iso)=>payIso+'|'+id+'|'+iso;
+  const ASSIGN_KEY='payAviator_paycheck_assignments_v1';
+  const loadObj=k=>{try{return JSON.parse(localStorage.getItem(k)||'{}')||{}}catch(_){return {}}};
+  const saveObj=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
   function moneyFmt(n){
     try{return money(Number(n)||0)}catch(e){return '$'+(Number(n)||0).toFixed(2)}
   }
@@ -12415,7 +12420,7 @@ function openAvailableNowSpendingV88(){
       });
     }
 
-    const saved=typeof loadObj==='function'?loadObj(ASSIGN_KEY):{};
+    const saved=loadObj(ASSIGN_KEY);
     const amt=Number(next.amount||0);
 
     content.innerHTML=`
@@ -21090,7 +21095,7 @@ body.pp821-theme-live .mb137-color-row{
   function loadPlaidScript(){return new Promise((resolve,reject)=>{if(window.Plaid)return resolve();let x=document.querySelector('script[data-payaviator-plaid]');if(x){x.addEventListener('load',resolve,{once:true});x.addEventListener('error',reject,{once:true});return}x=document.createElement('script');x.src='https://cdn.plaid.com/link/v2/stable/link-initialize.js';x.async=true;x.dataset.payaviatorPlaid='1';x.onload=resolve;x.onerror=()=>reject(new Error('Plaid Link could not load'));document.head.appendChild(x)})}
   function toast(msg){const text=String(msg||'');if(window.PayAviatorThemeNotice){window.PayAviatorThemeNotice(text,{loading:/^Opening secure bank connection/i.test(text),autoClose:/^Opening secure bank connection/i.test(text)?1800:0});return}try{if(window.AndroidBridge?.showToast)return AndroidBridge.showToast(text)}catch(_){} try{if(window.Android?.showToast)return Android.showToast(text)}catch(_){} }
   async function syncPlaidAccounts(){
-    const uid=encodeURIComponent(plaidUserId()); const data=await api('/api/plaid/accounts/'+uid);
+    const data=await api('/api/plaid/accounts');
     const rows=Array.isArray(data.accounts)?data.accounts:[];
     const mapped=rows.map(a=>({id:a.account_id||a.id,name:a.name||a.official_name||'Account',officialName:a.official_name||'',institution:a.institution_name||a.institution||'Connected institution',institutionName:a.institution_name||a.institution||'Connected institution',mask:a.mask||'',type:a.type||'',subtype:a.subtype||'',current:Number(a.balances?.current??a.current??0)||0,available:Number(a.balances?.available??a.balances?.current??a.available??a.current??0)||0,itemId:a.item_id||'',lastSync:new Date().toISOString(),source:'plaid'}));
     const old=loadAccounts(), byId=new Map(old.map(a=>[String(a.id),a]));
@@ -21102,9 +21107,9 @@ body.pp821-theme-live .mb137-color-row{
     if(btn){btn.disabled=true;btn.textContent='Opening secure bank connection…'}
     try{
       await loadPlaidScript();
-      const tok=await api('/api/plaid/create-link-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:plaidUserId()})});
+      const tok=await api('/api/plaid/create-link-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
       if(!tok.link_token)throw new Error('No link token returned');
-      const handler=window.Plaid.create({token:tok.link_token,onSuccess:async(public_token,metadata)=>{try{await api('/api/plaid/exchange-public-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:plaidUserId(),public_token,metadata})});await syncPlaidAccounts();render();toast((metadata?.institution?.name||'Bank')+' connected to PayAviator')}catch(e){toast('Bank connected, but account sync failed: '+e.message)}},onExit:(err)=>{if(err)toast('Plaid connection closed: '+(err.display_message||err.error_message||'Please try again'))}}); handler.open();
+      const handler=window.Plaid.create({token:tok.link_token,onSuccess:async(public_token,metadata)=>{try{await api('/api/plaid/exchange-public-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({public_token,metadata})});await syncPlaidAccounts();render();toast((metadata?.institution?.name||'Bank')+' connected to PayAviator')}catch(e){toast('Bank connected, but account sync failed: '+e.message)}},onExit:(err)=>{if(err)toast('Plaid connection closed: '+(err.display_message||err.error_message||'Please try again'))}}); handler.open();
     }catch(e){
       console.error('PayAviator Plaid open failed',e);
       toast('Could not open secure bank connection: '+(e?.message||'Please check your internet connection and try again.'));
@@ -22267,7 +22272,7 @@ setState(readNative());
   function pp920ItemHealth(){try{const v=JSON.parse(localStorage.getItem(PP920_ITEMS_KEY)||'{}');return{items:Array.isArray(v.items)?v.items:[],errors:Array.isArray(v.errors)?v.errors:[]}}catch(_){return{items:[],errors:[]}}}
   async function pp920SyncPlaidAccounts(){
     // The backend identifies the user from the Firebase token; never send a user id.
-    const data=await pp920Api('/api/plaid/accounts/' + pp920BankUserPath());
+    const data=await pp920Api('/api/plaid/accounts');
     pp920SaveItemHealth(data);
     const rows=Array.isArray(data.accounts)?data.accounts:[];
     // Plaid Items can remain linked when accountsGet temporarily fails (bank outage,
@@ -24534,7 +24539,7 @@ line-height:1.3;display:none;pointer-events:none}
 })();
 </script>
 
-<!-- PayAviator 3.9.8: Plaid consent screen + Privacy Policy links. Consent is recorded on this phone only
+<!-- PayAviator 4.0.0: Plaid consent screen + Privacy Policy links. Consent is recorded on this phone only
      (payaviator_plaid_consent_v1); nothing extra is sent to the backend. -->
 <style id="payaviator-consent-privacy-css">
 /* Plaid consent sheet: same look as the sign-in sheet (light-blue page, navy card, thin lines, cyan primary). */
@@ -24945,7 +24950,7 @@ async function pp982SyncLiveBank(){
   // Bank sync needs a signed-in Firebase user; background callers treat this as a quiet skip.
   if(window.PayAviatorAuth&&!window.PayAviatorAuth.isSignedIn()){const e=new Error('Sign in to sync your banks.');e.code='SIGN_IN_REQUIRED';throw e}
   const health=await pp982RefreshEnvironment();
-  const ad=await pp982Api('/api/plaid/accounts/' + (window.PayAviatorBankUserPath?.()||encodeURIComponent(localStorage.getItem('payaviator_plaid_user_v1')||'payaviator-local-user')));
+  const ad=await pp982Api('/api/plaid/accounts');
   try{window.PayAviatorSavePlaidItemHealth?.(ad)}catch(_){}
   const rows=Array.isArray(ad.accounts)?ad.accounts:[];
   const old=accounts(), oldBy=new Map(old.map(a=>[rawId(a),a]));
@@ -24958,7 +24963,7 @@ async function pp982SyncLiveBank(){
     if(window.AndroidBridge&&typeof AndroidBridge.setRealAccountsConnected==='function') AndroidBridge.setRealAccountsConnected(realConnected);
   }catch(_){}
   let td={transactions:[]};
-  try{td=await pp982Api('/api/plaid/transactions/' + (window.PayAviatorBankUserPath?.()||encodeURIComponent(localStorage.getItem('payaviator_plaid_user_v1')||'payaviator-local-user')) + '?limit=250')}catch(e){td={transactions:[],errors:[{code:'request_failed',message:e?.message||String(e)}]};console.warn('PayAviator transaction sync failed:',e?.message||e)}
+  try{td=await pp982Api('/api/plaid/transactions?limit=250')}catch(e){td={transactions:[],errors:[{code:'request_failed',message:e?.message||String(e)}]};console.warn('PayAviator transaction sync failed:',e?.message||e)}
   const freshTx=Array.isArray(td.transactions)?td.transactions:[];
   const tx=freshTx;
   // 3.1.5: keep only a lightweight recent cache on-device. PostgreSQL is authoritative.
@@ -29883,14 +29888,9 @@ dialog:has(#pp820PayoffGauge) .form{
     grid.querySelectorAll('button[data-fn]').forEach(btn=>{
       if(btn.dataset.pa346) return;
       btn.dataset.pa346='1';
-      btn.addEventListener('click', function(e){
-        const fn=btn.getAttribute('data-fn');
-        closeStrayDialogs();
-        const f=window[fn];
-        if(typeof f==='function'){
-          try{ f(); }catch(err){ console.warn('budget tool', fn, err); }
-        }
-      });
+      // 4.0.0: only clear stray layers (capture, before the tool opens). The tool itself is opened once by its onclick;
+      // opening it here as well ran every tool 3 times per tap (Export Summary showed 3 save pickers).
+      btn.addEventListener('click', function(){ closeStrayDialogs(); }, true);
     });
   }
 
@@ -30024,19 +30024,7 @@ html, body, #mb119Shell, #mb119Budget, #mb119BottomNav {
     grid.querySelectorAll('button').forEach(btn=>{
       if(btn.dataset.pa348) return;
       btn.dataset.pa348='1';
-      btn.addEventListener('pointerup', function(e){
-        const fn=btn.getAttribute('data-fn');
-        if(!fn) return;
-        // Only unlock overlays that aren't the one we're opening
-        document.querySelectorAll('dialog').forEach(d=>{
-          if(d.open) return;
-          d.style.pointerEvents='none';
-        });
-        const f=window[fn];
-        if(typeof f==='function'){
-          try{ f(); }catch(err){ console.warn(fn, err); }
-        }
-      }, {passive:true});
+      // Opening on pointerup let the follow-up click land on the new sheet's backdrop and close it; the click handlers open tools.
     });
   }
 
@@ -30301,14 +30289,7 @@ dialog[open] {
     grid.querySelectorAll('button[data-fn]').forEach(btn=>{
       if (btn.dataset.pa3410) return;
       btn.dataset.pa3410 = '1';
-      btn.addEventListener('click', function(){
-        unlockPage();
-        const fn = btn.getAttribute('data-fn');
-        const f = window[fn];
-        if (typeof f === 'function') {
-          try { f(); } catch(err){ console.warn('[PayAviator] tool', fn, err); }
-        }
-      });
+      btn.addEventListener('click', function(){ unlockPage(); }, true); // 4.0.0: unlock only; onclick opens the tool once.
     });
   }
 
@@ -31879,10 +31860,11 @@ body #pa3102Planner .pa3102-gaugefoot{display:flex!important;flex-wrap:wrap!impo
 body #pa3102Planner .pa3102-panel{padding:15px!important;margin-bottom:12px!important;background:#153760!important;border:1px solid #276991!important;border-radius:18px!important;color:#fff!important;overflow:hidden!important}
 body #pa3102Planner .pa3102-panel h3{font-size:18px!important;color:#fff!important;margin:0 0 12px!important}
 body #pa3102Planner .pa3102-sectiontitle{font-size:17px!important;font-weight:900!important;margin:0 0 10px!important;color:#fff!important}
-body #pa3102Planner .pa3102-methods{display:grid!important;grid-template-columns:1fr 1fr!important;gap:9px!important;margin-bottom:13px!important}
-body #pa3102Planner .pa3102-methods button{padding:13px 10px!important;background:#0e294d!important;border:1.5px solid #41678e!important;border-radius:13px!important;text-align:left!important}
+body #pa3102Planner .pa3102-methods{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:9px!important;margin-bottom:13px!important}
+body #pa3102Planner .pa3102-methods button{display:block!important;min-width:0!important;width:100%!important;padding:13px 10px!important;background:#0e294d!important;border:1.5px solid #41678e!important;border-radius:13px!important;text-align:left!important}
 body #pa3102Planner .pa3102-methods button.selected{border-color:#15ecf0!important;background:#225f82!important}
 body #pa3102Planner .pa3102-methods b{display:block!important;font-size:15px!important}
+body #pa3102Planner .pa3102-methods span{display:block!important;font-size:11px!important;font-weight:750!important;margin-top:4px!important;color:#fff!important}
 body #pa3102Planner .pa3102-methods small{display:block!important;font-weight:500!important;font-size:11px!important;color:#d3e1ee!important;margin-top:3px!important}
 body #pa3102Planner .pa3102-field{display:block!important;font-size:13px!important;font-weight:800!important;color:#dcebf7!important;margin:12px 0!important}
 body #pa3102Planner .pa3102-field input{display:block!important;width:100%!important;min-height:47px!important;background:#071a36!important;border:1.5px solid #4476a4!important;border-radius:12px!important;color:#fff!important;font-size:17px!important;padding:10px 13px!important;margin-top:5px!important;-webkit-text-fill-color:#fff!important}

@@ -1,3 +1,12 @@
+## 4.0.0 — Official base release
+- Budget tiles: tools open on the tap's click only (removed the pointerup early-open that let the follow-up click land on the new sheet's backdrop and close Savings Goals / Paycheck Planner on phones).
+- Budget tiles: each tool runs once per tap (two extra click layers re-ran every tool, so Export Summary opened three save pickers).
+- Paycheck Planner opens again when bills are due before the next paycheck (assignmentId / assignment storage were private to another script and threw).
+- Payoff Planner: Snowball/Avalanche choice fits the screen instead of running off the right edge.
+- Connected banking uses the token-authenticated routes /api/plaid/accounts and /api/plaid/transactions; no user id in URLs or request bodies.
+- Source of truth is the repository again: the uploaded PayAviator-main.zip is unpacked into the repo and removed.
+- Version 4.0.0 everywhere (VERSION.txt, bundled version, service-worker cache payaviator-4.0.0); Android versionCode floor 400200.
+
 ## 3.10.5 — Restore dark Payoff Planner background
 - Isolated the planner scroll container from the app’s default light background, keeping the full popup navy.
 - Preserve the website-accurate 270-degree aviation gauge, navigation, account data and all Payoff Planner logic from 3.10.4.
