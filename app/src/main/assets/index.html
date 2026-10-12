@@ -16228,8 +16228,19 @@ dialog.pp51-menu > .pp51-body [class*="divider"]{
   border-color:rgba(255,255,255,.45)!important;
 }
 dialog.pp51-menu > .pp51-body [style*="background: white"],
-dialog.pp51-menu > .pp51-body [style*="background:#fff"],
-dialog.pp51-menu > .pp51-body [style*="background: #fff"]{
+/* exact-white only: [style*="#fff"] also matched bill colors such as yellow #ffff00 */
+dialog.pp51-menu > .pp51-body [style*="background:#fff;"],
+dialog.pp51-menu > .pp51-body [style$="background:#fff"],
+dialog.pp51-menu > .pp51-body [style*="background:#fff "],
+dialog.pp51-menu > .pp51-body [style*="background:#fff!"],
+dialog.pp51-menu > .pp51-body [style*="background: #fff;"],
+dialog.pp51-menu > .pp51-body [style$="background: #fff"],
+dialog.pp51-menu > .pp51-body [style*="background: #fff "],
+dialog.pp51-menu > .pp51-body [style*="background: #fff!"],
+dialog.pp51-menu > .pp51-body [style*="background:#ffffff;"],
+dialog.pp51-menu > .pp51-body [style$="background:#ffffff"],
+dialog.pp51-menu > .pp51-body [style*="background:#ffffff "],
+dialog.pp51-menu > .pp51-body [style*="background:#ffffff!"]{
   background:var(--pp51-card)!important;
   color:var(--pp51-text)!important;
 }
@@ -18341,8 +18352,22 @@ body:not(.pp-gauge-ready) #mb119BottomNav{
 #calendarWrap .calendar-help,
 #calendarWrap [style*="background:white"],
 #calendarWrap [style*="background: white"],
-#calendarWrap [style*="#fff"],
-#calendarWrap [style*="#ffffff"]{
+#calendarWrap [style*="background:#fff;"],
+#calendarWrap [style$="background:#fff"],
+#calendarWrap [style*="background:#fff "],
+#calendarWrap [style*="background:#fff!"],
+#calendarWrap [style*="background: #fff;"],
+#calendarWrap [style$="background: #fff"],
+#calendarWrap [style*="background: #fff "],
+#calendarWrap [style*="background: #fff!"],
+#calendarWrap [style*="background:#ffffff;"],
+#calendarWrap [style$="background:#ffffff"],
+#calendarWrap [style*="background:#ffffff "],
+#calendarWrap [style*="background:#ffffff!"],
+#calendarWrap [style*="background: #ffffff;"],
+#calendarWrap [style$="background: #ffffff"],
+#calendarWrap [style*="background: #ffffff "],
+#calendarWrap [style*="background: #ffffff!"]{
   background:#0c2a52!important;
 }
 #calendarWrap{
@@ -18937,8 +18962,18 @@ body:not(.pp-gauge-ready) #mb119BottomNav{
 }
 #mb119CalendarMount [style*="background: white"],
 #mb119CalendarMount [style*="background:white"],
-#mb119CalendarMount [style*="background:#fff"],
-#mb119CalendarMount [style*="background: #fff"]{
+#mb119CalendarMount [style*="background:#fff;"],
+#mb119CalendarMount [style$="background:#fff"],
+#mb119CalendarMount [style*="background:#fff "],
+#mb119CalendarMount [style*="background:#fff!"],
+#mb119CalendarMount [style*="background: #fff;"],
+#mb119CalendarMount [style$="background: #fff"],
+#mb119CalendarMount [style*="background: #fff "],
+#mb119CalendarMount [style*="background: #fff!"],
+#mb119CalendarMount [style*="background:#ffffff;"],
+#mb119CalendarMount [style$="background:#ffffff"],
+#mb119CalendarMount [style*="background:#ffffff "],
+#mb119CalendarMount [style*="background:#ffffff!"]{
   background:#0b2a52!important;
 }
 
@@ -25379,6 +25414,19 @@ window.addEventListener('load',()=>{run();setTimeout(run,800);setTimeout(run,250
 document.addEventListener('click',e=>{if(e.target?.closest?.('.mb119-nav'))setTimeout(run,0)},true);
 })();
 </script>
+<script id="pa401-bill-color-ink">
+/* 4.0.1: readable text on bill-colored calendar chips (dark text on light colors like yellow) */
+(function(){'use strict';
+function lum(hex){const m=/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(hex||'').trim());if(!m)return null;let h=m[1];if(h.length===3)h=h.replace(/./g,c=>c+c);
+  const f=i=>{let v=parseInt(h.substr(i,2),16)/255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)};return .2126*f(0)+.7152*f(2)+.0722*f(4)}
+function ink(root){(root||document).querySelectorAll('.cal-event:not(.reminder-event)').forEach(e=>{const m=/background:\s*(#[0-9a-f]{3,6})\b/i.exec(e.getAttribute('style')||'');const L=m?lum(m[1]):null;
+  if(L==null)return;const dark=L>.4;e.classList.toggle('pa401-ink-dark',dark)})}
+window.PayAviatorBillInk=ink;
+let raf=0;new MutationObserver(()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;ink()})}).observe(document.documentElement,{childList:true,subtree:true});
+if(document.readyState!=='loading')ink();else document.addEventListener('DOMContentLoaded',()=>ink(),{once:true});
+})();
+</script>
+<style id="pa401-bill-color-ink-css">html body .cal-event.pa401-ink-dark,html body .cal-event.pa401-ink-dark *{color:#06121f!important;text-shadow:none!important}</style>
 </body>
 
 <script>

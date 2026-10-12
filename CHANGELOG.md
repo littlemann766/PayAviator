@@ -5,6 +5,7 @@
 - With no accounts or cash set up, Available now falls back to the old paychecks − bills − spending estimate and is labeled as an estimate.
 - Tap Available now (Home gauge or Monthly Snapshot) to see each account and the amount it counts. Regression test tools/test-available-now.py.
 - Bills tab: a + Add Bill button at the top opens the same Add Bill form as the Calendar tab (Beth).
+- Bill colors such as yellow #ffff00 are no longer repainted navy on the Calendar, Edit Day and Upcoming (white-background overrides now match exact white only) (Beth).
 - Version 4.0.2 everywhere; service-worker cache payaviator-4.0.2; Android versionCode floor 400202.
 
 ## 4.0.1 — Budget sheets, in-app confirmations, date-move fix
