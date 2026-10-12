@@ -28,6 +28,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Apply uploaded PayAviator source update
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="PayAviator-main.zip"
+          if [[ ! -f "$ZIP" ]]; then
+            echo '::error::PayAviator-main.zip is missing from the repository root.'
+            exit 1
+          fi
+          EXTRACT_DIR="$RUNNER_TEMP/payaviator-upload"
+          mkdir -p "$EXTRACT_DIR"
+          unzip -q "$ZIP" -d "$EXTRACT_DIR"
+          SOURCE_DIR="$EXTRACT_DIR/PayAviator-main"
+          if [[ ! -f "$SOURCE_DIR/VERSION.txt" || ! -f "$SOURCE_DIR/app/build.gradle" ]]; then
+            echo '::error::The ZIP must contain a PayAviator-main folder with VERSION.txt and app/build.gradle.'
+            exit 1
+          fi
+          ZIP_VERSION="$(tr -d '\r\n' < "$SOURCE_DIR/VERSION.txt")"
+          echo "Applying PayAviator version $ZIP_VERSION from the uploaded ZIP"
+          cp -a "$SOURCE_DIR/." .
+          echo "Active source version: $(tr -d '\r\n' < VERSION.txt)"
+
       - name: Check repository layout
         shell: bash
         run: |
