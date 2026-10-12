@@ -22211,10 +22211,6 @@ setState(readNative());
     return e;
   }
   function pp920SignInRequired(){const e=new Error('Sign in to use bank features.');e.code='SIGN_IN_REQUIRED';return e}
-  function pp920BankUserPath(){
-    const uid=window.PayAviatorAuth?.getState?.()?.uid;
-    return encodeURIComponent(uid||localStorage.getItem('payaviator_plaid_user_v1')||'payaviator-local-user');
-  }
   async function pp920Api(path,options={}){
     // /api/plaid/* needs a signed-in Firebase user. The ID token is attached natively by
     // AndroidBridge.apiRequest and never enters the page.
@@ -22245,7 +22241,6 @@ setState(readNative());
     }finally{clearTimeout(timer)}
   }
   window.PayAviatorBankApi=pp920Api;
-  window.PayAviatorBankUserPath=pp920BankUserPath;
   function pp920LoadPlaid(){
     return new Promise((resolve,reject)=>{
       if(window.Plaid) return resolve();
@@ -31761,6 +31756,12 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body .bill .bill-status-pill.partial{ba
 html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body .bill .bill-status-pill.paid{background:color-mix(in srgb,var(--pa4-good) 18%,var(--pa4-card))!important;color:#bbf7d0!important;border-color:color-mix(in srgb,var(--pa4-good) 45%,transparent)!important}
 html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb123SettingsPanel.pp51-settings > .pp51-body *:not(input):not(button):not(select):not(textarea){border-color:var(--pa4-line2)!important}
 html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb123SettingsPanel.pp51-settings > .pp51-body > *,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb123SettingsPanel.pp51-settings > .pp51-body > * > div{border-width:1px!important;box-shadow:none!important}
+
+/* ---- Any open sheet: hide the floating tip launcher so it never covers sheet content ---- */
+html:has(dialog[open]) body #pp925TipLauncher,
+html:has(#mb123SettingsPanel.mb2034-modal-open) body #pp925TipLauncher,
+html:has([id$="Modal"].show) body #pp925TipLauncher,
+html:has(#pa3102Planner:not([hidden])) body #pp925TipLauncher{display:none!important}
 
 /* ---- First-run setup sheet (#mb212Onboarding): no tips on top, scrolling body, actions always visible ---- */
 html:has(#mb212Onboarding[open]) body #pp925TipLauncher,

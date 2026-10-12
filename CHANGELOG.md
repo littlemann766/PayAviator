@@ -3,8 +3,9 @@
 - Budget tiles: each tool runs once per tap (two extra click layers re-ran every tool, so Export Summary opened three save pickers).
 - Paycheck Planner opens again when bills are due before the next paycheck (assignmentId / assignment storage were private to another script and threw).
 - Payoff Planner: Snowball/Avalanche choice fits the screen instead of running off the right edge.
-- Connected banking uses the token-authenticated routes /api/plaid/accounts and /api/plaid/transactions; no user id in URLs or request bodies.
+- Connected banking uses only the backend 4.0.0 routes (token-authenticated, Authorization: Bearer <Firebase ID token>); no user id in any URL, query or body. Removed the user-id path helper.
 - Source of truth is the repository again: the uploaded PayAviator-main.zip is unpacked into the repo and removed.
+- The lightbulb tip button hides while any sheet is open (it covered App Colors and the version in Backup & App) and returns when the sheet closes.
 - Version 4.0.0 everywhere (VERSION.txt, bundled version, service-worker cache payaviator-4.0.0); Android versionCode floor 400200.
 
 ## 3.10.5 — Restore dark Payoff Planner background
