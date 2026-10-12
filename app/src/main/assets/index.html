@@ -74,7 +74,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='3.9.8';
+  const BUNDLED_VERSION='3.10.5';
   const code=n=>{const p=String(n||'').replace(/^Version:\s*/i,'').trim().split('.').map(Number);return p.length===3&&p.every(Number.isFinite)?p[0]*10000+p[1]*100+p[2]:0};
   const S={name:BUNDLED_VERSION,code:code(BUNDLED_VERSION)};
   function paint(root=document){
@@ -22189,7 +22189,7 @@ setState(readNative());
   function pp943NativeApi(path,options={}){
     return new Promise((resolve,reject)=>{
       const id='api-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
-      const timer=setTimeout(()=>{pp943NativePending.delete(id);reject(new Error('PayAviator bank service timed out. Please try again.'));},22000);
+      const timer=setTimeout(()=>{pp943NativePending.delete(id);reject(new Error('PayAviator bank service timed out. Please try again.'));},65000);
       pp943NativePending.set(id,{resolve,reject,timer});
       try{
         const method=String(options.method||'GET').toUpperCase();
@@ -22206,6 +22206,10 @@ setState(readNative());
     return e;
   }
   function pp920SignInRequired(){const e=new Error('Sign in to use bank features.');e.code='SIGN_IN_REQUIRED';return e}
+  function pp920BankUserPath(){
+    const uid=window.PayAviatorAuth?.getState?.()?.uid;
+    return encodeURIComponent(uid||localStorage.getItem('payaviator_plaid_user_v1')||'payaviator-local-user');
+  }
   async function pp920Api(path,options={}){
     // /api/plaid/* needs a signed-in Firebase user. The ID token is attached natively by
     // AndroidBridge.apiRequest and never enters the page.
@@ -22236,6 +22240,7 @@ setState(readNative());
     }finally{clearTimeout(timer)}
   }
   window.PayAviatorBankApi=pp920Api;
+  window.PayAviatorBankUserPath=pp920BankUserPath;
   function pp920LoadPlaid(){
     return new Promise((resolve,reject)=>{
       if(window.Plaid) return resolve();
@@ -22262,9 +22267,22 @@ setState(readNative());
   function pp920ItemHealth(){try{const v=JSON.parse(localStorage.getItem(PP920_ITEMS_KEY)||'{}');return{items:Array.isArray(v.items)?v.items:[],errors:Array.isArray(v.errors)?v.errors:[]}}catch(_){return{items:[],errors:[]}}}
   async function pp920SyncPlaidAccounts(){
     // The backend identifies the user from the Firebase token; never send a user id.
-    const data=await pp920Api('/api/plaid/accounts/' + encodeURIComponent(localStorage.getItem('payaviator_plaid_user_v1') || 'payaviator-local-user'));
+    const data=await pp920Api('/api/plaid/accounts/' + pp920BankUserPath());
     pp920SaveItemHealth(data);
     const rows=Array.isArray(data.accounts)?data.accounts:[];
+    // Plaid Items can remain linked when accountsGet temporarily fails (bank outage,
+    // token refresh or an institution requiring update mode). Never wipe their last
+    // local balance cards merely because this particular refresh has zero rows.
+    const existing=loadAccounts();
+    if(!rows.length && Array.isArray(data.items) && data.items.length){
+      const n=(Array.isArray(data.errors)?data.errors:[]).length;
+      if(existing.length){
+        console.warn('PayAviator: linked banks exist, account refresh unavailable',n,data.errors||[]);
+        pp920Toast('Your bank is still linked. Fresh balances are unavailable; last saved balances remain visible.');
+        return existing;
+      }
+      throw new Error('A bank is linked, but it did not return any accounts yet. Try Sync all accounts.');
+    }
     const mapped=rows.map(a=>({
       id:a.account_id||a.id,
       name:a.name||a.official_name||'Account',
@@ -22277,7 +22295,11 @@ setState(readNative());
       itemId:a.item_id||'', lastSync:new Date().toISOString(), source:'plaid'
     }));
     const old=loadAccounts(), byId=new Map(old.map(a=>[String(a.id),a]));
-    const merged=mapped.map(a=>Object.assign({},byId.get(String(a.id))||{},a));
+    // Keep previously linked accounts belonging to an Item whose live refresh
+    // failed. Other Items may still return fresh data in the same response.
+    const unavailableItems=new Set((Array.isArray(data.errors)?data.errors:[]).map(e=>String(e.item_id||'')));
+    const preserved=old.filter(a=>unavailableItems.has(String(a.itemId||''))&&!mapped.some(m=>String(m.id)===String(a.id)));
+    const merged=[...mapped.map(a=>Object.assign({},byId.get(String(a.id))||{},a)),...preserved];
     saveAccounts(merged); ensureChoices(); refreshGauge();
     return merged;
   }
@@ -22290,13 +22312,14 @@ setState(readNative());
     if(btn){btn.disabled=true;btn.textContent='Opening secure bank connection…'}
     try{
       pp920Toast('Opening secure bank connection…');
-      const health=await pp920Api('/api/health');
-      if(health?.plaidConfigured===false) throw new Error('Plaid is not configured on the PayAviator backend yet. Add PLAID_CLIENT_ID and PLAID_SECRET in Railway.');
+      // A separate health endpoint must not prevent a working Plaid route from opening.
+      // Backend identifies the signed-in Firebase user from the bearer token attached natively.
+      // It may return either hosted_link_url (preferred) or a standard Android link_token.
       const tok=await pp920Api('/api/plaid/create-link-token',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({mobile:true, userId: (localStorage.getItem('payaviator_plaid_user_v1') || (localStorage.setItem('payaviator_plaid_user_v1','pp-'+Date.now().toString(36)), localStorage.getItem('payaviator_plaid_user_v1')))})
+        body:JSON.stringify({mobile:true,android_package_name:'com.payaviator.app',native_sdk:true})
       });
-      if(!tok.link_token) throw new Error('No link token returned');
+      if(!tok.hosted_link_url && !tok.link_token) throw new Error('The bank service did not return a Plaid connection link. Check its Plaid configuration.');
 
       // Best path for the Android app: Plaid Hosted Link in the system browser/
       // secure tab. The backend may return hosted_link_url after it is upgraded.
@@ -22306,12 +22329,15 @@ setState(readNative());
         return;
       }
 
-      // Android builds intentionally do NOT fall back to an in-process WebView.
-      // Plaid recommends Hosted Link for WebView-based native apps. If the backend
-      // has not yet been upgraded to return hosted_link_url, surface that clearly
-      // instead of opening the unreliable legacy WebView integration.
+      // If this backend only returns a link_token, use Plaid's official native
+      // Android SDK, NOT Plaid's unsupported embedded WebView. This also works
+      // when the Hosted Link endpoint has not yet been deployed.
       if(window.AndroidBridge){
-        throw new Error('The PayAviator bank service needs the 9.5.6 backend update before Plaid can open.');
+        if(tok.link_token && typeof window.AndroidBridge.openPlaidLink==='function'){
+          window.AndroidBridge.openPlaidLink(String(tok.link_token));
+          return;
+        }
+        throw new Error('Bank service must return a hosted_link_url or a native Android link_token.');
       }
 
       // Browser/PWA fallback only.
@@ -22339,24 +22365,38 @@ setState(readNative());
     }
   }
 
-  // Called by MainActivity after the dedicated native Plaid window closes.
+  // Native Plaid SDK delivers success/exit to this shared handler.
+  let pp920PendingNativeUpdateItemId=null;
   window.PayAviatorPlaidNativeResult=async function(payload){
     const btn=$('pp920ConnectBank');
     try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }
     try{
       const data=typeof payload==='string'?JSON.parse(payload||'{}'):(payload||{});
-      if(data.status==='connected' && data.public_token){
-        const metadata={institution:{name:data.institution_name||'',institution_id:data.institution_id||''}};
-        await pp920Api('/api/plaid/exchange-public-token',{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({public_token:data.public_token,metadata})
-        });
+      if(data.status==='connected'){
+        const updateItemId=pp920PendingNativeUpdateItemId;
+        pp920PendingNativeUpdateItemId=null;
+        if(updateItemId){
+          await pp920Api('/api/plaid/update-complete',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({item_id:updateItemId})
+          });
+        }else{
+          if(!data.public_token)throw new Error('Plaid completed without a public token. Please try connecting again.');
+          const metadata={institution:{name:data.institution_name||'',institution_id:data.institution_id||''},link_session_id:data.link_session_id||''};
+          await pp920Api('/api/plaid/exchange-public-token',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({public_token:data.public_token,metadata})
+          });
+        }
         await pp920SyncPlaidAccounts(); render();
-        pp920Toast((data.institution_name||'Bank')+' connected to PayAviator');
+        try{await window.PayAviatorSyncLiveBank982?.()}catch(_){ }
+        pp920Toast((data.institution_name||'Bank')+(updateItemId?' reconnected':' connected')+' to PayAviator');
       }else if(data.status==='exit'){
+        pp920PendingNativeUpdateItemId=null;
         const msg=data.error_display_message||data.error_message||'';
         if(msg)pp920Toast('Bank connection closed: '+msg);
       }else if(data.status==='error'){
+        pp920PendingNativeUpdateItemId=null;
         pp920Toast('Could not open secure bank connection: '+(data.message||'Please try again.'));
       }
     }catch(err){
@@ -22368,7 +22408,7 @@ setState(readNative());
   };
 
   async function pp941WaitForHostedStatus(){
-    const path='/api/plaid/hosted-status/' + encodeURIComponent(localStorage.getItem('payaviator_plaid_user_v1') || 'payaviator-local-user');
+    const path='/api/plaid/hosted-status';
     let last={connected:false,pending:true};
     // Plaid can take a moment to publish Hosted Link session results after redirect.
     // Stop on success / exited / failed (or any non-pending answer).
@@ -22423,7 +22463,14 @@ setState(readNative());
         window.AndroidBridge.openPlaidHostedLink(String(tok.hosted_link_url));
         return;
       }
-      if(window.AndroidBridge) throw new Error('The bank service did not return a reconnect link. Please try again.');
+      if(window.AndroidBridge){
+        if(tok.link_token && typeof window.AndroidBridge.openPlaidLink==='function'){
+          pp920PendingNativeUpdateItemId=itemId;
+          window.AndroidBridge.openPlaidLink(String(tok.link_token));
+          return;
+        }
+        throw new Error('The bank service did not return a reconnect URL or native link token.');
+      }
       // Browser/PWA fallback: Plaid Link in update mode, then confirm with the backend.
       if(!tok.link_token) throw new Error('No link token returned');
       await pp920LoadPlaid();
@@ -23898,7 +23945,7 @@ label[for="pp1316AddMinimum"],label[for="pp1315AddMinimum"],label[for="pp1316Edi
  }
  let selected=0,touchX=null,lastSig='';
  function renderGauge(){const g=$('pp820PayoffGauge'),r=normalize().filter(d=>n(d.balance)>0);if(!g||!r.length)return;selected=Math.max(0,Math.min(selected,r.length-1));const d=r[selected],strategy=selectedStrategy(),cur=sim(d,strategy),snow=sim(d,'snowball'),ava=sim(d,'avalanche'),lim=Math.max(n(d.creditLimit??d.limit),n(d.balance)),pct=lim?Math.round(Math.min(1,n(d.balance)/lim)*100):0,avail=Math.max(0,lim-n(d.balance));const sig=[key(d),strategy,d.balance,d.apr,payment(d,'snowball'),payment(d,'avalanche'),lim].join('|');if(sig===lastSig&&g.querySelector('.pp141-compare'))return;lastSig=sig;
-   const head=g.querySelector('.pp820-gauge-head');if(head)head.innerHTML='<b>'+String(d.name||'Account').replace(/[<>&]/g,'')+'</b><span>'+(selected+1)+' of '+r.length+' • '+pct+'% used</span>';
+   const head=g.querySelector('.pp820-gauge-head');if(head)head.innerHTML='<b>'+String(d.name||'Account').replace(/[<>&]/g,'')+'</b><span>'+(selected+1)+' of '+r.length+' • '+(pct==null?'limit unavailable':pct+'% used')+'</span>';
    const stats=g.querySelector('.pp990-stats');if(stats)stats.innerHTML='<div class="pp990-stat"><small>Available credit</small><b>'+money(avail)+'</b></div><div class="pp990-stat"><small>Balance used</small><b>'+money(d.balance)+'</b></div><div class="pp990-stat"><small>Projected payoff</small><b>'+(cur.finished?date(cur.months):'Needs payment')+'</b></div>';
    let cmp=g.querySelector('.pp141-compare');if(!cmp){cmp=document.createElement('div');cmp.className='pp141-compare';g.appendChild(cmp)}cmp.innerHTML='<div class="pp141-box"><small>Snowball • '+money(payment(d,'snowball'))+'/mo</small><b>'+(snow.finished?date(snow.months)+' • '+money(snow.interest)+' interest':'Needs higher payment')+'</b></div><div class="pp141-box"><small>Full payoff • '+money(payment(d,'avalanche'))+'</small><b>'+(ava.finished?date(ava.months)+' • '+money(ava.interest)+' interest':'Needs payment')+'</b></div>';
    let dots=$('pp141Dots');if(!dots){dots=document.createElement('div');dots.id='pp141Dots';dots.className='pp141-dots';g.insertAdjacentElement('afterend',dots)}dots.textContent=r.length>1?r.map((_,i)=>i===selected?'●':'○').join(' '):'Payoff projection for this account';
@@ -23921,39 +23968,107 @@ label[for="pp1316AddMinimum"],label[for="pp1315AddMinimum"],label[for="pp1316Edi
 #mb20425DebtDlg .pp153-pay{display:block;margin-top:5px;font-size:.78em;font-weight:800;opacity:.92}
 #mb20425DebtDlg #mb20425Snowball,#mb20425DebtDlg #mb20425Avalanche{touch-action:manipulation;cursor:pointer}
 </style>
+<script id="pp3101-payoff-math-js">
+(function(root){'use strict';
+  // Payoff projections are estimates; balances remain authoritative from linked banks.
+  const num=v=>{const n=Number(v);return Number.isFinite(n)&&n>0?n:0};
+  const cents=v=>Math.round((num(v)+Number.EPSILON)*100);
+  const dollars=v=>Math.round(v*100)/100;
+  const defaultMin=d=>Math.min(num(d.balance),Math.max(25,dollars(num(d.balance)*0.03)));
+  function monthly(balance, apr, payment) {
+    let bal=cents(balance), rate=Math.min(num(apr),200)/1200, pay=cents(payment), interest=0, months=0, firstPayment=0, afterFirst=bal;
+    if(!bal)return {months:0,interest:0,finished:true,pay1:0,after1:0};
+    if(!pay)return {months:0,interest:0,finished:false,pay1:0,after1:dollars(bal/100)};
+    while(bal>0&&months<1200){
+      const charge=Math.round(bal*rate);interest+=charge;bal+=charge;
+      const applied=Math.min(bal,pay);bal-=applied;months++;
+      if(months===1){firstPayment=applied;afterFirst=bal}
+      if(applied<=charge&&bal>0)return {months,interest:dollars(interest/100),finished:false,pay1:dollars(firstPayment/100),after1:dollars(afterFirst/100)};
+    }
+    return {months,interest:dollars(interest/100),finished:bal===0,pay1:dollars(firstPayment/100),after1:dollars(afterFirst/100)};
+  }
+  function planFor(rows, selectedId, extra=0, strategy='snowball') {
+    const accounts=(Array.isArray(rows)?rows:[]).filter(d=>num(d.balance)>0).map(d=>({id:String(d.id),name:String(d.name||'Account'),balance:cents(d.balance),apr:Math.min(num(d.apr),200)/1200,min:cents(num(d.minPayment)||defaultMin(d)),interest:0}));
+    const selected=accounts.find(d=>d.id===String(selectedId));if(!selected)return null;
+    const initialMin=accounts.reduce((sum,d)=>sum+d.min,0),budget=initialMin+cents(extra);
+    let months=0,pay1=0,after1=selected.balance,finished=false;
+    const firstTarget=[...accounts].sort((a,b)=>a.balance-b.balance||b.apr-a.apr)[0];
+    for(let month=1;month<=1200;month++){
+      months=month;let available=budget;const spent=new Map();
+      for(const d of accounts){if(d.balance<=0)continue;const charge=Math.round(d.balance*d.apr);d.balance+=charge;d.interest+=charge;}
+      for(const d of accounts){if(d.balance<=0)continue;const paid=Math.min(d.balance,d.min,available);d.balance-=paid;available-=paid;spent.set(d.id,paid);}
+      const order=accounts.filter(d=>d.balance>0).sort(strategy==='avalanche'?(a,b)=>b.apr-a.apr||a.balance-b.balance:(a,b)=>a.balance-b.balance||b.apr-a.apr);
+      for(const d of order){if(available<=0)break;const paid=Math.min(d.balance,available);d.balance-=paid;available-=paid;spent.set(d.id,(spent.get(d.id)||0)+paid);}
+      if(month===1){pay1=spent.get(selected.id)||0;after1=selected.balance;}
+      if(selected.balance<=0){finished=true;break;}
+    }
+    return {months,interest:dollars(selected.interest/100),finished,pay1:dollars(pay1/100),after1:dollars(after1/100),extra:num(extra),min:dollars(Math.min(selected.min,cents(rows.find(d=>String(d.id)===selected.id)?.balance))/100),target:firstTarget.id,targetName:firstTarget.name,isTarget:firstTarget===selected};
+  }
+  function fullPayment(d){const balance=cents(d.balance), interest=Math.round(balance*Math.min(num(d.apr),200)/1200);return dollars((balance+interest)/100)}
+  root.PayAviatorPayoffMath3101={monthly,planFor,fullPayment,defaultMin};
+})(typeof window!=='undefined'?window:globalThis);
+</script>
 <script id="pp151-payoff-authority-js">
 (function(){'use strict';
- const $=id=>document.getElementById(id),KEY='payaviator_debt_planner_v20425',BASE=25;
- const n=v=>Math.max(0,Number(v)||0),money=v=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n(v));
- const read=()=>{try{const r=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(r)?r:[]}catch(_){return[]}},save=r=>localStorage.setItem(KEY,JSON.stringify(r));
- const minPay=d=>n(d.minPayment)||Math.max(BASE,Math.round(n(d.balance)*.03*100)/100),snow=d=>Math.min(minPay(d),n(d.balance)), payoff=d=>Math.round((n(d.balance)+n(d.balance)*n(d.apr)/1200)*100)/100;
- function sim(d,pay){let bal=n(d.balance),rate=n(d.apr)/1200,m=0,int=0;pay=n(pay);if(!bal)return{months:0,interest:0,finished:true};while(bal>.005&&m<1200){const i=bal*rate;int+=i;bal+=i;if(!pay||pay<=i)return{months:m+1,interest:int,finished:false};bal-=Math.min(pay,bal);m++}return{months:m,interest:int,finished:true}}
- const date=m=>{const d=new Date();d.setMonth(d.getMonth()+m);return d.toLocaleDateString('en-US',{month:'short',year:'numeric'})};
- function acct(){const g=$('pp820PayoffGauge'),r=read().filter(x=>n(x.balance)>0);if(!g||!r.length)return null;const id=g.dataset.pp149Account||g.dataset.pp151Account,shown=g.querySelector('.pp820-gauge-head b')?.textContent?.trim();return r.find(x=>String(x.id)===String(id))||r.find(x=>String(x.name||'').trim()===shown)||r[0]}
- let active='snowball',last='';
- /* PA4: full snowball across every open balance. Each balance pays its own minimum; the Extra monthly payoff (settings key) plus any minimum freed by a paid-off balance goes to the smallest balance first (same order as the planner list). */
- const SKEY='payaviator_debt_planner_settings_v20425',extraAmt=()=>{try{const p=JSON.parse(localStorage.getItem(SKEY)||'{}');return n(p&&p.extra)}catch(_){return 0}};
- function plan(sel){const ex=extraAmt(),ds=read().filter(x=>n(x.balance)>0).map(x=>({id:String(x.id),name:x.name||'Account',bal:n(x.balance),apr:n(x.apr),min:minPay(x)})).sort((a,b)=>a.bal-b.bal||b.apr-a.apr),me=ds.find(x=>x.id===String(sel.id));if(!me)return null;const target=ds[0];let m=0,int=0,pay1=0,after1=me.bal;
-  while(me.bal>.005&&m<1200&&me.bal<1e9){m++;let pool=ex;ds.forEach(x=>{if(x.bal>.005){const i=x.bal*x.apr/1200;x.bal+=i;if(x===me)int+=i}});ds.forEach(x=>{if(x.bal<=.005){pool+=x.min;return}const p=Math.min(x.min,x.bal);x.bal-=p;pool+=x.min-p;if(x===me&&m===1)pay1+=p});for(const x of ds){if(pool<=.005)break;if(x.bal<=.005)continue;const p=Math.min(pool,x.bal);x.bal-=p;pool-=p;if(x===me&&m===1)pay1+=p}if(m===1)after1=Math.max(0,me.bal)}
-  const fin=me.bal<=.005;return{months:m,interest:int,finished:fin,pay1:Math.round(pay1*100)/100,after1,extra:ex,min:Math.min(me.min,n(sel.balance)),target:target.id,targetName:target.name,isTarget:target===me}}
- function modeText(pl,name,pay){if(!pl||!pl.extra)return 'Your '+money(pay)+' payment is classified as '+name+'.';return pl.isTarget?'Your '+money(pl.extra)+' extra goes to this balance first (smallest balance), so this month you pay '+money(pay)+'.':'Your '+money(pl.extra)+' extra goes to '+pl.targetName+' first (smallest balance). When that is paid off, its payment rolls over to this balance.'}
- function normalize(d){const r=read(),x=r.find(v=>String(v.id)===String(d.id));if(!x)return d;const av=payoff(x);let dirty=false;const sp=snow(x);if(n(x.snowballMinPayment)!==sp){x.snowballMinPayment=sp;dirty=true}if(n(x.avalanchePayment)!==av){x.avalanchePayment=av;dirty=true}if(dirty)save(r);return x}
- function paint(force=false){const dlg=$('mb20425DebtDlg'),g=$('pp820PayoffGauge'),raw=acct();if(!dlg?.open||!g||!raw)return;const d=normalize(raw);g.dataset.pp151Account=String(d.id);const bal=n(d.balance),limit=Math.max(n(d.creditLimit??d.limit),bal),pl=active==='avalanche'?null:plan(d),pay=pl?pl.pay1:(active==='avalanche'?payoff(d):snow(d)),p=pl||sim(d,pay),cur=limit?Math.round(bal/limit*100):0,after=pl?pl.after1:Math.max(0,bal+bal*n(d.apr)/1200-pay),aft=limit?Math.round(after/limit*100):0,avail=Math.max(0,limit-bal),availAfter=Math.max(0,limit-after),drop=Math.max(0,cur-aft),name=active==='avalanche'?'Avalanche':'Snowball',sig=[d.id,bal,limit,d.apr,active,pay,p.months,p.interest,pl?pl.extra:0,pl?pl.target:''].join('|');dlg.classList.toggle('pa4-full-payoff',active==='avalanche');if(!force&&sig===last)return;last=sig;
-  const head=g.querySelector('.pp820-gauge-head');if(head){head.querySelector('b')&&(head.querySelector('b').textContent=d.name||'Account');head.querySelector('span')&&(head.querySelector('span').textContent=cur+'% used')}
-  const ro=g.querySelector('.pp1240-payoff-read,.pp1290-payoff-read');if(ro){ro.querySelector('strong')&&(ro.querySelector('strong').textContent=cur+'%');ro.querySelector('span')&&(ro.querySelector('span').textContent='CREDIT USED')}
-  const nd=g.querySelector('.pp1290-payoff-dial svg line[stroke-width="10"]');if(nd&&limit){const ang=(135+270*Math.min(1,bal/limit))*Math.PI/180;nd.setAttribute('x2',String(200+112*Math.cos(ang)));nd.setAttribute('y2',String(200+112*Math.sin(ang)))} /* PA4 fix: needle matches the selected account */
-  const stats=g.querySelector('.pp990-stats');if(stats){const c=stats.querySelectorAll('.pp990-stat'),v=[['Available credit',money(avail)],['Balance used',money(bal)],['Projected payoff',p.finished?date(p.months):'Needs payment']];c.forEach((x,i)=>{if(!v[i])return;x.querySelector('small')&&(x.querySelector('small').textContent=v[i][0]);x.querySelector('b')&&(x.querySelector('b').textContent=v[i][1])})}
-  let cmp=g.querySelector('.pp141-compare');if(!cmp){cmp=document.createElement('div');cmp.className='pp141-compare';g.appendChild(cmp)}cmp.innerHTML='<div class="pp143-active-projection"><small>'+name+' projection • '+(pl?money(pl.min)+'/mo minimum'+(pl.extra?' + '+money(pl.extra)+' extra':''):money(pay)+' payoff')+'</small><b>'+(p.finished?date(p.months)+' • '+p.months+' month'+(p.months===1?'':'s')+' • '+money(p.interest)+' projected interest':'Payment does not reduce the balance')+'</b><div class="pp143-mode">'+modeText(pl,name,pay)+'</div></div>';
-  let delta=g.querySelector('.pp148-util-delta');if(!delta){delta=document.createElement('div');delta.className='pp148-util-delta';g.appendChild(delta)}delta.innerHTML='Projected utilization: '+cur+'% → '+aft+'% <span aria-hidden="true">(↓ '+drop+' points)</span><small>'+name+' preview with '+money(pay)+' payment: available credit '+money(avail)+' → '+money(availAfter)+'</small>';
-  const note=g.querySelector('.pp143-util-note');if(note)note.remove();
-  const sum=g.parentElement?.querySelector('.pp990-summary-grid')||dlg.querySelector('.pp990-summary-grid');if(sum){const c=sum.querySelectorAll('.pp990-stat'),v=[['Total balance',money(bal)],['Projected payoff',p.finished?date(p.months):'Needs payment'],['Projected interest',money(p.interest)],['Months remaining',p.finished?String(p.months):'—']];c.forEach((x,i)=>{if(!v[i])return;x.querySelector('small')&&(x.querySelector('small').textContent=v[i][0]);x.querySelector('b')&&(x.querySelector('b').textContent=v[i][1])})}
-  const sb=$('mb20425Snowball'),ab=$('mb20425Avalanche');sb?.classList.toggle('active',active==='snowball');ab?.classList.toggle('active',active==='avalanche');if(sb){let x=sb.querySelector('.pp153-pay');if(!x){x=document.createElement('span');x.className='pp153-pay';sb.appendChild(x)}x.textContent='Snowball payment: '+money(snow(d))+'/mo'}if(ab){let x=ab.querySelector('.pp153-pay');if(!x){x=document.createElement('span');x.className='pp153-pay';ab.appendChild(x)}x.textContent='Full payoff: '+money(payoff(d))}
+ const $=id=>document.getElementById(id), KEY='payaviator_debt_planner_v20425',SKEY='payaviator_debt_planner_settings_v20425';
+ const M=window.PayAviatorPayoffMath3101;
+ const n=v=>{const x=Number(v);return Number.isFinite(x)&&x>0?x:0};
+ const money=v=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n(v));
+ const read=(key,f)=>{try{return JSON.parse(localStorage.getItem(key)||'')??f}catch(_){return f}};
+ const rows=()=>{const x=read(KEY,[]);return Array.isArray(x)?x:[]};
+ const prefs=()=>({...{strategy:'snowball',extra:0},...read(SKEY,{})});
+ const savePrefs=p=>{try{window.ppDebtSavePrefs?.(p)||localStorage.setItem(SKEY,JSON.stringify(p))}catch(_){localStorage.setItem(SKEY,JSON.stringify(p))}};
+ const date=m=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()+Math.max(0,Math.round(m)));return d.toLocaleDateString('en-US',{month:'short',year:'numeric'})};
+ let active=prefs().strategy==='avalanche'?'avalanche':'snowball',last='';
+ function account(){const g=$('pp820PayoffGauge'),r=rows().filter(d=>n(d.balance)>0);if(!g||!r.length)return null;
+   const id=g.dataset.pp151Account||g.dataset.pp149Account;
+   return r.find(d=>String(d.id)===String(id))||r[0];}
+ function effectivePayment(d){const minimum=Math.min(n(d.balance),n(d.minPayment)||M.defaultMin(d)),full=M.fullPayment(d);
+   // Old releases seeded avalanchePayment with the minimum. Only a distinct saved
+   // payment is a customized plan. Never overwrite an entered value while painting.
+   const customized=n(d.paymentAmount)>minimum+.005?n(d.paymentAmount):n(d.avalanchePayment)>minimum+.005?n(d.avalanchePayment):0;
+   return customized||full;
  }
- function choose(k){active=k;last='';paint(true)}
- document.addEventListener('input',e=>{if(e.target?.id!=='mb20425Extra'||!$('mb20425DebtDlg')?.open)return;try{const p=window.ppDebtPrefs?.();if(p&&window.ppDebtSavePrefs){p.extra=n(e.target.value);window.ppDebtSavePrefs(p)}}catch(_){}last='';requestAnimationFrame(()=>paint(true))},true); /* PA4: live update when Extra changes */
- document.addEventListener('click',e=>{if(!$('mb20425DebtDlg')?.open)return;if(e.target.closest?.('#mb20425Snowball')){e.preventDefault();e.stopImmediatePropagation();choose('snowball')}else if(e.target.closest?.('#mb20425Avalanche')){e.preventDefault();e.stopImmediatePropagation();choose('avalanche')}else if(e.target.closest?.('#pp820EditSave,#mb20425AddDebt')){last='';requestAnimationFrame(()=>paint(true))}},true);
+ function prepare(){const dlg=$('mb20425DebtDlg'),g=$('pp820PayoffGauge'),d=account();if(!dlg?.open||!g||!d)return null;
+   const bankLimit=n(d.creditLimit??d.limit),known=bankLimit>0,bal=n(d.balance);
+   const pref=prefs(),plan=active==='snowball'?M.planFor(rows(),d.id,n(pref.extra),'snowball'):null;
+   const payment=plan?plan.pay1:effectivePayment(d),estimate=plan||M.monthly(bal,n(d.apr),payment);
+   const after=n(estimate.after1),cur=known?Math.round(bal/bankLimit*100):null,aft=known?Math.round(after/bankLimit*100):null;
+   return {dlg,g,d,bal,bankLimit,known,pref,plan,payment,estimate,after,cur,aft};
+ }
+ function paint(force=false){const state=prepare();if(!state)return;const {dlg,g,d,bal,bankLimit,known,pref,plan,payment,estimate,after,cur,aft}=state;
+   g.dataset.pp151Account=String(d.id);g.dataset.pp149Account=String(d.id);
+   const signature=JSON.stringify([d.id,bal,bankLimit,d.apr,active,payment,estimate.months,estimate.interest,estimate.finished,after,n(pref.extra)]);
+   if(!force&&signature===last)return;last=signature;
+   const name=active==='snowball'?'Snowball':'Avalanche',head=g.querySelector('.pp820-gauge-head');
+   if(head){const b=head.querySelector('b'),sp=head.querySelector('span');if(b)b.textContent=d.name||'Account';if(sp)sp.textContent=known?cur+'% credit used':'Credit limit unavailable';}
+   const readout=g.querySelector('.pp1240-payoff-read,.pp1290-payoff-read');if(readout){const num=readout.querySelector('strong'),lab=readout.querySelector('span');if(num)num.textContent=known?cur+'%':'—';if(lab)lab.textContent=known?'CREDIT USED':'LIMIT UNKNOWN';}
+   const needle=g.querySelector('.pp1290-payoff-dial svg line[stroke-width="10"]');if(needle){const angle=(135+270*Math.min(1,(known?bal/bankLimit:0)))*Math.PI/180;needle.setAttribute('x2',String(200+112*Math.cos(angle)));needle.setAttribute('y2',String(200+112*Math.sin(angle)));needle.style.visibility=known?'visible':'hidden';}
+   const avail=known?money(Math.max(0,bankLimit-bal)):'Unavailable';
+   const projected=estimate.finished?date(estimate.months):'Payment too low';
+   const stats=g.querySelector('.pp990-stats');if(stats){const cells=stats.querySelectorAll('.pp990-stat'),values=[['Available credit',avail],['Balance used',money(bal)],['Projected payoff',projected]];cells.forEach((c,i)=>{if(!values[i])return;const a=c.querySelector('small'),b=c.querySelector('b');if(a)a.textContent=values[i][0];if(b)b.textContent=values[i][1];});}
+   let compare=g.querySelector('.pp141-compare');if(!compare){compare=document.createElement('div');compare.className='pp141-compare';g.appendChild(compare);}
+   const line=estimate.finished?date(estimate.months)+' • '+estimate.months+' months • '+money(estimate.interest)+' estimated interest':'Current payment may not repay this balance';
+   const detail=active==='snowball'?'Each account pays its minimum; '+money(n(pref.extra))+' extra is directed to the smallest remaining balance.':'Monthly payment of '+money(payment)+' toward this account; full payoff is '+money(M.fullPayment(d))+'.';
+   compare.innerHTML='<div class="pp143-active-projection"><small>'+name+' payoff projection • '+money(payment)+' first-month payment</small><b>'+line+'</b><div class="pp143-mode">'+detail+'</div></div>';
+   let delta=g.querySelector('.pp148-util-delta');if(!delta){delta=document.createElement('div');delta.className='pp148-util-delta';g.appendChild(delta);}
+   if(known){const diff=cur-aft;delta.innerHTML='Projected utilization: '+cur+'% → '+aft+'% <span>('+Math.abs(diff)+' points '+(diff>=0?'lower':'higher')+')</span><small>Available credit '+money(Math.max(0,bankLimit-bal))+' → '+money(Math.max(0,bankLimit-after))+' after the estimated payment and next month’s interest.</small>'}
+   else delta.textContent='Credit utilization cannot be calculated until a credit limit is entered or supplied by the bank.';
+   const sum=g.parentElement?.querySelector('.pp990-summary-grid')||dlg.querySelector('.pp990-summary-grid');if(sum){const cells=sum.querySelectorAll('.pp990-stat'),v=[['Current balance',money(bal)],['Projected payoff',projected],['Estimated interest',money(estimate.interest)],['Months remaining',estimate.finished?String(estimate.months):'—']];cells.forEach((c,i)=>{if(!v[i])return;const a=c.querySelector('small'),b=c.querySelector('b');if(a)a.textContent=v[i][0];if(b)b.textContent=v[i][1];});}
+   $('mb20425Snowball')?.classList.toggle('active',active==='snowball');$('mb20425Avalanche')?.classList.toggle('active',active==='avalanche');
+   for(const [id,label] of [['mb20425Snowball','Minimum: '+money(Math.min(bal,n(d.minPayment)||M.defaultMin(d)))+'/mo'],['mb20425Avalanche','Payment: '+money(effectivePayment(d))+'/mo']]){
+     const btn=$(id);if(!btn)continue;let child=btn.querySelector('.pp153-pay');if(!child){child=document.createElement('span');child.className='pp153-pay';btn.appendChild(child)}if(child.textContent!==label)child.textContent=label;
+   }
+ }
+ function choose(k){active=k;const p=prefs();p.strategy=k;savePrefs(p);last='';paint(true);}
+ document.addEventListener('input',e=>{if(e.target?.id!=='mb20425Extra'||!$('mb20425DebtDlg')?.open)return;const p=prefs();p.extra=n(e.target.value);savePrefs(p);last='';requestAnimationFrame(()=>paint(true))},true);
+ document.addEventListener('click',e=>{if(!$('mb20425DebtDlg')?.open)return;
+   if(e.target.closest?.('#mb20425Snowball')){e.preventDefault();e.stopImmediatePropagation();choose('snowball')}
+   else if(e.target.closest?.('#mb20425Avalanche')){e.preventDefault();e.stopImmediatePropagation();choose('avalanche')}
+   else if(e.target.closest?.('#pp820EditSave,#mb20425AddDebt,#pp820PaySave')){last='';requestAnimationFrame(()=>paint(true));}
+ },true);
  ['payaviator:accounts-updated','payaviator:transactions-updated'].forEach(ev=>window.addEventListener(ev,()=>{last='';requestAnimationFrame(()=>paint(true))}));
- const old=window.openDebtPayoffPlanner;if(typeof old==='function'&&!old.pp151){window.openDebtPayoffPlanner=function(){const z=old.apply(this,arguments);active='snowball';last='';requestAnimationFrame(()=>paint(true));return z};window.openDebtPayoffPlanner.pp151=true}
+ const oldOpen=window.openDebtPayoffPlanner;if(typeof oldOpen==='function'&&!oldOpen.pp151){const next=function(){const result=oldOpen.apply(this,arguments);active=prefs().strategy==='avalanche'?'avalanche':'snowball';last='';requestAnimationFrame(()=>paint(true));return result;};next.pp151=true;window.openDebtPayoffPlanner=next;}
  window.PayAviatorPayoffPaint151=paint;
 })();
 </script>
@@ -24830,7 +24945,7 @@ async function pp982SyncLiveBank(){
   // Bank sync needs a signed-in Firebase user; background callers treat this as a quiet skip.
   if(window.PayAviatorAuth&&!window.PayAviatorAuth.isSignedIn()){const e=new Error('Sign in to sync your banks.');e.code='SIGN_IN_REQUIRED';throw e}
   const health=await pp982RefreshEnvironment();
-  const ad=await pp982Api('/api/plaid/accounts/' + encodeURIComponent(localStorage.getItem('payaviator_plaid_user_v1') || 'payaviator-local-user'));
+  const ad=await pp982Api('/api/plaid/accounts/' + (window.PayAviatorBankUserPath?.()||encodeURIComponent(localStorage.getItem('payaviator_plaid_user_v1')||'payaviator-local-user')));
   try{window.PayAviatorSavePlaidItemHealth?.(ad)}catch(_){}
   const rows=Array.isArray(ad.accounts)?ad.accounts:[];
   const old=accounts(), oldBy=new Map(old.map(a=>[rawId(a),a]));
@@ -24843,7 +24958,7 @@ async function pp982SyncLiveBank(){
     if(window.AndroidBridge&&typeof AndroidBridge.setRealAccountsConnected==='function') AndroidBridge.setRealAccountsConnected(realConnected);
   }catch(_){}
   let td={transactions:[]};
-  try{td=await pp982Api('/api/plaid/transactions/' + encodeURIComponent(localStorage.getItem('payaviator_plaid_user_v1') || 'payaviator-local-user') + '?limit=250')}catch(e){td={transactions:[],errors:[{code:'request_failed',message:e?.message||String(e)}]};console.warn('PayAviator transaction sync failed:',e?.message||e)}
+  try{td=await pp982Api('/api/plaid/transactions/' + (window.PayAviatorBankUserPath?.()||encodeURIComponent(localStorage.getItem('payaviator_plaid_user_v1')||'payaviator-local-user')) + '?limit=250')}catch(e){td={transactions:[],errors:[{code:'request_failed',message:e?.message||String(e)}]};console.warn('PayAviator transaction sync failed:',e?.message||e)}
   const freshTx=Array.isArray(td.transactions)?td.transactions:[];
   const tx=freshTx;
   // 3.1.5: keep only a lightweight recent cache on-device. PostgreSQL is authoritative.
@@ -25547,7 +25662,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 (function(){'use strict';
  const $=id=>document.getElementById(id),KEY='payaviator_debt_planner_v20425';let selected=0,touchX=null;
  const n=v=>Math.max(0,Number(v)||0),read=()=>{try{const r=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(r)?r:[]}catch(_){return[]}},save=r=>{localStorage.setItem(KEY,JSON.stringify(r));try{window.ppDebtSaveRows?.(r)}catch(_){}};
- function repairMinimums(){const r=read();let ch=false;r.forEach(a=>{if(n(a.balance)>0&&n(a.minPayment)>n(a.balance)){a.minPayment=Math.min(25,n(a.balance));ch=true}if(!n(a.minPayment)&&n(a.balance)>0){a.minPayment=Math.min(25,n(a.balance));ch=true}});if(ch)save(r)}
+ function repairMinimums(){/* Preserve entered card minimums. Payment calculations cap their own amount to the remaining balance. */}
  function positiveLanguage(root=document){const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);nodes.forEach(t=>{if(t.parentElement?.closest('script,style'))return;let s=t.nodeValue;s=s.replace(/Total debt/gi,'Total balance').replace(/Add a balance to build your payoff plan\./gi,'Add an account to build your payoff plan.').replace(/Add Balance/gi,'Add Account').replace(/Debt name/gi,'Account name').replace(/Add account details to calculate/gi,'Add account details to calculate').replace(/priority debt/gi,'priority account').replace(/For debts,/gi,'For balances,');if(s!==t.nodeValue)t.nodeValue=s})}
  function setupAdd(){const dlg=$('mb20425DebtDlg');if(!dlg)return;const title=[...dlg.querySelectorAll('h3')].find(x=>/add (balance|account)/i.test(x.textContent||''));const add=$('mb20425AddDebt');if(!title||!add)return;const box=title.parentElement;if(box?.dataset.pp1325)return;box.dataset.pp1325='1';
    const pop=document.createElement('dialog');pop.id='pp1325AddAccountDlg';pop.innerHTML='<div class="pp1325-head"><h2>Add Account</h2><button type="button" class="pp1325-x">×</button></div><div class="pp1325-body"></div>';document.body.appendChild(pop);const body=pop.querySelector('.pp1325-body');
@@ -25558,8 +25673,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  }
  function monthsFor(a,strategy){let bal=n(a.balance),apr=n(a.apr)/1200,pay=strategy==='avalanche'?(n(a.avalanchePayment)||n(a.minPayment)):n(a.minPayment);if(!bal||!pay)return{months:0,interest:0,finished:!bal};let m=0,int=0;while(bal>.005&&m<1200){const i=bal*apr;int+=i;bal+=i;const p=Math.min(pay,bal);bal-=p;m++;if(p<=i&&bal>.005)return{months:m,interest:int,finished:false}}return{months:m,interest:int,finished:bal<=.005}}
  function date(m){const d=new Date();d.setMonth(d.getMonth()+m);return d.toLocaleDateString('en-US',{month:'short',year:'numeric'})}
- function renderSwipe(){repairMinimums();const g=$('pp820PayoffGauge');if(!g)return;const r=read().filter(a=>n(a.balance)>0);if(!r.length)return;selected=Math.max(0,Math.min(selected,r.length-1));const a=r[selected],strategy=(window.ppDebtPrefs?.().strategy==='avalanche'?'avalanche':'snowball'),sim=monthsFor(a,strategy),lim=Math.max(n(a.creditLimit??a.limit),n(a.balance)),pct=lim?Math.round(Math.min(1,n(a.balance)/lim)*100):0,avail=Math.max(0,lim-n(a.balance));
-   const title=g.querySelector('.pp820-gauge-head');if(title)title.innerHTML='<b>'+String(a.name||'Account').replace(/[<>&]/g,'')+'</b><span>'+(selected+1)+' of '+r.length+' • '+pct+'% used</span>';
+ function renderSwipe(){repairMinimums();const g=$('pp820PayoffGauge');if(!g)return;const r=read().filter(a=>n(a.balance)>0);if(!r.length)return;selected=Math.max(0,Math.min(selected,r.length-1));const a=r[selected],strategy=(window.ppDebtPrefs?.().strategy==='avalanche'?'avalanche':'snowball'),sim=monthsFor(a,strategy),lim=n(a.creditLimit??a.limit),pct=lim?Math.round(Math.min(1,n(a.balance)/lim)*100):null,avail=Math.max(0,lim-n(a.balance));
+   const title=g.querySelector('.pp820-gauge-head');if(title)title.innerHTML='<b>'+String(a.name||'Account').replace(/[<>&]/g,'')+'</b><span>'+(selected+1)+' of '+r.length+' • '+(pct==null?'limit unavailable':pct+'% used')+'</span>';
    /* 9.15.3: swipe owns only account navigation/header. The payoff authority owns stats and projections. */
    g.dataset.pp151Account=String(a.id);
    let note=dlgNote();note.textContent=r.length>1?'Swipe left or right to view another account':'Payoff projection for this account';
@@ -26166,10 +26281,11 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  const id=a=>String(a?.id||a?.account_id||''), mask=a=>String(a?.mask||'');
  const used=a=>n(a?.balanceUsed??a?.balance_used??a?.current??a?.balance??a?.balances?.current);
  function findCardForRow(cards,d){
+   if(!d?.linkedAccountId&&!d?.linkedMask)return null;
    let a=cards.find(x=>id(x)&&String(d?.linkedAccountId||'')===id(x)); if(a)return a;
    a=cards.find(x=>mask(x)&&String(d?.linkedMask||'')===mask(x)); if(a)return a;
-   if(cards.length===1)return cards[0];
-   const nm=String(d?.name||d?.accountName||'').toLowerCase();return cards.find(x=>nm&&String(x?.name||'').toLowerCase().includes(nm))||null;
+   // Never auto-link an unrelated manually entered balance, even if there is only one card.
+   return null;
  }
  function limitFor(a,d){
    const direct=n(a?.creditLimit??a?.credit_limit??a?.limit??a?.balances?.limit);if(direct)return direct;
@@ -31726,5 +31842,234 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb212Onboarding .mb212-wrap{margi
     }catch(_){}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+</script>
+
+<!-- PayAviator 3.10.2: consolidated payoff planner -->
+<style id="pa3102-planner-css">
+/* PayAviator 3.10.2 - isolated, stable Payoff Planner. No selectors target other screens. */
+#pa3102Planner[hidden]{display:none!important}
+body #pa3102Planner{position:fixed!important;inset:0!important;z-index:2147483647!important;display:flex!important;align-items:center!important;justify-content:center!important;background:rgba(2,10,28,.86)!important;padding:10px!important;box-sizing:border-box!important;color:#fff!important;font-family:system-ui,-apple-system,Roboto,sans-serif!important;overflow:hidden!important}
+body #pa3102Planner *{box-sizing:border-box!important}
+body #pa3102Planner .pa3102-shell{width:min(100%,620px)!important;max-height:calc(100dvh - 20px)!important;height:min(100%,940px)!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;background:#0d2448!important;border:2px solid #32668f!important;border-radius:26px!important;box-shadow:0 22px 80px rgba(0,0,0,.5)!important;min-height:0!important}
+body #pa3102Planner .pa3102-head{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:14px!important;flex:none!important;padding:18px 18px 14px!important;background:#10294f!important;border-bottom:1px solid #265072!important}
+body #pa3102Planner .pa3102-head h2{font-size:clamp(21px,5vw,27px)!important;margin:0!important;color:#fff!important;line-height:1.2!important}
+body #pa3102Planner .pa3102-head small{font-size:12px!important;color:#bed4e9!important}
+body #pa3102Planner button{cursor:pointer!important;min-height:42px!important;color:#fff!important;text-transform:none!important;box-shadow:none!important;font-weight:750!important;white-space:normal!important}
+body #pa3102Planner button:disabled{cursor:default!important;opacity:.48!important}
+body #pa3102Planner button:focus-visible,body #pa3102Planner input:focus-visible{outline:3px solid #20edf2!important;outline-offset:2px!important}
+body #pa3102Planner .pa3102-close{flex:0 0 48px!important;width:48px!important;height:48px!important;font-size:32px!important;line-height:1!important;padding:0!important;border-radius:16px!important;background:#245785!important;border:1px solid #5186b0!important}
+body #pa3102Planner .pa3102-body{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:14px!important;overscroll-behavior:contain!important;scrollbar-width:thin!important;background:#0d2448!important;background-image:linear-gradient(180deg,#0d2448 0%,#102b50 100%)!important;color:#fff!important;color-scheme:dark!important}
+body #pa3102Planner .pa3102-footer{flex:none!important;font-size:10px!important;color:#a9c4da!important;text-align:center!important;padding:9px 12px calc(9px + env(safe-area-inset-bottom))!important;border-top:1px solid #274d72!important;background:#10294f!important}
+body #pa3102Planner .pa3102-gauge{margin:0 0 12px!important;border-radius:20px!important;border:3px solid #77899b!important;background:linear-gradient(150deg,#101d31,#0b2748)!important;padding:12px 12px 14px!important;overflow:hidden!important;box-shadow:inset 0 0 0 2px #203b53!important}
+body #pa3102Planner .pa3102-accountnav{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:5px!important;text-align:center!important}
+body #pa3102Planner .pa3102-accountnav>div{min-width:0!important;flex:1!important}
+body #pa3102Planner .pa3102-accountnav b{display:block!important;font-size:18px!important;color:#fff!important;overflow-wrap:anywhere!important}
+body #pa3102Planner .pa3102-accountnav small{display:block!important;color:#bbd0e3!important;font-size:11px!important}
+body #pa3102Planner .pa3102-accountnav button{min-height:34px!important;flex:0 0 38px!important;padding:2px!important;font-size:26px!important;border:1px solid #497c9c!important;border-radius:11px!important;background:#173d65!important}
+body #pa3102Planner .pa3102-gauge svg{display:block!important;width:min(100%,360px)!important;height:auto!important;max-height:235px!important;margin:4px auto 0!important;overflow:visible!important}
+body #pa3102Planner .pa3102-gaugeread{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;margin:-19px auto 10px!important;padding:7px 12px!important;position:relative!important;z-index:1!important;background:#071931!important;width:max-content!important;min-width:144px!important;max-width:95%!important;border:2px solid #29dfe5!important;border-radius:15px!important;text-align:center!important}
+body #pa3102Planner .pa3102-gaugeread b{font-size:29px!important;color:#55f47a!important;line-height:1.1!important}
+body #pa3102Planner .pa3102-gaugeread span{font-size:10px!important;letter-spacing:.09em!important;color:#e5f6fc!important;font-weight:850!important}
+body #pa3102Planner .pa3102-stats{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important}
+body #pa3102Planner .pa3102-stats>div{background:#1a426d!important;padding:9px 5px!important;border-radius:12px!important;min-width:0!important;text-align:center!important}
+body #pa3102Planner .pa3102-stats small,body #pa3102Planner .pa3102-plan small{display:block!important;font-size:11px!important;color:#c7d9ea!important;line-height:1.25!important}
+body #pa3102Planner .pa3102-stats strong{display:block!important;font-size:clamp(12px,3.4vw,15px)!important;color:#fff!important;overflow-wrap:anywhere!important;margin-top:4px!important}
+body #pa3102Planner .pa3102-gaugefoot{display:flex!important;flex-wrap:wrap!important;gap:8px!important;justify-content:center!important;font-size:10px!important;color:#b9cee1!important;margin-top:9px!important;text-align:center!important}
+body #pa3102Planner .pa3102-panel{padding:15px!important;margin-bottom:12px!important;background:#153760!important;border:1px solid #276991!important;border-radius:18px!important;color:#fff!important;overflow:hidden!important}
+body #pa3102Planner .pa3102-panel h3{font-size:18px!important;color:#fff!important;margin:0 0 12px!important}
+body #pa3102Planner .pa3102-sectiontitle{font-size:17px!important;font-weight:900!important;margin:0 0 10px!important;color:#fff!important}
+body #pa3102Planner .pa3102-methods{display:grid!important;grid-template-columns:1fr 1fr!important;gap:9px!important;margin-bottom:13px!important}
+body #pa3102Planner .pa3102-methods button{padding:13px 10px!important;background:#0e294d!important;border:1.5px solid #41678e!important;border-radius:13px!important;text-align:left!important}
+body #pa3102Planner .pa3102-methods button.selected{border-color:#15ecf0!important;background:#225f82!important}
+body #pa3102Planner .pa3102-methods b{display:block!important;font-size:15px!important}
+body #pa3102Planner .pa3102-methods small{display:block!important;font-weight:500!important;font-size:11px!important;color:#d3e1ee!important;margin-top:3px!important}
+body #pa3102Planner .pa3102-field{display:block!important;font-size:13px!important;font-weight:800!important;color:#dcebf7!important;margin:12px 0!important}
+body #pa3102Planner .pa3102-field input{display:block!important;width:100%!important;min-height:47px!important;background:#071a36!important;border:1.5px solid #4476a4!important;border-radius:12px!important;color:#fff!important;font-size:17px!important;padding:10px 13px!important;margin-top:5px!important;-webkit-text-fill-color:#fff!important}
+body #pa3102Planner .pa3102-field input[readonly]{opacity:.75!important}
+body #pa3102Planner .pa3102-two{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}
+body #pa3102Planner .pa3102-tip{display:block!important;color:#bdcee3!important;font-size:12px!important;line-height:1.45!important;margin:6px 0!important}
+body #pa3102Planner .pa3102-plan{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
+body #pa3102Planner .pa3102-plan>div{min-width:0!important;background:#10294c!important;border:1px solid #355579!important;border-radius:12px!important;padding:12px!important}
+body #pa3102Planner .pa3102-plan b{display:block!important;font-size:16px!important;overflow-wrap:anywhere!important;margin-top:5px!important}
+body #pa3102Planner .pa3102-compare{padding:11px!important;margin:12px 0!important;background:#0a233f!important;border-radius:11px!important;color:#d0e3f3!important;font-size:12px!important;line-height:1.7!important}
+body #pa3102Planner .pa3102-compare b{color:#fff!important}
+body #pa3102Planner .pa3102-toolbar{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:10px!important}
+body #pa3102Planner .pa3102-primary{background:#03dae6!important;color:#062c40!important;border:0!important;border-radius:13px!important;padding:11px 15px!important;font-weight:900!important}
+body #pa3102Planner .pa3102-secondary{background:#204d79!important;border:1px solid #5a83ab!important;border-radius:13px!important;padding:11px 15px!important}
+body #pa3102Planner .pa3102-danger{background:#8a283f!important;border:1px solid #c77081!important;border-radius:13px!important;padding:11px 15px!important}
+body #pa3102Planner .pa3102-full{width:100%!important;margin:8px 0 4px!important}
+body #pa3102Planner .pa3102-list{margin-top:12px!important;display:grid!important;gap:8px!important}
+body #pa3102Planner .pa3102-account{display:flex!important;align-items:center!important;gap:8px!important;background:#0c2b50!important;border:1px solid #355b80!important;border-radius:12px!important;padding:6px!important}
+body #pa3102Planner .pa3102-account.active{border-color:#13dde8!important}
+body #pa3102Planner .pa3102-account button:first-child{flex:1!important;min-width:0!important;text-align:left!important;padding:7px 9px!important;background:transparent!important;border:0!important}
+body #pa3102Planner .pa3102-account button:last-child{flex:0 0 auto!important;background:#24527a!important;border:1px solid #5078a3!important;border-radius:10px!important;padding:6px 12px!important}
+body #pa3102Planner .pa3102-account strong{display:block!important;font-size:14px!important}
+body #pa3102Planner .pa3102-account span{display:block!important;font-size:11px!important;color:#bed0e5!important;overflow-wrap:anywhere!important}
+body #pa3102Planner .pa3102-row{display:flex!important;gap:9px!important;flex-wrap:wrap!important;margin-top:15px!important}
+body #pa3102Planner .pa3102-row>button{flex:1!important;min-width:110px!important}
+body #pa3102Planner .pa3102-bank{display:flex!important;flex-direction:column!important;align-items:flex-start!important;width:100%!important;margin:8px 0!important;padding:12px!important;gap:4px!important;text-align:left!important;background:#0d2d50!important;border:1px solid #3a7195!important;border-radius:13px!important}
+body #pa3102Planner .pa3102-bank span,body #pa3102Planner .pa3102-bank small{color:#c6d8e6!important;font-size:11px!important}
+body #pa3102Planner .pa3102-bank strong{color:#fff!important}
+body #pa3102Planner .pa3102-empty{padding:24px 15px!important;margin-bottom:13px!important;border:1px dashed #4b819d!important;border-radius:15px!important;text-align:center!important;line-height:1.5!important;color:#caddf0!important}
+body #pa3102Planner .pa3102-msg{position:absolute!important;left:50%!important;bottom:60px!important;transform:translateX(-50%)!important;width:min(92%,380px)!important;background:#082b48!important;color:#fff!important;border:2px solid #22e5ee!important;box-shadow:0 10px 35px #000a!important;border-radius:13px!important;padding:12px!important;text-align:center!important;z-index:3!important;font-size:13px!important}
+body #pa3102Planner .pa3102-msg[hidden]{display:none!important}
+body #pa3102Planner .pa3102-bottompad{height:8px!important}
+@media(max-width:390px){body #pa3102Planner{padding:4px!important}body #pa3102Planner .pa3102-shell{max-height:calc(100dvh - 8px)!important}body #pa3102Planner .pa3102-body{padding:9px!important}body #pa3102Planner .pa3102-panel{padding:11px!important}body #pa3102Planner .pa3102-stats small{font-size:10px!important}body #pa3102Planner .pa3102-stats strong{font-size:11px!important}body #pa3102Planner .pa3102-accountnav b{font-size:16px!important}}
+
+</style>
+<script id="pa3102-planner-js">
+(function(){
+'use strict';
+// Independent Payoff Planner screen. The old, overlapping redraw modules remain
+// inactive because the previous planner dialog is never opened by this screen.
+const ROOT='pa3102Planner', DEBTS='payaviator_debt_planner_v20425', PREFS='payaviator_debt_planner_settings_v20425', BANK='payaviator_connected_accounts_v1';
+const $=id=>document.getElementById(id), n=v=>{const x=Number(v);return Number.isFinite(x)&&x>0?x:0};
+const round=v=>Math.round((n(v)+Number.EPSILON)*100)/100, cents=v=>Math.round(round(v)*100);
+const money=v=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(v)||0);
+const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const read=(k,f)=>{try{const v=JSON.parse(localStorage.getItem(k)||'null');return v??f}catch(_){return f}};
+const rows=()=>{const v=read(DEBTS,[]);return Array.isArray(v)?v:[]};
+const saveRows=x=>{if(typeof window.ppDebtSaveRows==='function')window.ppDebtSaveRows(x);else localStorage.setItem(DEBTS,JSON.stringify(x));};
+const prefs=()=>{const p=read(PREFS,{});return {strategy:p.strategy==='avalanche'?'avalanche':'snowball',extra:round(p.extra),cardModes:p.cardModes&&typeof p.cardModes==='object'&&!Array.isArray(p.cardModes)?p.cardModes:{}}};
+const savePrefs=p=>{if(typeof window.ppDebtSavePrefs==='function')window.ppDebtSavePrefs(p);else localStorage.setItem(PREFS,JSON.stringify(p));};
+const minFor=d=>Math.min(n(d.balance),round(d.minPayment)||Math.max(1,Math.min(n(d.balance),Math.max(25,round(n(d.balance)*.03)))));
+const cards=()=>{const v=read(BANK,[]);return (Array.isArray(v)?v:[]).filter(a=>{const t=String(a.type||'').toLowerCase(),sub=String(a.subtype||'').toLowerCase();return t==='credit'||t==='loan'||/credit|mortgage|student|auto loan/.test(sub)});};
+const bankId=a=>String(a.id||a.account_id||'');
+const bankBalance=a=>a.balanceUsed??a.balance_used??a.current??a.balances?.current;
+const used=a=>round(bankBalance(a));
+const limit=a=>round(a.creditLimit??a.credit_limit??a.limit??a.balances?.limit);
+let selectedId='',editor='',view='main',pendingRemove='',syncing=false,oldOverflow='';
+const getSelected=()=>{const all=rows();return all.find(d=>String(d.id)===selectedId)||all[0]||null};
+const outstanding=items=>items.reduce((s,x)=>s+Math.max(0,cents(x.balance)),0)/100;
+// Accurate cent-rounded interest and fixed combined monthly budget. Paid-off
+// minimums roll into the next priority account (Snowball or Avalanche).
+function simulate(items,settings){
+ const all=items.map(d=>({id:String(d.id),name:String(d.name||'Balance'),balance:cents(d.balance),rate:Math.min(n(d.apr),200)/1200,min:cents(minFor(d)),interest:0,months:0}));
+ const positive=all.filter(d=>d.balance>0),initial=all.reduce((s,d)=>s+d.balance,0),minBudget=positive.reduce((s,d)=>s+d.min,0),budget=minBudget+cents(settings.extra);let paid=0,interest=0,month=0;const firstPayments={},afterFirst={};
+ if(initial===0)return {finished:true,months:0,interest:0,monthlyBudget:0,byId:{},total:0,firstPayments:{},afterFirst:{}};
+ if(budget<=0)return {finished:false,months:null,interest:null,monthlyBudget:0,byId:{},total:initial/100,firstPayments:{},afterFirst:{}};
+ const byId={};let stagnant=0;
+ for(month=1;month<=600;month++){
+  let remaining=budget,charged=0,spent=0;
+  for(const d of all){if(d.balance<=0)continue;const charge=Math.round(d.balance*d.rate);d.balance+=charge;d.interest+=charge;interest+=charge;charged+=charge}
+  for(const d of all){if(d.balance<=0)continue;const pay=Math.min(d.balance,d.min,remaining);d.balance-=pay;remaining-=pay;spent+=pay;if(month===1)firstPayments[d.id]=(firstPayments[d.id]||0)+pay}
+  const priority=all.filter(d=>d.balance>0).sort(settings.strategy==='avalanche'?((a,b)=>b.rate-a.rate||a.balance-b.balance):((a,b)=>a.balance-b.balance||b.rate-a.rate));
+  for(const d of priority){if(remaining<=0)break;const pay=Math.min(remaining,d.balance);d.balance-=pay;remaining-=pay;spent+=pay;if(month===1)firstPayments[d.id]=(firstPayments[d.id]||0)+pay}
+  if(month===1)for(const d of all)afterFirst[d.id]=Math.max(0,d.balance)/100;
+  paid+=spent;
+  for(const d of all)if(d.balance===0&&!Object.hasOwn(byId,d.id))byId[d.id]={months:month,interest:d.interest/100};
+  if(all.every(d=>d.balance<=0))return {finished:true,months:month,interest:interest/100,monthlyBudget:budget/100,byId,total:initial/100,firstPayments,afterFirst};
+  if(spent<=charged)stagnant++;else stagnant=0;
+  if(stagnant>=2)break;
+ }
+ return {finished:false,months:null,interest:null,monthlyBudget:budget/100,byId,total:initial/100,firstPayments,afterFirst};
+}
+function payoffDate(months){if(months===0)return 'Paid off';if(months==null)return 'Payment too low';const d=new Date();d.setDate(1);d.setMonth(d.getMonth()+months);return d.toLocaleDateString('en-US',{month:'short',year:'numeric'})}
+function refreshLinked(){
+ const bank=cards();if(!bank.length)return false;const mapped=new Map(bank.map(a=>[bankId(a),a]));let changed=false;const list=rows();
+ for(const d of list){if(!d.linkedAccountId)continue;const a=mapped.get(String(d.linkedAccountId));if(!a)continue;
+  const current=a.balanceUsed??a.balance_used??a.current??a.balances?.current;
+  const bal=used(a),li=limit(a),last=a.lastSync||'';
+  if(current!=null&&Number.isFinite(Number(current))&&Number(current)>=0&&bal!==round(d.balance)){d.balance=bal;changed=true}
+  if(!d.creditLimitManual&&li>0&&round(d.creditLimit??d.limit)!==li){d.creditLimit=li;d.limit=li;changed=true}
+  if(last&&last!==d.linkedLastSync){d.linkedLastSync=last;changed=true}
+ }
+ if(changed)saveRows(list);return changed;
+}
+function create(){let root=$(ROOT);if(root)return root;root=document.createElement('div');root.id=ROOT;root.setAttribute('role','dialog');root.setAttribute('aria-modal','true');root.setAttribute('aria-label','Payoff Planner');root.hidden=true;
+ root.innerHTML=`<section class="pa3102-shell"><header class="pa3102-head"><div><h2>Payoff Planner</h2><small>Credit cards & loans</small></div><button type="button" data-act="close" class="pa3102-close" aria-label="Close Payoff Planner">×</button></header><main class="pa3102-body" id="pa3102Body"></main><footer class="pa3102-footer"><span>Estimates only · No automatic bank payments</span></footer></section>`;
+ document.body.appendChild(root);root.addEventListener('click',onClick);root.addEventListener('change',onChange);root.addEventListener('input',onInput);root.addEventListener('touchstart',e=>{const dial=e.target.closest('.pa3102-gauge');if(!dial)return;root.dataset.swipeX=String(e.touches[0].clientX);root.dataset.swipeY=String(e.touches[0].clientY)},{passive:true});
+ root.addEventListener('touchend',e=>{if(!root.dataset.swipeX||!e.target.closest('.pa3102-gauge'))return;const dx=e.changedTouches[0].clientX-Number(root.dataset.swipeX),dy=e.changedTouches[0].clientY-Number(root.dataset.swipeY);delete root.dataset.swipeX;if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.4)selectRelative(dx<0?1:-1)},{passive:true});
+ return root;
+}
+function open(){const root=create();if(root.hidden){oldOverflow=document.body.style.overflow;document.body.style.overflow='hidden'}root.hidden=false;view='main';refreshLinked();draw();$('pa3102Body').scrollTop=0;try{root.querySelector('[data-act="close"]').focus({preventScroll:true})}catch(_){}
+ // Refresh is asynchronous and cannot discard saved local rows if Plaid is offline.
+ if(typeof window.PayAviatorSyncLiveBank982==='function'&&!syncing){syncing=true;Promise.resolve().then(()=>window.PayAviatorSyncLiveBank982()).then(()=>{refreshLinked();if(!root.hidden&&view==='main')draw()}).catch(()=>{}).finally(()=>{syncing=false})}
+}
+function close(){const root=$(ROOT);if(!root||root.hidden)return;root.hidden=true;document.body.style.overflow=oldOverflow}
+function setView(v){view=v;draw();$('pa3102Body').scrollTop=0}
+function setSelected(id){selectedId=String(id);draw();$('pa3102Body').scrollTop=0}
+function selectRelative(d){const list=rows();if(!list.length)return;const i=Math.max(0,list.findIndex(x=>String(x.id)===String(getSelected()?.id)));selectedId=String(list[(i+d+list.length)%list.length].id);draw()}
+// Gauge authority: same 270-degree silver-bezel dial as payaviator.app/#payoff.
+// 0% is lower-left, 100% is lower-right, needle pivots at the centre.
+function gauge(percent,display){
+ const point=(r,deg)=>{const a=deg*Math.PI/180;return [200+r*Math.cos(a),200+r*Math.sin(a)]};
+ const arc=(r,a,b)=>{const p=point(r,a),q=point(r,b);return `M ${p[0].toFixed(2)} ${p[1].toFixed(2)} A ${r} ${r} 0 ${b-a>180?1:0} 1 ${q[0].toFixed(2)} ${q[1].toFixed(2)}`};
+ const ang=f=>135+270*Math.max(0,Math.min(1,f));
+ const bands=[[0,.30,'#22c55e'],[.30,.50,'#e9ce31'],[.50,.70,'#f59e0b'],[.70,1,'#ef4444']].map(([a,b,color])=>`<path d="${arc(158,ang(a),ang(b))}" fill="none" stroke="${color}" stroke-width="27"/>`).join('');
+ let ticks='';for(let i=0;i<=24;i++){const deg=135+270*i/24,a=point(i%6===0?142:148,deg),b=point(169,deg);ticks+=`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}"/>`}
+ const tip=point(114,ang((percent??0)/100)), needle=percent==null?'':`<line x1="200" y1="200" x2="${tip[0].toFixed(1)}" y2="${tip[1].toFixed(1)}" stroke="#fff" stroke-width="10" stroke-linecap="round"/>`;
+ return `<svg class="pa3103-dial" viewBox="0 0 400 400" role="img" aria-label="Credit used ${esc(display)}" preserveAspectRatio="xMidYMid meet"><title>Credit utilization gauge</title><circle cx="200" cy="200" r="174" fill="#07182f" stroke="#71808e" stroke-width="10"/><circle cx="200" cy="200" r="158" fill="none" stroke="#d8e0e7" stroke-width="34"/>${bands}<g stroke="#0b2847" stroke-width="3">${ticks}</g>${needle}<circle cx="200" cy="200" r="25" fill="#c7d0d9" stroke="#091a30" stroke-width="8"/><circle cx="200" cy="200" r="10" fill="#07182f"/></svg>`;
+}
+function renderMain(){
+ const list=rows(),p=prefs(),d=getSelected();if(d)selectedId=String(d.id);
+ const total=outstanding(list),method=d?(p.cardModes[String(d.id)]||p.strategy):p.strategy;
+ const creditLimit=d?round(d.creditLimit??d.limit):0,usedValue=d?round(d.balance):0;
+ const pct=creditLimit>0?Math.round(usedValue/creditLimit*1000)/10:null;
+ const avail=creditLimit>0?Math.max(0,creditLimit-usedValue):null;
+ const selectText=list.length>1?`${list.findIndex(x=>String(x.id)===selectedId)+1} of ${list.length}`:'1 account';
+ const snow=simulate(list,{...p,strategy:'snowball'});
+ const estimate=snow.byId?.[String(d?.id)]||null;
+ const monthlyInterest=d?Math.round(cents(d.balance)*Math.min(n(d.apr),200)/1200)/100:0;
+ const fullPay=d?round(usedValue+monthlyInterest):0;
+ const afterSnow=d?round(snow.afterFirst?.[String(d.id)]??usedValue):0;
+ const firstSnow=d?round((snow.firstPayments?.[String(d.id)]||0)/100):0;
+ const chosenAfter=method==='avalanche'?0:afterSnow;
+ const chosenPayment=method==='avalanche'?fullPay:firstSnow;
+ const afterPct=creditLimit>0?Math.round(chosenAfter/creditLimit*1000)/10:null;
+ const remaining=usedValue<=0;
+ const projLabel=remaining?'Paid off':method==='avalanche'?payoffDate(1):estimate?payoffDate(estimate.months):'Needs payment';
+ const projInterest=remaining?0:method==='avalanche'?monthlyInterest:estimate?.interest;
+ const projMonths=remaining?0:method==='avalanche'?1:estimate?.months;
+ const activeSummary=list.length?`<div class="pa3102-gauge" aria-label="Selected account credit gauge"><div class="pa3102-accountnav"><button type="button" data-act="prev" aria-label="Previous balance" ${list.length<2?'disabled':''}>‹</button><div><b>${esc(d.name||'Account')}</b><small>${esc(d.linkedInstitution||'Manual balance')} · ${esc(selectText)}</small></div><button type="button" data-act="next" aria-label="Next balance" ${list.length<2?'disabled':''}>›</button></div>
+ <div class="pa3103-dialwrap">${gauge(pct,pct==null?'credit limit unknown':pct+' percent')}</div>
+ <div class="pa3102-gaugeread"><b>${pct==null?'—':pct+'%'}</b><span>${pct==null?'CREDIT LIMIT UNKNOWN':'CREDIT USED'}</span></div>
+ <div class="pa3102-stats"><div><small>Available credit</small><strong>${avail==null?'Not reported':money(avail)}</strong></div><div><small>Balance used</small><strong>${money(usedValue)}</strong></div><div><small>Projected payoff</small><strong>${esc(projLabel)}</strong></div></div>
+ <div class="pa3102-gaugefoot"><span>${creditLimit>0?(d.linkedAccountId?'Reported limit: ':'Credit limit: ')+money(creditLimit):'Enter a credit limit to show credit used'}</span>${d.linkedAccountId?'<span>Connected bank balance</span>':''}</div>
+ <div class="pa3103-projection"><small>${method==='avalanche'?'Avalanche full payoff':'Snowball minimum + extra payment'}${!remaining&&method==='snowball'?' · '+money(minFor(d))+'/mo minimum'+(p.extra?' + '+money(p.extra)+' extra':''):''}</small>
+ <strong>${remaining?'This balance is already paid off':projMonths==null?'Payment too low to pay off balance':money(chosenPayment)+' payment · '+esc(projLabel)+(projMonths?' · '+projMonths+' month'+(projMonths===1?'':'s'):'')}</strong>
+ <span>${!remaining&&projInterest!=null?money(projInterest)+' projected interest · ':''}${pct!=null?'Credit used: '+pct+'% → '+afterPct+'% after first payment':'Add a credit limit to see the utilization change'}</span>
+ ${d.linkedAccountId?'<em>Bank-linked balance updates with the next successful sync; planner previews do not send payments.</em>':''}</div></div>`:
+ `<div class="pa3102-empty">No balances in your planner yet. Add a credit card or loan to begin. Connected banks can also be imported.</div>`;
+ return `${activeSummary}
+ <section class="pa3102-panel"><div class="pa3102-sectiontitle">Payment choice for this card</div><div class="pa3102-methods"><button type="button" class="${method==='snowball'?'selected':''}" data-act="strategy" data-value="snowball" aria-pressed="${method==='snowball'}"><b>Snowball</b><small>Smallest balance first.</small><span>${d?money(minFor(d))+'/mo minimum':'Monthly minimum'}</span></button><button type="button" class="${method==='avalanche'?'selected':''}" data-act="strategy" data-value="avalanche" aria-pressed="${method==='avalanche'}"><b>Avalanche</b><small>Full balance payoff.</small><span>${d?money(fullPay)+' total':'Full payoff'}</span></button></div>
+ <div class="pa3102-extra" ${method==='avalanche'?'hidden':''}><label class="pa3102-field" for="pa3102Extra">Extra monthly payment <input type="number" id="pa3102Extra" min="0" step="0.01" inputmode="decimal" value="${p.extra}"></label><small class="pa3102-tip">Added above your minimum payments. It goes to the smallest balance first, then rolls over as balances are paid.</small></div>
+ <small class="pa3102-tip">Payment projections are estimates, not automatic payments. For accurate results enter the APR and minimum payment for each balance.</small></section>
+ <section class="pa3102-panel"><div class="pa3102-toolbar"><div class="pa3102-sectiontitle">Accounts (${list.length})</div><button type="button" data-act="add" class="pa3102-primary">+ Add Account</button></div><button type="button" data-act="import" class="pa3102-secondary pa3102-full">Link from connected banks</button>${list.length?`<div class="pa3102-list">${list.map(x=>`<div class="pa3102-account ${String(d.id)===String(x.id)?'active':''}"><button type="button" data-act="select" data-id="${esc(x.id)}"><strong>${esc(x.name||'Account')}</strong><span>${money(n(x.balance))} · ${round(x.apr)}% APR${x.linkedAccountId?' · Bank-linked':''}</span></button><button type="button" data-act="edit" data-id="${esc(x.id)}" aria-label="Edit ${esc(x.name)}">Edit</button></div>`).join('')}</div>`:''}</section>
+ ${list.length>1?`<details class="pa3103-all-plan"><summary>Combined balance payoff estimates</summary><div><b>Total balance: ${money(total)}</b><br>Snowball budget: ${money(snow.monthlyBudget)} per month<br>Snowball debt-free estimate: ${esc(payoffDate(snow.months))}<br>These are estimates; no payments are made automatically.</div></details>`:''}<div class="pa3102-bottompad"></div>`;
+}
+function renderEditor(){const editing=editor&&rows().find(x=>String(x.id)===editor),d=editing||{},linked=!!d.linkedAccountId;
+ return `<section class="pa3102-panel"><h3>${editing?'Edit balance':'Add balance'}</h3>${linked?'<p class="pa3102-tip">Bank-linked balances refresh from your institution. Unlink to edit the balance manually.</p>':''}<label class="pa3102-field">Account name<input id="pa3102Name" maxlength="100" placeholder="Credit card or loan" value="${esc(d.name||'')}"></label><label class="pa3102-field">Balance used ($)<input id="pa3102Balance" type="number" step="0.01" min="0" value="${round(d.balance)}" ${linked?'readonly':''}></label><label class="pa3102-field">Credit limit ($), optional<input id="pa3102Limit" type="number" step="0.01" min="0" value="${round(d.creditLimit??d.limit)}"></label><div class="pa3102-two"><label class="pa3102-field">APR (%)<input id="pa3102APR" type="number" step="0.01" min="0" max="200" value="${round(d.apr)}"></label><label class="pa3102-field">Required monthly minimum ($)<input id="pa3102Min" type="number" step="0.01" min="0" value="${round(d.minPayment)}"></label></div><p class="pa3102-tip">These inputs are for estimates. Editing them does not modify your bank account or make a payment.</p><div class="pa3102-row"><button data-act="cancel" type="button" class="pa3102-secondary">Cancel</button><button data-act="save" type="button" class="pa3102-primary">Save Balance</button></div>${editing?`<hr/><div class="pa3102-row">${linked?'<button type="button" data-act="unlink" class="pa3102-secondary">Unlink bank</button>':'<button type="button" data-act="payment" class="pa3102-secondary">Record Payment</button>'}<button data-act="remove" type="button" class="pa3102-danger">Remove Balance</button></div>`:''}</section>`
+}
+function renderImport(){const bank=cards(),list=rows();return `<section class="pa3102-panel"><h3>Link a connected bank account</h3><p class="pa3102-tip">Choose a credit card or loan already connected through Plaid. PayAviator will read its latest reported balance; no bank credentials are saved in this planner.</p>${bank.length?bank.map(a=>{const id=bankId(a),already=list.some(d=>String(d.linkedAccountId)===id),label=a.name||a.officialName||'Bank account';return `<button type="button" class="pa3102-bank" data-act="pickbank" data-id="${esc(id)}" ${!id||already||bankBalance(a)==null?'disabled':''}><b>${esc(label)}</b><span>${esc(a.institutionName||a.institution||'Connected bank')}${a.mask?' ·•••• '+esc(a.mask):''}</span><strong>${bankBalance(a)==null?'Balance not reported':money(used(a))}</strong><small>${already?'Already linked':bankBalance(a)==null?'Refresh the bank account first':limit(a)>0?'Limit '+money(limit(a)):'Credit limit unavailable'}</small></button>`}).join(''):'<div class="pa3102-empty">No connected credit cards or loans have been synced. Connect your institution in Connected Banking, then return here.</div>'}<div class="pa3102-row"><button type="button" class="pa3102-secondary" data-act="cancel">Back</button><button type="button" class="pa3102-primary" data-act="refresh">Refresh banks</button></div></section>`}
+function renderPayment(){const d=rows().find(x=>String(x.id)===editor);return `<section class="pa3102-panel"><h3>Record a payment</h3><p>${esc(d?.name||'Account')} · ${money(n(d?.balance))} remaining</p><label class="pa3102-field">Payment amount ($)<input type="number" id="pa3102Payment" min="0.01" step="0.01" inputmode="decimal" value="${round(Math.min(n(d?.balance),minFor(d||{})))}"></label><p class="pa3102-tip">This only updates your manually tracked balance. It does not send money to the lender.</p><div class="pa3102-row"><button type="button" class="pa3102-secondary" data-act="editback">Cancel</button><button type="button" class="pa3102-primary" data-act="savepayment">Record</button></div></section>`}
+function renderConfirm(){const d=rows().find(x=>String(x.id)===pendingRemove);return `<section class="pa3102-panel"><h3>Remove balance?</h3><p>Remove <b>${esc(d?.name||'this balance')}</b> from the Payoff Planner? Your banking connections are not removed.</p><div class="pa3102-row"><button type="button" data-act="editback" class="pa3102-secondary">Keep</button><button type="button" data-act="confirmremove" class="pa3102-danger">Remove</button></div></section>`}
+function draw(){const root=create();if(root.hidden)return;const body=$('pa3102Body');if(!body)return;const y=body.scrollTop;try{body.innerHTML=view==='edit'?renderEditor():view==='import'?renderImport():view==='payment'?renderPayment():view==='remove'?renderConfirm():renderMain();body.scrollTop=y}catch(err){console.error('Payoff Planner render error:',err);body.innerHTML='<section class="pa3102-panel"><h3>Planner could not display</h3><p class="pa3102-tip">Your saved accounts are still intact. Please try opening the planner again.</p><button type="button" class="pa3102-secondary" data-act="retry">Retry</button></section>';}}
+function notify(msg){const root=$(ROOT);if(!root)return;let note=root.querySelector('.pa3102-msg');if(!note){note=document.createElement('div');note.className='pa3102-msg';root.querySelector('.pa3102-shell').appendChild(note)}note.textContent=msg;note.hidden=false;clearTimeout(root.__msg);root.__msg=setTimeout(()=>{note.hidden=true},3300)}
+function saveEditor(){const name=$('pa3102Name')?.value.trim(),bal=Number($('pa3102Balance')?.value),apr=Number($('pa3102APR')?.value),li=Number($('pa3102Limit')?.value),minimum=Number($('pa3102Min')?.value);if(!name)return notify('Please enter an account name.');if(!Number.isFinite(bal)||bal<0||!Number.isFinite(apr)||apr<0||apr>200||!Number.isFinite(li)||li<0||!Number.isFinite(minimum)||minimum<0)return notify('Enter valid amounts and an APR between 0 and 200%.');let list=rows(),old=editor&&list.find(x=>String(x.id)===editor),item=old||{id:'debt-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)};
+ const manuallyChangedLimit=li>0&&(!old||round(old.creditLimit??old.limit)!==round(li));
+ Object.assign(item,{name,apr:round(apr),minPayment:round(minimum),creditLimit:round(li),limit:round(li),creditLimitManual:!!old?.creditLimitManual||manuallyChangedLimit});if(!item.linkedAccountId)item.balance=round(bal);if(!old)list.push(item);saveRows(list);selectedId=String(item.id);setView('main')}
+function onClick(e){const b=e.target.closest('[data-act]');if(!b||!$(ROOT).contains(b))return;const a=b.dataset.act,id=b.dataset.id;
+ if(a==='close')return close();if(a==='retry')return draw();if(a==='cancel')return setView('main');if(a==='prev'||a==='next')return selectRelative(a==='next'?1:-1);
+ if(a==='select')return setSelected(id);if(a==='strategy'){const p=prefs(),d=getSelected();if(d)p.cardModes[String(d.id)]=b.dataset.value;else p.strategy=b.dataset.value;savePrefs(p);return draw()}
+ if(a==='add'){editor='';return setView('edit')};if(a==='edit'){editor=id;return setView('edit')};if(a==='save')return saveEditor();
+ if(a==='import')return setView('import');if(a==='pickbank'){const bank=cards().find(x=>bankId(x)===id);if(!bank)return;if(bankBalance(bank)==null||!Number.isFinite(Number(bankBalance(bank))))return notify('Bank has not reported a balance yet. Refresh the account first.');const list=rows();if(list.some(d=>String(d.linkedAccountId)===id))return notify('This bank account is already linked.');const card={id:'linked-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),name:bank.name||bank.officialName||'Connected card',balance:used(bank),creditLimit:limit(bank),limit:limit(bank),apr:0,minPayment:0,linkedAccountId:id,linkedInstitution:bank.institutionName||bank.institution||'',linkedMask:bank.mask||'',linkedLastSync:bank.lastSync||''};list.push(card);saveRows(list);selectedId=card.id;editor=card.id;setView('edit');return notify('Linked. Enter APR and minimum payment to improve the estimate.')}
+ if(a==='refresh'){if(syncing)return notify('Bank refresh is already running.');if(typeof window.PayAviatorSyncLiveBank982!=='function')return notify('Connected Banking is unavailable right now.');syncing=true;Promise.resolve().then(()=>window.PayAviatorSyncLiveBank982()).then(()=>{refreshLinked();draw();notify('Bank account list refreshed.')}).catch(()=>notify('Bank sync failed. Previously saved accounts are safe.')).finally(()=>{syncing=false});return}
+ if(a==='payment')return setView('payment');if(a==='editback')return setView('edit');if(a==='remove'){pendingRemove=editor;return setView('remove')};
+ if(a==='confirmremove'){const list=rows().filter(d=>String(d.id)!==String(pendingRemove));saveRows(list);selectedId=String(list[0]?.id||'');pendingRemove='';return setView('main')}
+ if(a==='unlink'){const list=rows(),d=list.find(x=>String(x.id)===editor);if(d){delete d.linkedAccountId;delete d.linkedInstitution;delete d.linkedMask;delete d.linkedLastSync;saveRows(list)}return setView('edit')}
+ if(a==='savepayment'){const amount=Number($('pa3102Payment')?.value),list=rows(),d=list.find(x=>String(x.id)===editor);if(!d||d.linkedAccountId)return notify('Only manually tracked balances can be adjusted here.');if(!Number.isFinite(amount)||amount<=0)return notify('Enter a payment amount above $0.');d.balance=Math.max(0,Math.round((n(d.balance)-amount)*100)/100);saveRows(list);return setView('main')}
+}
+function onChange(e){if(e.target.id==='pa3102Extra'){const p=prefs();p.extra=round(e.target.value);savePrefs(p);draw()}}
+function onInput(e){if(e.target.id==='pa3102Extra'){const p=prefs();if(e.target.value==='')return;p.extra=round(e.target.value);savePrefs(p);
+ // Update just the projection, not the focused input. Full redraw on change.
+ }}
+const previousBack=window.payAviatorHandleAndroidBack;window.payAviatorHandleAndroidBack=function(){if($(ROOT)&&!$(ROOT).hidden){close();return true}return typeof previousBack==='function'?previousBack():false};
+window.openDebtPayoffPlanner=open;
+window.PayAviatorPayoffPlanner3102={open,close,simulate,refreshLinked,rows,prefs,gauge};
+// Let actual synced balances update a currently visible planner without a timer
+// or a MutationObserver that would re-create its controls while being edited.
+window.addEventListener('payaviator:accounts-updated',()=>{refreshLinked();if($(ROOT)&&!$(ROOT).hidden&&view==='main')draw()});
 })();
 </script>

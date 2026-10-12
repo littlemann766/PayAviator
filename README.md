@@ -75,3 +75,6 @@ Always sign with the current PayAviator release key, which was introduced in 3.9
 - [docs/CONNECTED_ACCOUNTS_PLAN.md](docs/CONNECTED_ACCOUNTS_PLAN.md)
 - [docs/FIREBASE_SIGNIN.md](docs/FIREBASE_SIGNIN.md): sign-in for bank features and the backend token contract
 - [docs/PRIVACY_POLICY_DRAFT.md](docs/PRIVACY_POLICY_DRAFT.md), [docs/PLAY_STORE_LISTING_DRAFT.md](docs/PLAY_STORE_LISTING_DRAFT.md)
+
+### Banking persistence (3.10.0)
+Deploy backend 3.1.8 before connecting again and set a working PostgreSQL `DATABASE_URL` reference in Railway. No Plaid or database secrets belong in this ZIP.

@@ -78,6 +78,11 @@ android {
         versionName payAviatorVersion
     }
 
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
     // CRITICAL: Android never packages app/src/main/assets anymore.
     // It packages only assets freshly generated from the authoritative root files.
     sourceSets {
@@ -114,6 +119,9 @@ dependencies {
     // and generates R.string.default_web_client_id for Credential Manager's setServerClientId.
     implementation platform('com.google.firebase:firebase-bom:35.0.0')
     implementation 'com.google.firebase:firebase-auth'
+    // Native Plaid Link fallback when the backend does not supply Hosted Link.
+    // Plaid SDK v6 runs as a secure separate Activity; never embed Plaid in WebView.
+    implementation 'com.plaid.link:sdk-core:6.2.2'
     // Native Google sign-in via Credential Manager (Google blocks OAuth inside WebViews).
     implementation 'androidx.credentials:credentials:1.6.0'
     implementation 'androidx.credentials:credentials-play-services-auth:1.6.0'

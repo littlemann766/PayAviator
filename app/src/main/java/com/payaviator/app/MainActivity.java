@@ -46,6 +46,11 @@ import android.widget.Toast;
 import com.google.firebase.auth.FirebaseAuth;
 import com.payaviator.app.auth.AuthedRequest;
 import com.payaviator.app.auth.FirebaseSignIn;
+import com.plaid.link.Plaid;
+import com.plaid.link.configuration.LinkTokenConfiguration;
+import com.plaid.link.result.LinkResult;
+import com.plaid.link.result.LinkSuccess;
+import com.plaid.link.result.LinkExit;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -90,6 +95,7 @@ public class MainActivity extends Activity {
     private boolean authenticationInProgress = false;
     private boolean externalActivityInProgress = false;
     private boolean hostedLinkInProgress = false;
+    private boolean nativePlaidInProgress = false;
     private boolean pendingHostedReturn = false;
     private long stoppedAtElapsed = 0L;
     private ValueCallback<Uri[]> filePathCallback;
@@ -516,6 +522,38 @@ public class MainActivity extends Activity {
                 "window.PayAviatorPlaidNativeResult&&window.PayAviatorPlaidNativeResult(" + safe + ");", null));
     }
 
+    /** Official Plaid Android SDK result: the public token is exchanged only on the backend. */
+    private void handleNativePlaidResult(LinkResult result) {
+        try {
+            JSONObject out = new JSONObject();
+            if (result instanceof LinkSuccess) {
+                LinkSuccess success = (LinkSuccess) result;
+                out.put("status", "connected");
+                out.put("public_token", success.getPublicToken() == null ? "" : success.getPublicToken());
+                if (success.getMetadata() != null) {
+                    if (success.getMetadata().getInstitution() != null) {
+                        out.put("institution_name", success.getMetadata().getInstitution().getName());
+                        out.put("institution_id", success.getMetadata().getInstitution().getId());
+                    }
+                    out.put("link_session_id", success.getMetadata().getLinkSessionId());
+                }
+            } else if (result instanceof LinkExit) {
+                LinkExit exit = (LinkExit) result;
+                out.put("status", "exit");
+                if (exit.getError() != null) {
+                    out.put("error_display_message", exit.getError().getDisplayMessage());
+                    out.put("error_message", exit.getError().getErrorMessage());
+                    out.put("error_code", String.valueOf(exit.getError().getErrorCode()));
+                }
+            } else {
+                out.put("status", "exit");
+            }
+            deliverPlaidResultToWeb(out.toString());
+        } catch (Exception e) {
+            deliverPlaidResultToWeb("{\"status\":\"error\",\"message\":\"Plaid finished but its result could not be processed.\"}");
+        }
+    }
+
     private void notifyHostedLinkReturned() {
         if (webView == null) return;
         runOnUiThread(() -> webView.evaluateJavascript(
@@ -534,6 +572,9 @@ public class MainActivity extends Activity {
         setIntent(intent);
         Uri data = intent == null ? null : intent.getData();
         if (isPlaidReturnUri(data)) {
+            // The native Plaid SDK owns its OAuth result. Do not mistake its
+            // app-switch redirect for a Hosted Link completion callback.
+            if (nativePlaidInProgress) return;
             externalActivityInProgress = false;
             hostedLinkInProgress = false;
             pendingHostedReturn = false;
@@ -825,12 +866,17 @@ public class MainActivity extends Activity {
         public void openPlaidLink(final String linkToken) {
             runOnUiThread(() -> {
                 try {
-                    Intent intent = new Intent(MainActivity.this, PlaidLinkActivity.class);
-                    intent.putExtra("link_token", linkToken == null ? "" : linkToken);
+                    if (linkToken == null || linkToken.trim().isEmpty())
+                        throw new IllegalArgumentException("Missing Plaid link token");
+                    LinkTokenConfiguration configuration = new LinkTokenConfiguration.Builder()
+                            .token(linkToken).build();
+                    nativePlaidInProgress = true;
                     externalActivityInProgress = true;
-                    startActivityForResult(intent, PLAID_LINK_REQUEST);
+                    Plaid.createPlaidLinkSession(MainActivity.this, configuration).open(MainActivity.this);
                 } catch (Exception e) {
-                    deliverPlaidResultToWeb("{\"status\":\"error\",\"message\":\"Unable to open secure bank connection.\"}");
+                    nativePlaidInProgress = false;
+                    externalActivityInProgress = false;
+                    deliverPlaidResultToWeb("{\"status\":\"error\",\"message\":\"Plaid could not open. Check that the backend creates Android Link tokens and that com.payaviator.app is allowed in Plaid.\"}");
                 }
             });
         }
@@ -1523,6 +1569,18 @@ public class MainActivity extends Activity {
         }
 
         externalActivityInProgress = false;
+
+        // Plaid SDK v6 uses its own Activity request code. parseResult returns
+        // null for unrelated activities (document chooser, authentication etc.).
+        if (nativePlaidInProgress) {
+            LinkResult plaidResult = Plaid.parseResult(requestCode, resultCode, data);
+            if (plaidResult != null) {
+                nativePlaidInProgress = false;
+                externalActivityInProgress = false;
+                handleNativePlaidResult(plaidResult);
+                return;
+            }
+        }
 
         if (requestCode == PLAID_LINK_REQUEST) {
             if (resultCode == RESULT_OK && data != null) {

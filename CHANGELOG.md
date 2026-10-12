@@ -1,3 +1,49 @@
+## 3.10.5 — Restore dark Payoff Planner background
+- Isolated the planner scroll container from the app’s default light background, keeping the full popup navy.
+- Preserve the website-accurate 270-degree aviation gauge, navigation, account data and all Payoff Planner logic from 3.10.4.
+- Match the Android bundled HTML and the web HTML, with a refreshed service-worker cache.
+
+## 3.10.4 — Fix Payoff Planner blank screen for paid-off/zero-balance cards
+- The no-outstanding-debt calculation now always returns the fields expected by the 270° credit gauge.
+- Handles fully paid cards, mixed balances, missing credit limits, and an empty account list without rendering a blank popup.
+- Adds a visible non-destructive error fallback if an unexpected rendering issue occurs.
+- Preserves the PayAviator.app aviation gauge, saved balances, bank connections, and Android install-over-existing settings.
+
+## 3.10.3 — Website-accurate Payoff Planner gauge
+- Restored the payaviator.app 270° aviation gauge with silver rim, center needle, utilization arc, and full mobile view.
+- Restored Snowball minimum-plus-extra and Avalanche full-balance payoff previews for each selected account.
+- Show after-payment utilization and interest next to the selected account, without displaying a duplicate large combined-planner dashboard.
+- Keep bank-linked balances, local debt records, and install-over-existing Android signing configuration unchanged.
+
+## 3.10.2 — Payoff Planner consolidated repair
+
+- Replace conflicting legacy Payoff Planner rendering layers with an isolated, responsive planner dialog.
+- Fix cropped gauge, Snowball/Avalanche selection, zero-balance payoff status, and missing credit-limit representation.
+- Enable manual add/edit/payment/remove, importing bank-linked credit accounts, account selection, and persistent preferences.
+- Preserve the existing debt planner localStorage schema, bank data, signing configuration, and Android package identity.
+- Payoff estimates use cent-rounded monthly interest and a combined fixed payment budget; payment tracking never executes bank transactions.
+
+## 3.10.1 — Payoff Planner accuracy and controls
+
+- Preserve the selected Snowball/Avalanche option when reopening the planner.
+- Stop overwriting editable monthly Avalanche payments during screen repaint.
+- Protect genuine entered minimum payments from being replaced by $25 after payoff activity.
+- Show credit utilization only when a valid credit limit exists; unknown limit no longer looks like 100% used.
+- Use cent-rounded per-month interest/payments for payoff projections, including the selected card in the Snowball cascade and any entered extra payment.
+- Keep the existing 3.10.0 bank persistence, signing, application ID, and stored data structure intact.
+- Existing connected-bank balances remain authoritative; projections do not initiate bank payments.
+
+## 3.9.9 — Android bank linking fixes
+
+- Use the official Plaid Android SDK v6.2.2 when the authenticated backend provides a `link_token` but not a `hosted_link_url`. Plaid Hosted Link remains the preferred first choice when available. No bank login credentials are exposed to PayAviator.
+- Remove the independent health-check gate that could prevent linking even when the authenticated Plaid endpoint works.
+- Send the Android package hint to the backend rather than a self-generated, legacy Plaid user ID. The backend must identify the caller using the Firebase ID token.
+- Handle native Plaid success, exit and update-mode reconnections, then request fresh account and transaction data.
+- Extend the native-bank-call timeout to match the Firebase-and-network time budget; prefer Firebase UID for account and transaction sync paths.
+- Keep `com.payaviator.app` and the established signing configuration for install-over-existing updates.
+
+**Backend requirement:** The backend must return either `hosted_link_url` or an Android-compatible `link_token`, verify Firebase auth, exchange new public tokens, and support the existing account/update endpoints. A frontend update cannot repair a stopped or misconfigured backend or unapproved Plaid production access.
+
 # Changelog
 
 Newest first. Every release keeps the Android application ID `com.payaviator.app` and the same signing key, so it installs over the previous version without losing data. The one exception is 3.9.6, which introduced the new PayAviator signing key (see [docs/UPDATE_WITHOUT_UNINSTALL.md](docs/UPDATE_WITHOUT_UNINSTALL.md)).
@@ -125,3 +171,8 @@ The display version was reset to the 3.x line after 20.4.12. That's why versionC
   - Details: [docs/SECURITY-HARDENING-9.8.9.md](docs/SECURITY-HARDENING-9.8.9.md).
 - **9.2.10:** fixed the GitHub Actions build (`VERSION.txt` format, versionCode 90210).
 - **8.0.0:** first official PayAviator release with its own signing identity and the airplane-and-money launcher icon.
+
+## 3.10.0 — Persistent account sync protection
+- Do not erase visible linked bank balances if linked Items exist but a balance refresh fails.
+- Requires PayAviator banking backend 3.1.8 and Railway PostgreSQL for durable authenticated Item storage.
+- Android version code floor 400110; original app ID and signing configuration unchanged.

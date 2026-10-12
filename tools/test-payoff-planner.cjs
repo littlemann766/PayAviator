@@ -1,0 +1,23 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const js=fs.readFileSync(require('node:path').join(__dirname,'payoff-math-3.10.1.js'),'utf8');
+const ctx={window:{}};vm.runInNewContext(js,ctx);
+const M=ctx.window.PayAviatorPayoffMath3101;
+assert.ok(M,'Math module was not exported');
+let m=M.monthly(1000,12,1010);
+assert.equal(m.months,1);assert.equal(m.finished,true);assert.equal(m.interest,10);assert.equal(m.after1,0);assert.equal(m.pay1,1010);
+m=M.monthly(1000,12,30);assert.equal(m.finished,true);assert(m.months>30&&m.months<42);assert(m.interest>100);
+m=M.monthly(1000,12,10);assert.equal(m.finished,false);assert.equal(m.months,1); // interest-only payment
+m=M.monthly(0,12,100);assert.equal(m.months,0);assert.equal(m.interest,0);assert.equal(m.finished,true);
+assert.equal(M.fullPayment({balance:1000,apr:12}),1010);
+const a=[{id:'small',name:'Small balance',balance:500,apr:12,minPayment:25},{id:'large',name:'Large balance',balance:2000,apr:24,minPayment:60}];
+const s0=M.planFor(a,'small',0);
+const sx=M.planFor(a,'small',100);
+assert.equal(s0.finished,true);assert.equal(sx.finished,true);assert(sx.months<s0.months);assert(sx.interest<s0.interest);assert(sx.pay1>s0.pay1);assert.equal(sx.min,25);
+const large=M.planFor(a,'large',100);assert(large.finished);assert(large.months>=sx.months);
+assert.equal(a[0].balance,500,'Projections must not mutate saved debt rows');
+let z=M.planFor([{id:'x',name:'No interest',balance:100,apr:0,minPayment:200}],'x');assert.equal(z.months,1);assert.equal(z.pay1,100);
+let stuck=M.planFor([{id:'stuck',name:'High APR',balance:1000,apr:48,minPayment:10}],'stuck');assert.equal(stuck.finished,false);
+let small=M.monthly(0.05,0,0.03);assert.equal(small.months,2);assert.equal(small.interest,0);
+console.log('PASS: 15 Payoff Planner projection, interest, payment, saved-data, and strategy checks');

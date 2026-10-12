@@ -1,10 +1,10 @@
 # Update PayAviator without uninstalling
 
-## Release: 3.9.6
+## Release: 3.9.9
 
 What changed in each release: [CHANGELOG.md](../CHANGELOG.md).
 
-**One-time exception for 3.9.6:** 3.9.6 is signed with the new PayAviator release key, so Android can't install it over an earlier build. Do this once:
+**Historical one-time exception for 3.9.6:** version 3.9.6 introduced a new PayAviator release key. An earlier build cannot be updated across that signing-key change. If you are still on an older version, the original migration steps were:
 
 1. In the old app, export a backup (Settings → Save & Backup) and save the file somewhere safe.
 2. Uninstall the old app.
@@ -20,15 +20,15 @@ From 3.9.6 on, every update installs over the existing app as described below.
 1. Get the new source onto `main` of your existing PayAviator repository by pushing or merging. If you upload by hand, upload the unzipped **contents** (including the `.github` folder) to the repository **root**: never a ZIP file, and the workflows must end up in `.github/workflows/`. Keep the original repository and GitHub secrets.
 2. In your repository, check **Settings → Secrets and variables → Actions**. The pre-existing secrets **PAYAVIATOR_KEYSTORE_HEX** and **PAYAVIATOR_KEYSTORE_PASSWORD** must contain the current PayAviator release key (introduced in 3.9.6) and its password. Do **not** generate or swap in a different keystore.
 3. Pushing to `main` starts **Actions → Build PayAviator Release** automatically (you can also choose **Run workflow**). It builds the signed **Release** APK and AAB. Don't use a Debug APK or an unrelated old workflow.
-4. Open the successful run → Artifacts → **PayAviator-3.9.6**. Download and extract it to get `PayAviator-3.9.6.apk`.
-   (Alternative: **PayAviator Signed Update APK → Run workflow** gives artifact **PayAviator-3.9.6-SIGNED-UPDATE**. Pick one workflow and keep using it: each has its own run counter, so switching can produce a lower versionCode.)
+4. Open the successful run → Artifacts → **PayAviator-3.9.9**. Download and extract it to get `PayAviator-3.9.9.apk`.
+   (Alternative: **PayAviator Signed Update APK → Run workflow** gives artifact **PayAviator-3.9.9-SIGNED-UPDATE**. Pick one workflow and keep using it: each has its own run counter, so switching can produce a lower versionCode.)
 5. On your phone, open the APK. Android should offer to update PayAviator **without uninstalling**. Your existing bills, hours, calendar, banking connections, and app data should remain in place.
 
 ### How the update is made compatible
 
 - Same installed Android package ID: `com.payaviator.app`.
 - Same signing certificate: the workflow reuses the current PayAviator release key from the repository secrets (any alias; it is renamed to `payaviator` in a temporary copy).
-- New `versionName` 3.9.6 and Android `versionCode` 400000 plus the workflow run number, which advances with every new run of that workflow. `ANDROID_VERSION_CODE.txt` defines the permanent update-code floor.
+- New `versionName` 3.9.9 and Android `versionCode` 400000 plus the workflow run number, which advances with every new run of that workflow. `ANDROID_VERSION_CODE.txt` defines the permanent update-code floor.
 - Root `index.html` is the authoritative installed HTML, and it is freshly packaged into the APK.
 
 ### If Android says "App not installed", "Conflicting package", or demands uninstall

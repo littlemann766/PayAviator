@@ -1,0 +1,69 @@
+/* PayAviator 3.10.2 - isolated, stable Payoff Planner. No selectors target other screens. */
+#pa3102Planner[hidden]{display:none!important}
+body #pa3102Planner{position:fixed!important;inset:0!important;z-index:2147483647!important;display:flex!important;align-items:center!important;justify-content:center!important;background:rgba(2,10,28,.86)!important;padding:10px!important;box-sizing:border-box!important;color:#fff!important;font-family:system-ui,-apple-system,Roboto,sans-serif!important;overflow:hidden!important}
+body #pa3102Planner *{box-sizing:border-box!important}
+body #pa3102Planner .pa3102-shell{width:min(100%,620px)!important;max-height:calc(100dvh - 20px)!important;height:min(100%,940px)!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;background:#0d2448!important;border:2px solid #32668f!important;border-radius:26px!important;box-shadow:0 22px 80px rgba(0,0,0,.5)!important;min-height:0!important}
+body #pa3102Planner .pa3102-head{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:14px!important;flex:none!important;padding:18px 18px 14px!important;background:#10294f!important;border-bottom:1px solid #265072!important}
+body #pa3102Planner .pa3102-head h2{font-size:clamp(21px,5vw,27px)!important;margin:0!important;color:#fff!important;line-height:1.2!important}
+body #pa3102Planner .pa3102-head small{font-size:12px!important;color:#bed4e9!important}
+body #pa3102Planner button{cursor:pointer!important;min-height:42px!important;color:#fff!important;text-transform:none!important;box-shadow:none!important;font-weight:750!important;white-space:normal!important}
+body #pa3102Planner button:disabled{cursor:default!important;opacity:.48!important}
+body #pa3102Planner button:focus-visible,body #pa3102Planner input:focus-visible{outline:3px solid #20edf2!important;outline-offset:2px!important}
+body #pa3102Planner .pa3102-close{flex:0 0 48px!important;width:48px!important;height:48px!important;font-size:32px!important;line-height:1!important;padding:0!important;border-radius:16px!important;background:#245785!important;border:1px solid #5186b0!important}
+body #pa3102Planner .pa3102-body{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:14px!important;overscroll-behavior:contain!important;scrollbar-width:thin!important}
+body #pa3102Planner .pa3102-footer{flex:none!important;font-size:10px!important;color:#a9c4da!important;text-align:center!important;padding:9px 12px calc(9px + env(safe-area-inset-bottom))!important;border-top:1px solid #274d72!important;background:#10294f!important}
+body #pa3102Planner .pa3102-gauge{margin:0 0 12px!important;border-radius:20px!important;border:3px solid #77899b!important;background:linear-gradient(150deg,#101d31,#0b2748)!important;padding:12px 12px 14px!important;overflow:hidden!important;box-shadow:inset 0 0 0 2px #203b53!important}
+body #pa3102Planner .pa3102-accountnav{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:5px!important;text-align:center!important}
+body #pa3102Planner .pa3102-accountnav>div{min-width:0!important;flex:1!important}
+body #pa3102Planner .pa3102-accountnav b{display:block!important;font-size:18px!important;color:#fff!important;overflow-wrap:anywhere!important}
+body #pa3102Planner .pa3102-accountnav small{display:block!important;color:#bbd0e3!important;font-size:11px!important}
+body #pa3102Planner .pa3102-accountnav button{min-height:34px!important;flex:0 0 38px!important;padding:2px!important;font-size:26px!important;border:1px solid #497c9c!important;border-radius:11px!important;background:#173d65!important}
+body #pa3102Planner .pa3102-gauge svg{display:block!important;width:min(100%,360px)!important;height:auto!important;max-height:235px!important;margin:4px auto 0!important;overflow:visible!important}
+body #pa3102Planner .pa3102-gaugeread{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;margin:-19px auto 10px!important;padding:7px 12px!important;position:relative!important;z-index:1!important;background:#071931!important;width:max-content!important;min-width:144px!important;max-width:95%!important;border:2px solid #29dfe5!important;border-radius:15px!important;text-align:center!important}
+body #pa3102Planner .pa3102-gaugeread b{font-size:29px!important;color:#55f47a!important;line-height:1.1!important}
+body #pa3102Planner .pa3102-gaugeread span{font-size:10px!important;letter-spacing:.09em!important;color:#e5f6fc!important;font-weight:850!important}
+body #pa3102Planner .pa3102-stats{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important}
+body #pa3102Planner .pa3102-stats>div{background:#1a426d!important;padding:9px 5px!important;border-radius:12px!important;min-width:0!important;text-align:center!important}
+body #pa3102Planner .pa3102-stats small,body #pa3102Planner .pa3102-plan small{display:block!important;font-size:11px!important;color:#c7d9ea!important;line-height:1.25!important}
+body #pa3102Planner .pa3102-stats strong{display:block!important;font-size:clamp(12px,3.4vw,15px)!important;color:#fff!important;overflow-wrap:anywhere!important;margin-top:4px!important}
+body #pa3102Planner .pa3102-gaugefoot{display:flex!important;flex-wrap:wrap!important;gap:8px!important;justify-content:center!important;font-size:10px!important;color:#b9cee1!important;margin-top:9px!important;text-align:center!important}
+body #pa3102Planner .pa3102-panel{padding:15px!important;margin-bottom:12px!important;background:#153760!important;border:1px solid #276991!important;border-radius:18px!important;color:#fff!important;overflow:hidden!important}
+body #pa3102Planner .pa3102-panel h3{font-size:18px!important;color:#fff!important;margin:0 0 12px!important}
+body #pa3102Planner .pa3102-sectiontitle{font-size:17px!important;font-weight:900!important;margin:0 0 10px!important;color:#fff!important}
+body #pa3102Planner .pa3102-methods{display:grid!important;grid-template-columns:1fr 1fr!important;gap:9px!important;margin-bottom:13px!important}
+body #pa3102Planner .pa3102-methods button{padding:13px 10px!important;background:#0e294d!important;border:1.5px solid #41678e!important;border-radius:13px!important;text-align:left!important}
+body #pa3102Planner .pa3102-methods button.selected{border-color:#15ecf0!important;background:#225f82!important}
+body #pa3102Planner .pa3102-methods b{display:block!important;font-size:15px!important}
+body #pa3102Planner .pa3102-methods small{display:block!important;font-weight:500!important;font-size:11px!important;color:#d3e1ee!important;margin-top:3px!important}
+body #pa3102Planner .pa3102-field{display:block!important;font-size:13px!important;font-weight:800!important;color:#dcebf7!important;margin:12px 0!important}
+body #pa3102Planner .pa3102-field input{display:block!important;width:100%!important;min-height:47px!important;background:#071a36!important;border:1.5px solid #4476a4!important;border-radius:12px!important;color:#fff!important;font-size:17px!important;padding:10px 13px!important;margin-top:5px!important;-webkit-text-fill-color:#fff!important}
+body #pa3102Planner .pa3102-field input[readonly]{opacity:.75!important}
+body #pa3102Planner .pa3102-two{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}
+body #pa3102Planner .pa3102-tip{display:block!important;color:#bdcee3!important;font-size:12px!important;line-height:1.45!important;margin:6px 0!important}
+body #pa3102Planner .pa3102-plan{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
+body #pa3102Planner .pa3102-plan>div{min-width:0!important;background:#10294c!important;border:1px solid #355579!important;border-radius:12px!important;padding:12px!important}
+body #pa3102Planner .pa3102-plan b{display:block!important;font-size:16px!important;overflow-wrap:anywhere!important;margin-top:5px!important}
+body #pa3102Planner .pa3102-compare{padding:11px!important;margin:12px 0!important;background:#0a233f!important;border-radius:11px!important;color:#d0e3f3!important;font-size:12px!important;line-height:1.7!important}
+body #pa3102Planner .pa3102-compare b{color:#fff!important}
+body #pa3102Planner .pa3102-toolbar{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:10px!important}
+body #pa3102Planner .pa3102-primary{background:#03dae6!important;color:#062c40!important;border:0!important;border-radius:13px!important;padding:11px 15px!important;font-weight:900!important}
+body #pa3102Planner .pa3102-secondary{background:#204d79!important;border:1px solid #5a83ab!important;border-radius:13px!important;padding:11px 15px!important}
+body #pa3102Planner .pa3102-danger{background:#8a283f!important;border:1px solid #c77081!important;border-radius:13px!important;padding:11px 15px!important}
+body #pa3102Planner .pa3102-full{width:100%!important;margin:8px 0 4px!important}
+body #pa3102Planner .pa3102-list{margin-top:12px!important;display:grid!important;gap:8px!important}
+body #pa3102Planner .pa3102-account{display:flex!important;align-items:center!important;gap:8px!important;background:#0c2b50!important;border:1px solid #355b80!important;border-radius:12px!important;padding:6px!important}
+body #pa3102Planner .pa3102-account.active{border-color:#13dde8!important}
+body #pa3102Planner .pa3102-account button:first-child{flex:1!important;min-width:0!important;text-align:left!important;padding:7px 9px!important;background:transparent!important;border:0!important}
+body #pa3102Planner .pa3102-account button:last-child{flex:0 0 auto!important;background:#24527a!important;border:1px solid #5078a3!important;border-radius:10px!important;padding:6px 12px!important}
+body #pa3102Planner .pa3102-account strong{display:block!important;font-size:14px!important}
+body #pa3102Planner .pa3102-account span{display:block!important;font-size:11px!important;color:#bed0e5!important;overflow-wrap:anywhere!important}
+body #pa3102Planner .pa3102-row{display:flex!important;gap:9px!important;flex-wrap:wrap!important;margin-top:15px!important}
+body #pa3102Planner .pa3102-row>button{flex:1!important;min-width:110px!important}
+body #pa3102Planner .pa3102-bank{display:flex!important;flex-direction:column!important;align-items:flex-start!important;width:100%!important;margin:8px 0!important;padding:12px!important;gap:4px!important;text-align:left!important;background:#0d2d50!important;border:1px solid #3a7195!important;border-radius:13px!important}
+body #pa3102Planner .pa3102-bank span,body #pa3102Planner .pa3102-bank small{color:#c6d8e6!important;font-size:11px!important}
+body #pa3102Planner .pa3102-bank strong{color:#fff!important}
+body #pa3102Planner .pa3102-empty{padding:24px 15px!important;margin-bottom:13px!important;border:1px dashed #4b819d!important;border-radius:15px!important;text-align:center!important;line-height:1.5!important;color:#caddf0!important}
+body #pa3102Planner .pa3102-msg{position:absolute!important;left:50%!important;bottom:60px!important;transform:translateX(-50%)!important;width:min(92%,380px)!important;background:#082b48!important;color:#fff!important;border:2px solid #22e5ee!important;box-shadow:0 10px 35px #000a!important;border-radius:13px!important;padding:12px!important;text-align:center!important;z-index:3!important;font-size:13px!important}
+body #pa3102Planner .pa3102-msg[hidden]{display:none!important}
+body #pa3102Planner .pa3102-bottompad{height:8px!important}
+@media(max-width:390px){body #pa3102Planner{padding:4px!important}body #pa3102Planner .pa3102-shell{max-height:calc(100dvh - 8px)!important}body #pa3102Planner .pa3102-body{padding:9px!important}body #pa3102Planner .pa3102-panel{padding:11px!important}body #pa3102Planner .pa3102-stats small{font-size:10px!important}body #pa3102Planner .pa3102-stats strong{font-size:11px!important}body #pa3102Planner .pa3102-accountnav b{font-size:16px!important}}
