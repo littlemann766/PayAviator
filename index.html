@@ -24660,6 +24660,68 @@ if(window.visualViewport)visualViewport.addEventListener('resize',keep);
 window.PayAviatorPlaidConsent={ask,isOpen,storageKey:CONSENT_KEY,policyVersion:POLICY_VERSION};
 })();
 </script>
+
+<!-- PayAviator 4.0.0: Android Back closes the topmost VISIBLE sheet or pop-up; lightbulb hides while any sheet is visible. -->
+<style id="pa400-sheet-state-css">body.pa400-sheet-open #pp925TipLauncher{display:none!important}</style>
+<script id="pa400-back-authority">
+(function(){
+'use strict';
+const EXCLUDE='#mb119BottomNav,#pp925TipLauncher,#pa400-none';
+function shown(e){const s=getComputedStyle(e);if(s.display==='none'||s.visibility==='hidden'||+s.opacity<0.05)return false;const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth}
+function candidates(){
+  const W=innerWidth,out=[];
+  document.querySelectorAll('body *').forEach(e=>{
+    const isDlg=e.tagName==='DIALOG'&&e.open;
+    if(!isDlg&&getComputedStyle(e).position!=='fixed')return;
+    if(e.matches(EXCLUDE)||e.closest(EXCLUDE))return;
+    if(!shown(e))return;
+    const r=e.getBoundingClientRect();
+    if(!isDlg&&(r.width<W*0.5||r.height<60))return;
+    if(out.some(o=>o.contains(e)))return;
+    for(let i=out.length-1;i>=0;i--)if(e.contains(out[i]))out.splice(i,1);
+    out.push(e);
+  });
+  return out;
+}
+function zOf(e){let z=0,x=e;while(x&&x!==document.body){const v=parseInt(getComputedStyle(x).zIndex,10);if(Number.isFinite(v))z=v;x=x.parentElement}return z}
+function rank(e){return (e.tagName==='DIALOG'&&e.open&&e.matches(':modal'))?Infinity:zOf(e)}
+function sheets(){const c=candidates();c.forEach((e,i)=>e.__pa400i=i);return c.sort((a,b)=>(rank(a)-rank(b))||(a.__pa400i-b.__pa400i))}
+function closeBtn(e){
+  const q=e.querySelector('[aria-label="Close" i],[aria-label^="Close" i],.close,[class*="-close"],[data-close],[data-dismiss]');
+  if(q&&shown(q))return q;
+  return [...e.querySelectorAll('button')].find(b=>shown(b)&&/^(×|✕|✖|x|close|done|cancel|not now)$/i.test(b.textContent.trim()))||null;
+}
+function closeEl(e){
+  const steps=[
+    ()=>{const b=closeBtn(e);if(b)b.click()},
+    ()=>{if(e.tagName==='DIALOG'&&e.open)e.close()},
+    ()=>{['show','open','pp-show','active','visible','is-open'].forEach(c=>e.classList.remove(c));e.removeAttribute('open')},
+    ()=>{e.hidden=true}
+  ];
+  for(const st of steps){try{st()}catch(_){}if(!e.isConnected||!shown(e))return true}
+  return false;
+}
+let inner=window.payAviatorHandleAndroidBack,busy=false;
+function outer(){
+  if(busy)return false; // older handlers chain back to whatever they saw as "previous"
+  busy=true;try{return run.apply(this,arguments)}finally{busy=false}
+}
+function run(){
+  const list=sheets();
+  if(list.length){closeEl(list[list.length-1]);sync();return true}
+  // Nothing visible: let older handlers do page navigation, but drop stale "open" classes on hidden pop-ups first.
+  document.querySelectorAll('.pp-show,.show').forEach(e=>{if(!shown(e)&&getComputedStyle(e).position==='fixed'){e.classList.remove('pp-show');e.classList.remove('show')}});
+  try{return typeof inner==='function'?!!inner.apply(this,arguments):false}catch(_){return false}
+}
+try{Object.defineProperty(window,'payAviatorHandleAndroidBack',{configurable:true,get(){return outer},set(v){if(v!==outer)inner=v}})}catch(_){window.payAviatorHandleAndroidBack=outer}
+window.PayAviatorVisibleSheets=()=>sheets().map(e=>e.id||e.className);
+let raf=0;function sync(){const any=candidates().some(e=>e.id!=='pp925TipPopup');document.body.classList.toggle('pa400-sheet-open',any)}
+function queue(){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;sync()})}
+new MutationObserver(queue).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class','style','open','hidden'],childList:true});
+document.addEventListener('transitionend',queue,true);
+sync();
+})();
+</script>
 </body>
 
 <script>

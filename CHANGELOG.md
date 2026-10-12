@@ -6,6 +6,7 @@
 - Connected banking uses only the backend 4.0.0 routes (token-authenticated, Authorization: Bearer <Firebase ID token>); no user id in any URL, query or body. Removed the user-id path helper.
 - Source of truth is the repository again: the uploaded PayAviator-main.zip is unpacked into the repo and removed.
 - The lightbulb tip button hides while any sheet is open (it covered App Colors and the version in Backup & App) and returns when the sheet closes.
+- Android Back closes only the topmost visible sheet or pop-up (any sheet, not just *Modal); with nothing open it falls through. Fixes Cash (Back hid an invisible tip instead) and Credit (Back found nothing). The lightbulb hides while any sheet is visible, using the same check.
 - Version 4.0.0 everywhere (VERSION.txt, bundled version, service-worker cache payaviator-4.0.0); Android versionCode floor 400200.
 
 ## 3.10.5 — Restore dark Payoff Planner background
