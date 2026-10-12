@@ -7,6 +7,8 @@
 - Source of truth is the repository again: the uploaded PayAviator-main.zip is unpacked into the repo and removed.
 - The lightbulb tip button hides while any sheet is open (it covered App Colors and the version in Backup & App) and returns when the sheet closes.
 - Android Back closes only the topmost visible sheet or pop-up (any sheet, not just *Modal); with nothing open it falls through. Fixes Cash (Back hid an invisible tip instead) and Credit (Back found nothing). The lightbulb hides while any sheet is visible, using the same check.
+- Budget: the whole card is the tap target, including its rounded corners, edges and padding; each tap opens the tool once.
+- Paycheck Planner now plans: for the current and next 3 paychecks it lists the bills due before the following check (auto-assigned), shows what's left to spend, lets you move a bill to another paycheck or mark it paid, and warns when a check comes up short. Choices are saved on this phone (payaviator_paycheck_plan_v400); no server calls. Empty states for no paycheck and no bills.
 - Version 4.0.0 everywhere (VERSION.txt, bundled version, service-worker cache payaviator-4.0.0); Android versionCode floor 400200.
 
 ## 3.10.5 — Restore dark Payoff Planner background

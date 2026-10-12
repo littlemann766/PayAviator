@@ -24722,6 +24722,151 @@ document.addEventListener('transitionend',queue,true);
 sync();
 })();
 </script>
+
+<!-- PayAviator 4.0.0: whole Budget card is the tap target (rounded corners and grid gaps next to a card count). -->
+<style id="pa400-budget-hit-css">#mb119Budget .mb119-tool-grid [data-fn]{cursor:pointer!important;touch-action:manipulation}#mb119Budget .mb119-tool-grid [data-fn] *{pointer-events:none!important}</style>
+<script id="pa400-budget-hit">
+(function(){
+'use strict';
+function grid(){return document.querySelector('#mb119Budget .mb119-tool-grid')}
+function cardAt(x,y){const g=grid();if(!g)return null;return [...g.querySelectorAll('[data-fn]')].find(b=>{if(!b.offsetParent)return false;const r=b.getBoundingClientRect();return x>=r.left-1&&x<=r.right+1&&y>=r.top-1&&y<=r.bottom+1})||null}
+document.addEventListener('click',e=>{
+  const g=grid();if(!g||e.target!==g)return; // only taps that landed on the grid itself (a card's rounded corner)
+  const b=cardAt(e.clientX,e.clientY);if(!b)return;
+  e.preventDefault();e.stopPropagation();b.click();
+},true);
+function a11y(){const g=grid();if(!g)return;g.querySelectorAll('[data-fn]').forEach(b=>{if(b.tagName!=='BUTTON'){b.setAttribute('role','button');if(!b.hasAttribute('tabindex'))b.tabIndex=0}})}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',a11y,{once:true});else a11y();
+document.addEventListener('payaviator:viewchange',a11y);
+})();
+</script>
+
+<!-- PayAviator 4.0.0: Paycheck Planner that plans. Bills due before the next paycheck are auto-assigned to each check;
+     moves are saved on this phone only (payaviator_paycheck_plan_v400). No server calls, no new personal data. -->
+<style id="pa400-planner-css">
+#paycheckPlannerDlg .pa400p-sum{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0 12px}
+#paycheckPlannerDlg .pa400p-sum div{background:rgba(255,255,255,.06);border:1px solid rgba(110,170,220,.35);border-radius:14px;padding:9px 8px;min-width:0}
+#paycheckPlannerDlg .pa400p-sum small{display:block;font-size:11px;opacity:.85}
+#paycheckPlannerDlg .pa400p-sum b{display:block;font-size:15px;margin-top:3px;overflow-wrap:anywhere}
+#paycheckPlannerDlg .pa400p-check{border:1.5px solid rgba(110,170,220,.45);border-radius:18px;padding:14px;margin:0 0 12px;background:rgba(9,32,66,.55)}
+#paycheckPlannerDlg .pa400p-check.short{border-color:#ff6b6b}
+#paycheckPlannerDlg .pa400p-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+#paycheckPlannerDlg .pa400p-head h3{margin:0;font-size:17px}
+#paycheckPlannerDlg .pa400p-head .meta{font-size:12px;opacity:.85}
+#paycheckPlannerDlg .pa400p-left{font-weight:900;font-size:18px;text-align:right;white-space:nowrap}
+#paycheckPlannerDlg .pa400p-left.neg{color:#ff8a8a}#paycheckPlannerDlg .pa400p-left.pos{color:#55f47a}
+#paycheckPlannerDlg .pa400p-warn{margin:10px 0 0;padding:9px 11px;border-radius:12px;background:rgba(255,90,90,.16);border:1px solid #ff6b6b;font-size:13px;font-weight:700}
+#paycheckPlannerDlg .pa400p-bill{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:10px 0;border-top:1px solid rgba(110,170,220,.25)}
+#paycheckPlannerDlg .pa400p-bill:first-of-type{margin-top:8px}
+#paycheckPlannerDlg .pa400p-bill .n{font-weight:800;overflow-wrap:anywhere}#paycheckPlannerDlg .pa400p-bill .d{font-size:12px;opacity:.8}
+#paycheckPlannerDlg .pa400p-bill.paid .n{text-decoration:line-through;opacity:.7}
+#paycheckPlannerDlg .pa400p-act{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#paycheckPlannerDlg .pa400p-act button,#paycheckPlannerDlg .pa400p-act select{min-height:40px;border-radius:12px;font-size:13px;font-weight:800;width:100%;box-sizing:border-box}
+#paycheckPlannerDlg .pa400p-act select{font-size:14px!important;padding:0 6px!important;background:#0b2348;color:#fff;border:1.5px solid #3f78a8;padding:0 8px}
+#paycheckPlannerDlg .pa400p-empty{padding:16px;text-align:center;border:1px dashed rgba(110,170,220,.55);border-radius:16px;margin:8px 0 12px}
+#paycheckPlannerDlg .pa400p-empty button{margin-top:12px;width:100%}
+#paycheckPlannerDlg .pa400p-none{font-size:13px;opacity:.85;margin-top:8px}
+</style>
+<script id="pa400-paycheck-planner">
+(function(){
+'use strict';
+const KEY='payaviator_paycheck_plan_v400', SHOW=4;
+const $=id=>document.getElementById(id);
+const cash=n=>{try{return money(Number(n)||0)}catch(_){return '$'+(Number(n)||0).toFixed(2)}};
+const e=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const iso=d=>toISO(d), day=s=>new Date(s+'T00:00:00');
+const short=s=>day(s).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){return {}}}
+function store(v){try{localStorage.setItem(KEY,JSON.stringify(v))}catch(_){}}
+function allBills(){try{return Array.isArray(bills)?bills:[]}catch(_){return []}}
+function hasIncome(){try{return Array.isArray(paychecks)&&paychecks.length>0}catch(_){return false}}
+function checks(){
+  // The paycheck that is currently paying for things (last one on/before today) plus the next ones.
+  const today=iso(new Date()),end=day(today);end.setDate(end.getDate()+120);
+  // merge same-day checks
+  const by={};paycheckOccurrencesThroughSafe(end).forEach(x=>{by[x.iso]=(by[x.iso]||0)+(Number(x.amount)||0)});
+  const dates=Object.keys(by).sort();
+  let start=dates.filter(d=>d<=today).pop();
+  const list=dates.filter(d=>d>=(start||today)).slice(0,SHOW+1);
+  return list.map((d,i)=>({iso:d,amount:by[d],end:list[i+1]||null})).slice(0,SHOW);
+}
+function paycheckOccurrencesThroughSafe(end){try{return paycheckOccurrencesThrough(end).filter(x=>{try{return !paycheckOccurrenceDeleted(x.p,x.iso)}catch(_){return true}})}catch(_){return []}}
+function occKey(b,d){try{return billOccurrenceKey(b,d)}catch(_){return b.id+'|'+d}}
+function plan(){
+  const cs=checks(),moves=load(),bl=allBills();
+  if(!cs.length)return {cs,rows:[]};
+  const last=cs[cs.length-1],endIso=last.end||(()=>{const x=day(last.iso);x.setDate(x.getDate()+14);return iso(x)})();
+  cs.forEach(c=>{c.bills=[]});
+  for(let d=day(cs[0].iso);iso(d)<endIso;d.setDate(d.getDate()+1)){
+    const di=iso(d);
+    bl.forEach(b=>{
+      let on=false;try{on=isRecurringOnDate(b,new Date(d))}catch(_){on=b.due===di}
+      if(!on)return;try{if(billOccurrenceDeleted(b,di))return}catch(_){}
+      const k=occKey(b,di);let target=moves[k]&&cs.find(c=>c.iso===moves[k]);
+      if(!target)target=cs.filter(c=>c.iso<=di).pop()||cs[0];
+      let paidAmt=0;try{paidAmt=billPaidAmount(b,di)}catch(_){}
+      const amt=Math.max(0,Number(b.amount)||0);
+      target.bills.push({b,iso:di,key:k,amt,paid:paidAmt>=amt&&amt>0,moved:!!moves[k]});
+    });
+  }
+  cs.forEach(c=>{c.bills.sort((a,b)=>a.iso.localeCompare(b.iso));c.total=c.bills.reduce((z,x)=>z+x.amt,0);c.unpaid=c.bills.filter(x=>!x.paid).reduce((z,x)=>z+x.amt,0);c.left=c.amount-c.total});
+  return {cs};
+}
+function render(){
+  const box=$('paycheckPlannerContent');if(!box)return;
+  const t=$('paycheckPlannerTitle');if(t)t.textContent='Paycheck Planner';
+  if(!hasIncome()){
+    box.innerHTML=`<div class="pa400p-empty" data-pa400-empty="income"><b>No paycheck set up yet</b><div class="pa400p-none">Add your paycheck and how often it comes. PayAviator then shows which bills each check needs to cover and what's left to spend.</div><button type="button" class="primary" data-pa400="add-pay">+ Add a Paycheck</button></div>`;
+    return;
+  }
+  const {cs}=plan();
+  if(!cs.length){box.innerHTML=`<div class="pa400p-empty"><b>No upcoming paychecks</b><div class="pa400p-none">Your paycheck schedule has no dates in the next few months.</div><button type="button" class="primary" data-pa400="add-pay">Edit Paycheck Schedule</button></div>`;return}
+  const anyBills=cs.some(c=>c.bills.length);
+  const tot=cs.reduce((z,c)=>z+c.amount,0),billsT=cs.reduce((z,c)=>z+c.total,0);
+  let h=`<div class="pa400p-sum"><div><small>Next ${cs.length} checks</small><b>${cash(tot)}</b></div><div><small>Bills assigned</small><b>${cash(billsT)}</b></div><div><small>Left to spend</small><b>${cash(tot-billsT)}</b></div></div>`;
+  if(!anyBills)h+=`<div class="pa400p-empty" data-pa400-empty="bills"><b>No bills due in this period</b><div class="pa400p-none">Every paycheck below is fully yours to spend or save. Add bills on the Bills tab and they'll be assigned here automatically.</div></div>`;
+  cs.forEach((c,i)=>{
+    const sh=c.left<0;
+    h+=`<section class="pa400p-check${sh?' short':''}" data-pa400-check="${c.iso}"><div class="pa400p-head"><div><h3>${i===0&&c.iso<=iso(new Date())?'Current paycheck':'Paycheck'} · ${e(short(c.iso))}</h3><div class="meta">${cash(c.amount)} · covers bills until ${c.end?e(short(c.end)):'the next check'}</div></div><div class="pa400p-left ${sh?'neg':'pos'}"><small style="display:block;font-size:11px;font-weight:700;opacity:.85">Left to spend</small>${cash(c.left)}</div></div>`;
+    if(sh)h+=`<div class="pa400p-warn" role="alert">⚠ This check is ${cash(-c.left)} short. Move a bill to a later paycheck or plan for the gap.</div>`;
+    if(!c.bills.length)h+=`<div class="pa400p-none">No bills due before the next paycheck.</div>`;
+    c.bills.forEach(x=>{
+      const opts=cs.map(o=>`<option value="${o.iso}"${o.iso===c.iso?' selected':''}>${o.iso===c.iso?'This check':'Move: '+e(day(o.iso).toLocaleDateString('en-US',{month:'short',day:'numeric'}))}</option>`).join('');
+      h+=`<div class="pa400p-bill${x.paid?' paid':''}" data-pa400-bill="${e(x.key)}"><div><div class="n">${e(x.b.name||'Bill')}</div><div class="d">Due ${e(short(x.iso))}${x.paid?' · Paid':''}${x.moved?' · Moved':''}</div></div><b>${cash(x.amt)}</b>
+        <div class="pa400p-act"><select aria-label="Choose paycheck for ${e(x.b.name||'bill')}" data-pa400="move" data-key="${e(x.key)}">${opts}</select><button type="button" class="ghost" data-pa400="paid" data-id="${e(x.b.id)}" data-iso="${x.iso}">${x.paid?'Mark unpaid':'Mark paid'}</button></div></div>`;
+    });
+    h+=`</section>`;
+  });
+  h+=`<div class="pa400p-none" style="text-align:center">Bills are assigned to the last paycheck before they're due. Your choices are saved on this phone.</div>
+  <div class="form-actions" style="margin-top:10px"><button type="button" class="ghost" data-pa400="add-pay">Edit Paycheck Schedule</button></div>`;
+  box.innerHTML=h;
+}
+function refreshApp(){try{if(typeof window.render==='function')window.render()}catch(_){}try{document.dispatchEvent(new Event('payaviator:bills-changed'))}catch(_){}}
+document.addEventListener('click',ev=>{
+  const b=ev.target.closest?.('#paycheckPlannerDlg [data-pa400]');if(!b||b.tagName==='SELECT')return;
+  const a=b.dataset.pa400;
+  if(a==='add-pay'){ev.preventDefault();try{$('paycheckPlannerDlg').close()}catch(_){}try{openPaycheckForm()}catch(err){console.warn('PayAviator: paycheck form unavailable',err)}return}
+  if(a==='paid'){ev.preventDefault();const bill=allBills().find(x=>String(x.id)===b.dataset.id);if(!bill)return;const d=b.dataset.iso,amt=Math.max(0,Number(bill.amount)||0);let now=false;try{now=billPaidAmount(bill,d)>=amt&&amt>0}catch(_){}
+    try{setBillPaidAmount(bill,d,now?0:amt);setBillPaidOnDate(bill,d,!now)}catch(err){console.warn('PayAviator: could not update bill',err)}
+    refreshApp();render();}
+},true);
+document.addEventListener('change',ev=>{
+  const s=ev.target.closest?.('#paycheckPlannerDlg select[data-pa400="move"]');if(!s)return;
+  const m=load(),k=s.dataset.key,{cs}=plan();const nat=(()=>{const d=k.split('|').pop();return (cs.filter(c=>c.iso<=d).pop()||cs[0]||{}).iso})();
+  if(s.value===nat)delete m[k];else m[k]=s.value;store(m);render();
+},true);
+function open(){
+  const d=$('paycheckPlannerDlg');if(!d)return;render();
+  try{if(!d.open)d.showModal()}catch(_){d.setAttribute('open','')}
+}
+window.PayAviatorPaycheckPlan=()=>plan().cs.map(c=>({iso:c.iso,amount:c.amount,left:c.left,bills:c.bills.map(x=>[x.b.name,x.iso,x.amt,x.paid])}));
+try{Object.defineProperty(window,'openPaycheckPlanner',{configurable:true,get(){return open},set(_){/* 4.0.0 planner is authoritative */}})}catch(_){window.openPaycheckPlanner=open}
+window.PayAviatorOpenPaycheckPlanner=open;
+// Re-render if something else repaints the dialog body while it is open.
+const d=$('paycheckPlannerDlg');
+if(d)new MutationObserver(()=>{const b=$('paycheckPlannerContent');if(d.open&&b&&!b.querySelector('[data-pa400-check],[data-pa400-empty],.pa400p-empty'))render()}).observe(d,{childList:true,subtree:true});
+})();
+</script>
 </body>
 
 <script>
