@@ -31761,6 +31761,7 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb123SettingsPanel.pp51-settings 
 html:has(dialog[open]) body #pp925TipLauncher,
 html:has(#mb123SettingsPanel.mb2034-modal-open) body #pp925TipLauncher,
 html:has([id$="Modal"].show) body #pp925TipLauncher,
+html:has(#pp1200Credit.show) body #pp925TipLauncher,
 html:has(#pa3102Planner:not([hidden])) body #pp925TipLauncher{display:none!important}
 
 /* ---- First-run setup sheet (#mb212Onboarding): no tips on top, scrolling body, actions always visible ---- */
@@ -31900,6 +31901,53 @@ body #pa3102Planner .pa3102-msg[hidden]{display:none!important}
 body #pa3102Planner .pa3102-bottompad{height:8px!important}
 @media(max-width:390px){body #pa3102Planner{padding:4px!important}body #pa3102Planner .pa3102-shell{max-height:calc(100dvh - 8px)!important}body #pa3102Planner .pa3102-body{padding:9px!important}body #pa3102Planner .pa3102-panel{padding:11px!important}body #pa3102Planner .pa3102-stats small{font-size:10px!important}body #pa3102Planner .pa3102-stats strong{font-size:11px!important}body #pa3102Planner .pa3102-accountnav b{font-size:16px!important}}
 
+</style>
+<style id="pa400-payoff-match-css">
+/* PayAviator 4.0: Payoff Planner uses the app's sheet look (presentation only). */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner{background:rgba(3,8,20,.62)!important;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);font-family:var(--pa4-font,system-ui,-apple-system,Roboto,sans-serif)!important;color:var(--pa4-text,#fff)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-shell{background:var(--pa4-card,#0b234b)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;border-radius:24px!important;box-shadow:0 24px 48px rgba(0,0,0,.55)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-head{background:var(--pa4-card,#0b234b)!important;border-bottom:1px solid var(--pa4-line,rgba(255,255,255,.12))!important;padding:18px 18px 12px 20px!important;justify-content:flex-start!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-head>div:first-child{flex:1 1 auto!important;min-width:0!important;position:relative!important;padding-left:52px!important;min-height:40px!important;display:flex!important;flex-direction:column!important;justify-content:center!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-head>div:first-child::before{content:""!important;position:absolute!important;left:0!important;top:50%!important;transform:translateY(-50%)!important;width:40px!important;height:40px!important;border-radius:12px!important;background:var(--pa4-accent-soft,rgba(0,245,255,.14))!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-head>div:first-child::after{content:""!important;position:absolute!important;left:9px!important;top:50%!important;transform:translateY(-50%)!important;width:22px!important;height:22px!important;background:var(--pa4-accent,#00f5ff)!important;-webkit-mask:var(--pa-i-payoff) center/contain no-repeat!important;mask:var(--pa-i-payoff) center/contain no-repeat!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-head h2{font-size:21px!important;font-weight:800!important;letter-spacing:-.015em!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-head small{color:var(--pa4-muted,rgba(255,255,255,.72))!important;font-size:12.5px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-close{flex:0 0 38px!important;width:38px!important;height:38px!important;min-height:38px!important;border-radius:50%!important;font-size:22px!important;line-height:1!important;padding:0!important;background:var(--pa4-raised,#1f4f86)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;box-shadow:none!important;color:var(--pa4-text,#fff)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-body{background:var(--pa4-card,#0b234b)!important;background-image:none!important;padding:14px 16px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-footer{background:var(--pa4-card,#0b234b)!important;border-top:1px solid var(--pa4-line,rgba(255,255,255,.12))!important;color:var(--pa4-muted,rgba(255,255,255,.72))!important;font-size:11px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gauge,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-panel{background:var(--pa4-raised,#1f4f86)!important;background-image:none!important;border:1px solid var(--pa4-line,rgba(255,255,255,.12))!important;border-radius:var(--pa4-r-lg,20px)!important;box-shadow:var(--pa4-shadow,none)!important;padding:14px!important;margin:0 0 12px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-panel h3,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-sectiontitle{font-size:16px!important;font-weight:800!important;letter-spacing:-.005em!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-stats>div,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-compare,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-account,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-bank,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-methods button{background:var(--pa4-card,#0b234b)!important;border:1px solid var(--pa4-line,rgba(255,255,255,.12))!important;border-radius:var(--pa4-r-md,14px)!important;box-shadow:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-methods button.selected,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-account.active{border-color:var(--pa4-accent,#00f5ff)!important;background:var(--pa4-card,#0b234b)!important;box-shadow:inset 0 0 0 1px var(--pa4-accent-line,rgba(0,245,255,.4))!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-account button:first-child{text-align:left!important;display:block!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-account button:first-child strong,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-account button:first-child span{display:block!important;text-align:left!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-stats small,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-plan small,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-tip,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gaugefoot,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-accountnav small,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-account span,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-bank span,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-bank small,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-methods small{color:var(--pa4-muted,rgba(255,255,255,.72))!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-compare{color:var(--pa4-muted,rgba(255,255,255,.72))!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-field{color:var(--pa4-muted,rgba(255,255,255,.72))!important;font-weight:650!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-field input{background:var(--pa4-card,#0b234b)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;border-radius:var(--pa4-r-md,14px)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-primary{background:var(--pa4-accent,#00f5ff)!important;color:#04223a!important;border:0!important;border-radius:var(--pa4-r-md,14px)!important;font-weight:800!important;box-shadow:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-secondary,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-account button:last-child,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-accountnav button{background:var(--pa4-raised,#1f4f86)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;border-radius:var(--pa4-r-md,14px)!important;box-shadow:none!important;font-weight:700!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-account button:last-child{border-radius:12px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-danger{background:transparent!important;color:var(--pa4-bad,#fb7185)!important;border:1px solid color-mix(in srgb,var(--pa4-bad,#fb7185) 55%,transparent)!important;border-radius:var(--pa4-r-md,14px)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner button:focus-visible,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner input:focus-visible{outline:2px solid var(--pa4-accent,#00f5ff)!important}
 </style>
 <script id="pa3102-planner-js">
 (function(){
