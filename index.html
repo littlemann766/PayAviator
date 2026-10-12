@@ -5462,7 +5462,7 @@ function removeBudgetExpense(id){
     },doRemove);
     return;
   }
-  if(confirm(`Remove ${row?.name||'this tracked spending entry'}?`))doRemove();
+  window.PayAviatorConfirm({title:'Remove entry?',message:`Remove ${row?.name||'this tracked spending entry'}?`,confirmText:'Remove',danger:true}).then(ok=>{if(ok)doRemove()});
 }
 function renderBudgetTracking(){
   const y=calDate.getFullYear(),m=calDate.getMonth(),limit=Math.max(0,Number($('monthlyBudgetInput')?.value)||viewedBudget()||0);
@@ -5601,14 +5601,14 @@ function addSavingsGoal(){
   const rows=loadSavingsGoals();rows.push({id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():'goal-'+Date.now(),name,target,saved,targetDate:date,transactions:[]});persistSavingsGoals(rows);
   $('savingsGoalName').value='';$('savingsGoalTarget').value='';$('savingsGoalSaved').value='';$('savingsGoalDate').value='';toggleSavingsGoalForm(false);renderSavingsGoals();updateFinanceDashboard();
 }
-function contributeSavings(id){
+async function contributeSavings(id){
   const rows=loadSavingsGoals(),g=rows.find(x=>x.id===id);if(!g)return;
-  const raw=prompt(`Add money to ${g.name}:`,'');if(raw===null)return;const amount=Number(raw);if(!Number.isFinite(amount)||amount<=0){alert('Enter a valid amount greater than $0.');return}
+  const raw=await window.PayAviatorPrompt({title:'Add to savings',label:`Add money to ${g.name}`,value:'',type:'money',gt:0,error:'Enter a valid amount greater than $0.',confirmText:'Add'});if(raw===null)return;const amount=Number(raw);if(!Number.isFinite(amount)||amount<=0){alert('Enter a valid amount greater than $0.');return}
   const today=toISO(new Date());g.saved=(Number(g.saved)||0)+amount;g.transactions=Array.isArray(g.transactions)?g.transactions:[];g.transactions.push({id:'tx-'+Date.now()+'-'+Math.random(),date:today,amount});persistSavingsGoals(rows);renderSavingsGoals();updateFinanceDashboard();
 }
-function editSavingsGoal(id){
+async function editSavingsGoal(id){
   const rows=loadSavingsGoals(),g=rows.find(x=>x.id===id);if(!g)return;
-  const target=prompt(`Target amount for ${g.name}:`,Number(g.target||0).toFixed(2));if(target===null)return;const n=Number(target);if(!Number.isFinite(n)||n<=0){alert('Enter a valid target.');return}g.target=n;persistSavingsGoals(rows);renderSavingsGoals();
+  const target=await window.PayAviatorPrompt({title:'Savings target',label:`Target amount for ${g.name}`,value:Number(g.target||0).toFixed(2),type:'money',gt:0,error:'Enter a valid target.'});if(target===null)return;const n=Number(target);if(!Number.isFinite(n)||n<=0){alert('Enter a valid target.');return}g.target=n;persistSavingsGoals(rows);renderSavingsGoals();
 }
 async function removeSavingsGoal(id){if(!(await window.PayAviatorConfirm({title:'Remove goal?',message:'Remove this savings goal?',confirmText:'Remove',danger:true})))return;persistSavingsGoals(loadSavingsGoals().filter(x=>x.id!==id));renderSavingsGoals();updateFinanceDashboard()}
 function renderSavingsGoals(){
@@ -5983,9 +5983,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  function setupActionWrapping(){['saveReminder','deleteReminder','savePaycheck','savePaycheckOccurrence','deletePaycheck','deleteBill','clearAll','saveBillPaymentFromDialog'].forEach(wrapBefore)}
  // Duplicate bill protection without blocking legitimate recurring occurrences.
  const originalSaveBill=window.saveBill;
+ let dupOk=false;
  if(typeof originalSaveBill==='function')window.saveBill=function(e){
    const id=$('editId')?.value||'',name=($('name')?.value||'').trim().toLowerCase(),due=$('due')?.value||'';
-   if(!id&&name&&due){const dup=bills.some(b=>(b.name||'').trim().toLowerCase()===name&&b.due===due);if(dup&&!confirm('A bill with this name and due date already exists. Add another anyway?')){e?.preventDefault?.();return}}
+   if(!id&&name&&due){const dup=bills.some(b=>(b.name||'').trim().toLowerCase()===name&&b.due===due);if(dup&&!dupOk){e?.preventDefault?.();const self=this,args=arguments;window.PayAviatorConfirm({title:'Duplicate bill?',message:'A bill with this name and due date already exists. Add another anyway?',confirmText:'Add anyway'}).then(ok=>{if(!ok)return;dupOk=true;try{window.saveBill.apply(self,args)}finally{dupOk=false}const dl=$('dlg');if(dl&&dl.open&&!($('editId')?.value)){try{dl.close()}catch(_){}}});return}}
    captureUndo();return originalSaveBill.apply(this,arguments);
  };
  const originalManualSave=window.manualSave;
@@ -11356,7 +11357,7 @@ function openAvailableNowSpendingV88(){
       return;
     }
     // Safety fallback for very old cached builds only.
-    if(confirm(`Delete ${row?.name||'this spending entry'}?`))doDelete();
+    window.PayAviatorConfirm({title:'Delete entry?',message:`Delete ${row?.name||'this spending entry'}?`,confirmText:'Delete',danger:true}).then(ok=>{if(ok)doDelete()});
   }
 
   function showAppearance137(){
@@ -15162,23 +15163,21 @@ body.mb-high-contrast textarea{border-width:2px!important}
     }
   };
 
-  window.mb20425PayDebt=function(id){
+  window.mb20425PayDebt=async function(id){
     const rows=debtRows();
     const d=rows.find(x=>x.id===id);if(!d)return;
-    const raw=prompt(`Payment toward ${d.name}`,String(Math.min(Number(d.balance)||0,Number(d.minPayment)||0)));
+    const raw=await window.PayAviatorPrompt({title:'Record payment',label:`Payment toward ${d.name}`,value:String(Math.min(Number(d.balance)||0,Number(d.minPayment)||0)),type:'money',min:0,confirmText:'Save'});
     if(raw===null)return;
     const amount=Math.max(0,Number(raw)||0);
     d.balance=Math.max(0,(Number(d.balance)||0)-amount);
     saveDebtRows(rows);renderDebtPlanner();
   };
 
-  window.mb20425EditDebt=function(id){
+  window.mb20425EditDebt=async function(id){
     const rows=debtRows();
     const d=rows.find(x=>x.id===id);if(!d)return;
-    const name=prompt('Debt name',d.name);if(name===null)return;
-    const balance=prompt('Balance',String(d.balance));if(balance===null)return;
-    const apr=prompt('APR %',String(d.apr||0));if(apr===null)return;
-    const min=prompt('Minimum payment',String(d.minPayment||0));if(min===null)return;
+    const v=await window.PayAviatorPrompt({title:'Edit debt',fields:[{name:'name',label:'Debt name',value:d.name},{name:'balance',label:'Balance',value:String(d.balance),type:'money',min:0},{name:'apr',label:'APR %',value:String(d.apr||0),type:'percent',min:0},{name:'min',label:'Minimum payment',value:String(d.minPayment||0),type:'money',min:0}]});if(v===null)return;
+    const name=v.name,balance=v.balance,apr=v.apr,min=v.min;
     d.name=(name||d.name).trim();
     d.balance=Math.max(0,Number(balance)||0);
     d.apr=Math.max(0,Number(apr)||0);
@@ -22507,7 +22506,7 @@ setState(readNative());
   function pp920WireAuth(host){
     host.querySelector('[data-ppauth-signin]')?.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();if(await window.PayAviatorAuth.ensureSignedIn()){try{await pp920SyncPlaidAccounts()}catch(_){ }render()}});
     host.querySelector('[data-ppauth-signout]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{await window.PayAviatorAuth.signOut();render();pp920Toast('Signed out. Your bills and spending are still on this phone.')};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Sign out?',message:'Bank data will be removed from this phone until you sign in again. Your bills, income and spending stay.',confirmText:'Sign out'},go);else go()});
-    host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{pp920Toast('Deleting your account…');const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.ok){render();pp920Toast('Your PayAviator account and bank connections were deleted.')}else if(r.code!=='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error||'Could not delete your account. Please try again.')}};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message:'This disconnects every bank from PayAviator and Plaid, deletes the bank data stored on our servers, and deletes your sign-in. Bills, income and spending you added stay on this phone.',confirmText:'Delete account'},go);else if(confirm('Delete your PayAviator account and disconnect every bank?'))go()});
+    host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{pp920Toast('Deleting your account…');const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.ok){render();pp920Toast('Your PayAviator account and bank connections were deleted.')}else if(r.code!=='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error||'Could not delete your account. Please try again.')}};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message:'This disconnects every bank from PayAviator and Plaid, deletes the bank data stored on our servers, and deletes your sign-in. Bills, income and spending you added stay on this phone.',confirmText:'Delete account'},go);else window.PayAviatorConfirm({title:'Delete account?',message:'Delete your PayAviator account and disconnect every bank?',confirmText:'Delete account',danger:true}).then(ok=>{if(ok)go()})});
     host.querySelectorAll('[data-ppauth-reconnect]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();pp920ReconnectItem(b.getAttribute('data-ppauth-reconnect'),b)}));
   }
   document.addEventListener('payaviator:authchange',e=>{
@@ -23400,8 +23399,7 @@ const prior=window.payAviatorHandleAndroidBack;window.payAviatorHandleAndroidBac
 <dialog id="pp993Alert"><div class="box"><h3>PayAviator</h3><p id="pp993AlertText"></p><button type="button">OK</button></div></dialog>
 <script id="pp993-polish-script">
 (function(){
- const nativeAlert=window.alert.bind(window);
- window.alert=function(msg){const d=document.getElementById('pp993Alert'),t=document.getElementById('pp993AlertText');if(!d||!t)return nativeAlert(msg);t.textContent=String(msg||'');try{d.showModal()}catch(_){d.setAttribute('open','')}};
+ window.alert=function(msg){const d=document.getElementById('pp993Alert'),t=document.getElementById('pp993AlertText');if(!d||!t){console.warn('PayAviator alert:',msg);return}t.textContent=String(msg||'');try{d.showModal()}catch(_){d.setAttribute('open','')}};
  document.addEventListener('click',e=>{if(e.target?.closest?.('#pp993Alert button')){const d=document.getElementById('pp993Alert');try{d.close()}catch(_){d.removeAttribute('open')}}});
 })();
 </script>
@@ -25085,6 +25083,148 @@ try{
 }catch(_){}
 })();
 </script>
+<style id="pa400-no-native-css">
+/* Themed prompt / choice sheets: same look as #paConfirm400 */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog:is(#paPrompt400,#paChoice400){border:0!important;padding:0!important;background:transparent!important;width:min(92vw,440px)!important;max-width:92vw!important;margin:auto!important;overflow:visible!important;color:var(--pa4-text,#fff)}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog:is(#paPrompt400,#paChoice400)::backdrop{background:rgba(3,8,20,.62)!important}
+:is(#paPrompt400,#paChoice400) .pa400c-card{background:var(--pa4-card,#0b234b);border:1px solid var(--pa4-line2,rgba(255,255,255,.17));border-radius:24px;padding:18px 18px 18px 20px;box-sizing:border-box;max-height:86vh;overflow:auto}
+:is(#paPrompt400,#paChoice400) .pa400c-head{display:flex;align-items:center;gap:12px}
+:is(#paPrompt400,#paChoice400) .pa400c-title{flex:1 1 auto;min-width:0;font-size:clamp(18px,5.3vw,21px);font-weight:800;line-height:1.2;color:var(--pa4-text,#fff)}
+:is(#paPrompt400,#paChoice400) .pa400c-msg{margin:12px 0 14px;color:var(--pa4-muted,rgba(255,255,255,.72));font-size:15px;line-height:1.45;white-space:pre-line}
+:is(#paPrompt400,#paChoice400) .pa400c-msg:empty{display:none}
+#paPrompt400 .pa400p-field{display:block;margin:0 0 12px}
+#paPrompt400 .pa400p-field>span{display:block;font-size:13px;font-weight:700;color:var(--pa4-muted,rgba(255,255,255,.72));margin:0 0 6px}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paPrompt400 .pa400p-field input{width:100%!important;box-sizing:border-box!important;min-height:46px!important;padding:10px 14px!important;border-radius:var(--pa4-r-md,14px)!important;background:var(--pa4-raised,#1f4f86)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;color:var(--pa4-text,#fff)!important;font:inherit!important;font-size:16px!important;box-shadow:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paPrompt400 .pa400p-field input:focus{outline:2px solid var(--pa4-accent,#00f5ff)!important;outline-offset:1px}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paPrompt400 .pa400p-field.bad input{border-color:var(--pa4-bad,#fb7185)!important}
+#paPrompt400 .pa400p-err{min-height:0;color:var(--pa4-bad,#fb7185);font-size:13.5px;font-weight:700;margin:-4px 0 10px}
+#paPrompt400 .pa400p-err:empty{display:none}
+:is(#paPrompt400,#paChoice400) .pa400c-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+#paChoice400 .pa400c-actions{grid-template-columns:1fr}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body :is(#paPrompt400,#paChoice400) .pa400c-actions button{min-height:46px!important;border-radius:var(--pa4-r-md,14px)!important;font:inherit!important;font-size:15px!important;font-weight:800!important;box-shadow:none!important;background-image:none!important;padding:8px 12px!important;width:100%!important;margin:0!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body :is(#paPrompt400,#paChoice400) .pa400c-actions .pa400c-cancel{background:var(--pa4-raised,#1f4f86)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;color:var(--pa4-text,#fff)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body :is(#paPrompt400,#paChoice400) .pa400c-actions .pa400c-ok{background:var(--pa4-accent,#00f5ff)!important;border:1px solid var(--pa4-accent,#00f5ff)!important;color:#03111f!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paChoice400 .pa400c-actions .pa400c-alt{background:transparent!important;border:1px solid var(--pa4-accent,#00f5ff)!important;color:var(--pa4-accent,#00f5ff)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paChoice400 .pa400c-actions button{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;min-height:54px!important}
+#paChoice400 .pa400c-actions button small{display:block;font-size:12.5px;font-weight:600;opacity:.8;margin-top:2px}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body :is(#paPrompt400,#paChoice400) .pa400c-x{flex:0 0 54px!important;width:54px!important;height:38px!important;min-height:38px!important;min-width:0!important;padding:0!important;margin:0 0 0 auto!important;border-radius:50%!important;background:var(--pa4-raised,#1f4f86)!important;background-image:none!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;color:var(--pa4-text,#fff)!important;font-size:22.4px!important;font-weight:950!important;line-height:1!important;box-shadow:none!important}
+</style>
+<script id="pa400-no-native">
+(function(){
+'use strict';
+const X='<button type="button" class="pa400c-x" aria-label="Close">×</button>';
+const lc=t=>/[A-Z]{2}/.test(t)?t:t.toLowerCase();
+function make(id,inner){
+  let d=document.getElementById(id);if(d)return d;
+  d=document.createElement('dialog');d.id=id;d.dataset.pp51='1';d.setAttribute('aria-labelledby',id+'Title');
+  d.innerHTML='<div class="pa400c-card"><div class="pa400c-head"><div class="pa400c-title" id="'+id+'Title" role="heading" aria-level="2"></div>'+X+'</div><div class="pa400c-msg"></div>'+inner+'</div>';
+  document.body.appendChild(d);
+  d.addEventListener('cancel',e=>{e.preventDefault();d._finish&&d._finish(null)});
+  d.addEventListener('close',()=>{d._finish&&d._finish(null)});
+  d.addEventListener('click',e=>{if(e.target===d||e.target.closest('.pa400c-x')||e.target.closest('.pa400c-cancel')){e.preventDefault();e.stopPropagation();d._finish&&d._finish(null)}});
+  return d;
+}
+function open(d,resolve){
+  if(d._finish)d._finish(null);
+  d._finish=v=>{d._finish=null;try{if(d.open)d.close()}catch(_){d.removeAttribute('open')}resolve(v)};
+  try{document.activeElement?.blur?.()}catch(_){}
+  try{if(!d.open)d.showModal()}catch(_){d.setAttribute('open','')}
+}
+/* Themed replacement for prompt(). Single field: resolves the string or null.
+   fields:[{name,label,value,type:'text'|'money'|'number'|'percent',min,required}] resolves {name:value} or null. */
+window.PayAviatorPrompt=function(opts){
+  opts=opts||{};
+  const multi=Array.isArray(opts.fields);
+  const fields=multi?opts.fields:[{name:'value',label:opts.label||'',value:opts.value,type:opts.type||'text',min:opts.min,gt:opts.gt,error:opts.error,required:opts.required!==false}];
+  const d=make('paPrompt400','<form class="pa400p-form" novalidate><div class="pa400p-fields"></div><div class="pa400p-err" role="alert"></div><div class="pa400c-actions"><button type="button" class="pa400c-cancel">Cancel</button><button type="submit" class="pa400c-ok">Save</button></div></form>');
+  d.querySelector('.pa400c-title').textContent=opts.title||'PayAviator';
+  d.querySelector('.pa400c-msg').textContent=opts.message||'';
+  d.querySelector('.pa400c-ok').textContent=opts.confirmText||'Save';
+  const box=d.querySelector('.pa400p-fields'),err=d.querySelector('.pa400p-err');err.textContent='';box.innerHTML='';
+  fields.forEach((f,i)=>{
+    const l=document.createElement('label');l.className='pa400p-field';
+    const s=document.createElement('span');s.textContent=f.label||'';l.appendChild(s);
+    const inp=document.createElement('input');inp.name=f.name||('f'+i);inp.id='paPrompt400_'+i;
+    const num=f.type==='money'||f.type==='number'||f.type==='percent';
+    inp.type='text';inp.autocomplete='off';
+    if(num){inp.inputMode='decimal';inp.setAttribute('enterkeyhint',i===fields.length-1?'done':'next')}
+    inp.value=f.value==null?'':String(f.value);
+    l.appendChild(inp);box.appendChild(l);
+  });
+  const form=d.querySelector('form');
+  return new Promise(resolve=>{
+    form.onsubmit=e=>{
+      e.preventDefault();e.stopPropagation();
+      const out={};let bad=null;
+      box.querySelectorAll('.pa400p-field').forEach(x=>x.classList.remove('bad'));
+      fields.forEach((f,i)=>{
+        if(bad)return;
+        const inp=box.querySelectorAll('input')[i];let v=inp.value.trim();
+        const num=f.type==='money'||f.type==='number'||f.type==='percent';
+        if(num){
+          const n=Number(v.replace(/[$,\s%]/g,''));
+          if(v===''&&f.required===false){out[f.name]='';return}
+          const min=f.min==null?0:f.min;
+          if(v===''||!Number.isFinite(n)||n<min||(f.gt!=null&&!(n>f.gt))){bad={i,msg:f.error||('Enter a valid '+lc(f.label||'number')+(f.gt!=null?' greater than '+(f.type==='money'?'$':'')+f.gt:'')+'.')};return}
+          out[f.name]=String(n);
+        }else{
+          if(!v&&f.required!==false){bad={i,msg:f.error||('Enter '+lc(f.label||'a value')+'.')};return}
+          out[f.name]=v;
+        }
+      });
+      if(bad){const l=box.querySelectorAll('.pa400p-field')[bad.i];l.classList.add('bad');err.textContent=bad.msg;try{l.querySelector('input').focus()}catch(_){}return}
+      d._finish(multi?out:out.value);
+    };
+    open(d,resolve);
+    setTimeout(()=>{const i=box.querySelector('input');if(i){try{i.focus();i.select()}catch(_){}}},60);
+  });
+};
+/* Two-choice sheet (plus Cancel). choices:[{value,label,hint}] resolves the chosen value or null. */
+window.PayAviatorChoice=function(opts){
+  opts=opts||{};
+  const d=make('paChoice400','<div class="pa400c-actions"></div>');
+  d.querySelector('.pa400c-title').textContent=opts.title||'Choose';
+  d.querySelector('.pa400c-msg').textContent=opts.message||'';
+  const a=d.querySelector('.pa400c-actions');a.innerHTML='';
+  (opts.choices||[]).forEach((c,i)=>{const b=document.createElement('button');b.type='button';b.className=i===0?'pa400c-ok':'pa400c-alt';b.dataset.value=c.value;b.textContent=c.label;if(c.hint){const s=document.createElement('small');s.textContent=c.hint;b.appendChild(s)}a.appendChild(b)});
+  const cb=document.createElement('button');cb.type='button';cb.className='pa400c-cancel';cb.textContent=opts.cancelText||'Cancel';a.appendChild(cb);
+  return new Promise(resolve=>{
+    a.onclick=e=>{const b=e.target.closest('[data-value]');if(!b)return;e.preventDefault();e.stopPropagation();d._finish(b.dataset.value)};
+    open(d,resolve);
+  });
+};
+/* Duplicate-bill check for new bills. The original 4.0.0 check sat under a later
+   saveBill that never reached it; this outer wrapper runs it as an async in-app sheet:
+   block the submit, ask, then resubmit through the full save chain on "Add anyway". */
+let dupOk=false;
+function installDup(){
+  const inner=window.saveBill;if(typeof inner!=='function'||inner.__pa400Dup)return;
+  const w=function(e){
+    try{
+      const g=id=>document.getElementById(id);
+      const id=g('editId')?.value||'',name=(g('name')?.value||'').trim().toLowerCase(),due=g('due')?.value||'';
+      const list=(()=>{try{return bills}catch(_){return []}})();
+      if(!dupOk&&!id&&name&&due&&list.some(b=>(b.name||'').trim().toLowerCase()===name&&b.due===due)){
+        e?.preventDefault?.();
+        const self=this,args=arguments;
+        window.PayAviatorConfirm({title:'Duplicate bill?',message:'A bill with this name and due date already exists. Add another anyway?',confirmText:'Add anyway'}).then(ok=>{
+          if(!ok)return;dupOk=true;try{w.apply(self,args)}finally{dupOk=false}
+        });
+        return;
+      }
+    }catch(err){console.warn('PayAviator duplicate check',err)}
+    return inner.apply(this,arguments);
+  };
+  w.__pa400Dup=true;window.saveBill=w;
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installDup,{once:true});else setTimeout(installDup,0);
+window.PayAviatorMoveChoice=function(){
+  return window.PayAviatorChoice({title:'Move this bill?',message:'You changed the due date of a repeating bill. What should move?',
+    choices:[{value:'only',label:'Only this date',hint:'Just this one payment moves'},{value:'all',label:'All future dates',hint:'This date and every later one move'}]});
+};
+})();
+</script>
+
 </body>
 
 <script>
@@ -25178,8 +25318,10 @@ try{
     const openedFrom=pending && pending.id===id && window.__editingOccurrence?.id===id ? pending.iso : '';
     if(bill && bill.recurring && openedFrom && newDue && newDue!==openedFrom && String(bill.id||'').indexOf('once-')!==0){
       if(e && e.preventDefault) e.preventDefault();
-      const only=confirm('Move only this date?\n\nOK = this instance only, kept after you leave the app\nCancel = this date and every future date');
-      if(only){
+      const self=this,args=arguments;
+      window.PayAviatorMoveChoice().then(function(choice){
+      if(!choice)return;
+      if(choice==='only'){
         const moves=loadMoves();
         const moveId='once-'+id+'-'+openedFrom;
         moves[id+'|'+openedFrom]={
@@ -25202,6 +25344,10 @@ try{
         try{ if(typeof scheduleNativeNotifications==='function') scheduleNativeNotifications(); }catch(err){}
         return;
       }
+      pending=null;
+      if(typeof prevSave==='function') prevSave.apply(self, args);
+      });
+      return;
     }
     pending=null;
     if(typeof prevSave==='function') return prevSave.apply(this, arguments);
@@ -31424,11 +31570,12 @@ dialog form > button[type="button"]:last-child {
       if(!validISO(due)||!details.name||!Number.isFinite(details.amount)||details.amount<0){
         alert('Enter a valid bill name, amount, and due date.');return;
       }
-      try{
-        if(due!==ctx.iso&&!confirm('Move only this occurrence?\n\nOK = only this date\nCancel = this date and future dates')){
-          moveSeriesFrom(src,ctx.iso,details);
-        }else moveSingle(src,ctx.iso,details);
-      }catch(err){console.error('[PayAviator] Could not save calendar edit',err);alert('The bill change could not be saved. Please try again.');}
+      const apply=choice=>{try{
+        if(choice==='all')moveSeriesFrom(src,ctx.iso,details);
+        else moveSingle(src,ctx.iso,details);
+      }catch(err){console.error('[PayAviator] Could not save calendar edit',err);alert('The bill change could not be saved. Please try again.');}};
+      if(due!==ctx.iso)window.PayAviatorMoveChoice().then(choice=>{if(choice)apply(choice)});
+      else apply('only');
       return;
     }
     // A separately moved occurrence is a normal editable one-time bill, but
