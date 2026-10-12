@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0b234b">
 <meta name="application-name" content="PayAviator">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://cdn.plaid.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self' data:; connect-src 'self' https://api.payaviator.app https://cdn.plaid.com; object-src 'none'; base-uri 'none'; frame-src https://cdn.plaid.com https://*.plaid.com; form-action 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -74,7 +74,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='3.9.7';
+  const BUNDLED_VERSION='3.9.8';
   const code=n=>{const p=String(n||'').replace(/^Version:\s*/i,'').trim().split('.').map(Number);return p.length===3&&p.every(Number.isFinite)?p[0]*10000+p[1]*100+p[2]:0};
   const S={name:BUNDLED_VERSION,code:code(BUNDLED_VERSION)};
   function paint(root=document){
@@ -22262,7 +22262,7 @@ setState(readNative());
   function pp920ItemHealth(){try{const v=JSON.parse(localStorage.getItem(PP920_ITEMS_KEY)||'{}');return{items:Array.isArray(v.items)?v.items:[],errors:Array.isArray(v.errors)?v.errors:[]}}catch(_){return{items:[],errors:[]}}}
   async function pp920SyncPlaidAccounts(){
     // The backend identifies the user from the Firebase token; never send a user id.
-    const data=await pp920Api('/api/plaid/accounts');
+    const data=await pp920Api('/api/plaid/accounts/' + encodeURIComponent(localStorage.getItem('payaviator_plaid_user_v1') || 'payaviator-local-user'));
     pp920SaveItemHealth(data);
     const rows=Array.isArray(data.accounts)?data.accounts:[];
     const mapped=rows.map(a=>({
@@ -22283,7 +22283,7 @@ setState(readNative());
   }
   async function pp920ConnectPlaidBank(){
     if(!(await window.PayAviatorAuth?.ensureSignedIn?.()))return;
-    // 3.9.7: consent screen before Plaid Link (web Link and Android Hosted Link). Nothing extra goes to the backend.
+    // 3.9.8: consent screen before Plaid Link (web Link and Android Hosted Link). Nothing extra goes to the backend.
     if(!(await window.PayAviatorPlaidConsent?.ask?.('connect')))return;
     const btn=$('pp920ConnectBank');
     const original=btn?.textContent||'+ Connect another bank';
@@ -22294,7 +22294,7 @@ setState(readNative());
       if(health?.plaidConfigured===false) throw new Error('Plaid is not configured on the PayAviator backend yet. Add PLAID_CLIENT_ID and PLAID_SECRET in Railway.');
       const tok=await pp920Api('/api/plaid/create-link-token',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({mobile:true})
+        body:JSON.stringify({mobile:true, userId: (localStorage.getItem('payaviator_plaid_user_v1') || (localStorage.setItem('payaviator_plaid_user_v1','pp-'+Date.now().toString(36)), localStorage.getItem('payaviator_plaid_user_v1')))})
       });
       if(!tok.link_token) throw new Error('No link token returned');
 
@@ -22368,7 +22368,7 @@ setState(readNative());
   };
 
   async function pp941WaitForHostedStatus(){
-    const path='/api/plaid/hosted-status';
+    const path='/api/plaid/hosted-status/' + encodeURIComponent(localStorage.getItem('payaviator_plaid_user_v1') || 'payaviator-local-user');
     let last={connected:false,pending:true};
     // Plaid can take a moment to publish Hosted Link session results after redirect.
     // Stop on success / exited / failed (or any non-pending answer).
@@ -24419,7 +24419,7 @@ line-height:1.3;display:none;pointer-events:none}
 })();
 </script>
 
-<!-- PayAviator 3.9.7: Plaid consent screen + Privacy Policy links. Consent is recorded on this phone only
+<!-- PayAviator 3.9.8: Plaid consent screen + Privacy Policy links. Consent is recorded on this phone only
      (payaviator_plaid_consent_v1); nothing extra is sent to the backend. -->
 <style id="payaviator-consent-privacy-css">
 /* Plaid consent sheet: same look as the sign-in sheet (light-blue page, navy card, thin lines, cyan primary). */
@@ -24830,7 +24830,7 @@ async function pp982SyncLiveBank(){
   // Bank sync needs a signed-in Firebase user; background callers treat this as a quiet skip.
   if(window.PayAviatorAuth&&!window.PayAviatorAuth.isSignedIn()){const e=new Error('Sign in to sync your banks.');e.code='SIGN_IN_REQUIRED';throw e}
   const health=await pp982RefreshEnvironment();
-  const ad=await pp982Api('/api/plaid/accounts');
+  const ad=await pp982Api('/api/plaid/accounts/' + encodeURIComponent(localStorage.getItem('payaviator_plaid_user_v1') || 'payaviator-local-user'));
   try{window.PayAviatorSavePlaidItemHealth?.(ad)}catch(_){}
   const rows=Array.isArray(ad.accounts)?ad.accounts:[];
   const old=accounts(), oldBy=new Map(old.map(a=>[rawId(a),a]));
@@ -24843,7 +24843,7 @@ async function pp982SyncLiveBank(){
     if(window.AndroidBridge&&typeof AndroidBridge.setRealAccountsConnected==='function') AndroidBridge.setRealAccountsConnected(realConnected);
   }catch(_){}
   let td={transactions:[]};
-  try{td=await pp982Api('/api/plaid/transactions?limit=250')}catch(e){td={transactions:[],errors:[{code:'request_failed',message:e?.message||String(e)}]};console.warn('PayAviator transaction sync failed:',e?.message||e)}
+  try{td=await pp982Api('/api/plaid/transactions/' + encodeURIComponent(localStorage.getItem('payaviator_plaid_user_v1') || 'payaviator-local-user') + '?limit=250')}catch(e){td={transactions:[],errors:[{code:'request_failed',message:e?.message||String(e)}]};console.warn('PayAviator transaction sync failed:',e?.message||e)}
   const freshTx=Array.isArray(td.transactions)?td.transactions:[];
   const tx=freshTx;
   // 3.1.5: keep only a lightweight recent cache on-device. PostgreSQL is authoritative.
