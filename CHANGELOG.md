@@ -1,3 +1,11 @@
+## 4.0.2 — Available now is your real spendable money
+- Available now is now the total of every spendable account: connected bank accounts of type depository (checking and savings), using Plaid's available balance and falling back to current when available is empty, plus cash on hand entered in the Cash wallet (and any manual depository account). Credit cards, loans and investments are never counted.
+- Cash on hand can be marked "already in one of these bank accounts" so it is not counted twice. Negative totals appear only when a real balance is negative.
+- Home, the gauge, Monthly Snapshot and every older Available-now API read one shared function (window.PayAviatorAvailableNow); savings already inside Available now is not added again to Safe to Spend.
+- With no accounts or cash set up, Available now falls back to the old paychecks − bills − spending estimate and is labeled as an estimate.
+- Tap Available now (Home gauge or Monthly Snapshot) to see each account and the amount it counts. Regression test tools/test-available-now.py.
+- Version 4.0.2 everywhere; service-worker cache payaviator-4.0.2; Android versionCode floor 400202.
+
 ## 4.0.1 — Budget sheets, in-app confirmations, date-move fix
 - Budget sheets refreshed (Copy Previous Month confirm sheet, collapsible Categories, Monthly Snapshot, Payment History) and Back closes them in order (Beth).
 - No native alert/confirm/prompt pop-ups; every question uses the app's own sheet. The duplicate-bill warning stays (Cancel / Add anyway) (Beth).
