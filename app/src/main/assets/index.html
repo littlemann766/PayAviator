@@ -32011,6 +32011,19 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-account but
 html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-danger{background:transparent!important;color:var(--pa4-bad,#fb7185)!important;border:1px solid color-mix(in srgb,var(--pa4-bad,#fb7185) 55%,transparent)!important;border-radius:var(--pa4-r-md,14px)!important}
 html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner button:focus-visible,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner input:focus-visible{outline:2px solid var(--pa4-accent,#00f5ff)!important}
 </style>
+<style id="pa400-payoff-gauge-css">
+/* PayAviator 4.0: Payoff Planner gauge uses the Home gauge face, bezel, colors, hub and readout (presentation only; needle math unchanged). */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner{--pa400-dial:min(72vw,300px)}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3103-dialwrap{width:var(--pa400-dial)!important;max-width:100%!important;margin:6px auto 0!important;position:relative!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gauge svg.pa3103-dial{width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:1/1!important;margin:0!important;overflow:visible!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3103-dial>circle[r="174"]{fill:#0a315f!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3103-dial>path[stroke="#22c55e"]{stroke:#2cad48!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3103-dial>path[stroke="#f59e0b"]{stroke:#f27827!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3103-dial>path[stroke="#ef4444"]{stroke:#e23a3a!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gaugeread{position:relative!important;z-index:1!important;box-sizing:border-box!important;width:calc(var(--pa400-dial) * .68)!important;min-width:0!important;max-width:95%!important;margin:calc(var(--pa400-dial) * -.135) auto 12px!important;padding:11px 12px 10px!important;background:#081936!important;border:1px solid rgba(0,245,255,.4)!important;border-radius:18px!important;box-shadow:0 10px 30px -10px rgba(0,0,0,.6),0 0 0 4px var(--pa4-raised,#1f4f86)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gaugeread b{font-size:32px!important;font-weight:950!important;line-height:1!important;letter-spacing:-.03em!important;color:#52ff69!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gaugeread span{margin-top:4px!important;font-size:12.16px!important;font-weight:950!important;letter-spacing:.14em!important;color:#fff!important}
+</style>
 <script id="pa3102-planner-js">
 (function(){
 'use strict';
