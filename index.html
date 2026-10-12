@@ -22368,7 +22368,7 @@ setState(readNative());
   };
 
   async function pp941WaitForHostedStatus(){
-    const path='/api/plaid/hosted-status/' + encodeURIComponent(localStorage.getItem('payaviator_plaid_user_v1') || 'payaviator-local-user');
+    const path='/api/plaid/hosted-status';
     let last={connected:false,pending:true};
     // Plaid can take a moment to publish Hosted Link session results after redirect.
     // Stop on success / exited / failed (or any non-pending answer).
