@@ -3077,11 +3077,11 @@ function saveReminder(e){
     // are not available in the browser preview.
   }
 }
-function deleteReminder(id){
+async function deleteReminder(id){
   if(!id)return;
   const r=reminders.find(x=>x.id===id);
   if(!r)return;
-  if(!confirm(`Remove reminder "${r.name}" from the calendar?`))return;
+  if(!(await window.PayAviatorConfirm({title:'Remove reminder?',message:`Remove reminder "${r.name}" from the calendar?`,confirmText:'Remove',danger:true})))return;
   reminders=reminders.filter(x=>x.id!==id);
   persistReminders();
   if(reminderDlg.open)reminderDlg.close();
@@ -3375,7 +3375,7 @@ function restoreBills(event){
         })();
 
         const message=`Restore this full PayAviator backup?\n\n${billCount} bills • ${hourCount} work-hour entries • ${spendingCount} spending entries\n\nThis replaces the current saved PayAviator data.`;
-        if(!confirm(message))return;
+        if(!(await window.PayAviatorConfirm({title:'Restore backup?',message,confirmText:'Restore'})))return;
 
         // Preserve only the runtime build marker; restore every saved PayAviator data/settings key exactly.
         keys.forEach(key=>{
@@ -3424,7 +3424,7 @@ function restoreBills(event){
       const valid=imported.filter(b=>b && typeof b==='object' && b.id && b.name && b.due);
       if(imported.length && !valid.length)throw new Error('No valid bills');
 
-      if(!confirm(`Restore ${valid.length} bill${valid.length===1?'':'s'} from this backup? This will replace the current bills.`))return;
+      if(!(await window.PayAviatorConfirm({title:'Restore backup?',message:`Restore ${valid.length} bill${valid.length===1?'':'s'} from this backup? This will replace the current bills.`,confirmText:'Restore'})))return;
 
       // Preserve all fields present in each bill instead of dropping category/notes/notification settings.
       bills=valid.map(b=>({
@@ -3530,10 +3530,10 @@ function reminderDateTime(r){
 function reminderHasNotified(r){
   return !!r.notify && reminderDateTime(r)<=new Date();
 }
-function dismissReminder(id){
+async function dismissReminder(id){
   const r=reminders.find(x=>x.id===id);
   if(!r)return;
-  if(!confirm(`Remove "${r.name}" now that its reminder time has passed?`))return;
+  if(!(await window.PayAviatorConfirm({title:'Remove reminder?',message:`Remove "${r.name}" now that its reminder time has passed?`,confirmText:'Remove',danger:true})))return;
   reminders=reminders.filter(x=>x.id!==id);
   persistReminders();
   render();
@@ -4429,18 +4429,18 @@ function openPaycheckOccurrenceForm(id,iso){
   paycheckOccurrenceDlg.showModal();
 }
 
-function removePaycheckOccurrence(){
+async function removePaycheckOccurrence(){
   const id=$('occurrencePaycheckId').value;
   const iso=$('occurrenceDate').value;
   const p=paychecks.find(x=>x.id===id);
   if(!p||!iso)return;
 
   if(p.frequency==='one-time'){
-    if(!confirm(`Remove this one-time check on ${fmtLong(iso)}?`))return;
+    if(!(await window.PayAviatorConfirm({title:'Remove check?',message:`Remove this one-time check on ${fmtLong(iso)}?`,confirmText:'Remove',danger:true})))return;
     paychecks=paychecks.filter(x=>x.id!==id);
     Object.keys(paycheckOverrides).forEach(k=>{if(k.startsWith(id+'|'))delete paycheckOverrides[k]});
   }else{
-    if(!confirm(`Remove only the check on ${fmtLong(iso)}? Other scheduled checks will stay.`))return;
+    if(!(await window.PayAviatorConfirm({title:'Remove check?',message:`Remove only the check on ${fmtLong(iso)}? Other scheduled checks will stay.`,confirmText:'Remove',danger:true})))return;
     paycheckOverrides[`${id}|${iso}`]={amount:0,deleted:true};
   }
 
@@ -4538,7 +4538,7 @@ function savePaycheck(e){
  render();
  renderCalendar();
 }
-function deletePaycheck(id){if(confirm('Delete this check schedule?')){paychecks=paychecks.filter(p=>p.id!==id);persistPaychecks();renderPaycheckList();setUnsaved();render();renderCalendar();renderPaycheckList();}}
+async function deletePaycheck(id){if((await window.PayAviatorConfirm({title:'Delete schedule?',message:'Delete this check schedule?',confirmText:'Delete',danger:true}))){paychecks=paychecks.filter(p=>p.id!==id);persistPaychecks();renderPaycheckList();setUnsaved();render();renderCalendar();renderPaycheckList();}}
 
 function paycheckOccurrencesThrough(endDate){
   const out=[];
@@ -4744,7 +4744,7 @@ function openForm(b=null,presetDue=null){
  if(b){
    paidBtn.textContent='Payment';
    paidBtn.onclick=()=>{dlg.close();openBillPayment(b.id,b.due,'')};
-   del.onclick=()=>{if(appSettings.confirmDelete!==false && !confirm('Delete this bill?'))return;bills=bills.filter(x=>x.id!==b.id);save();setUnsaved();dlg.close();render();renderCalendar()}
+   del.onclick=async()=>{if(appSettings.confirmDelete!==false && !(await window.PayAviatorConfirm({title:'Delete bill?',message:'Delete this bill?',confirmText:'Delete',danger:true})))return;bills=bills.filter(x=>x.id!==b.id);save();setUnsaved();dlg.close();render();renderCalendar()}
  }
  dlg.showModal();
 }
@@ -4779,8 +4779,8 @@ function saveBill(e){
 }
 function editBill(id){openForm(bills.find(b=>b.id===id))}
 function togglePaid(id){bills=bills.map(b=>b.id===id?{...b,paid:!b.paid}:b);save();setUnsaved()}
-function deleteBill(id){if(appSettings.confirmDelete!==false && !confirm('Delete this bill?'))return;bills=bills.filter(b=>b.id!==id);save();setUnsaved();render();renderCalendar()}
-function clearAll(){if(!bills.length)return;if(appSettings.confirmClearAll!==false && !confirm('Delete all bills? This cannot be undone.'))return;bills=[];save();setUnsaved();render();renderCalendar()}
+function deleteBill(id,confirmed){if(!confirmed&&appSettings.confirmDelete!==false){window.PayAviatorConfirm({title:'Delete bill?',message:'Delete this bill?',confirmText:'Delete',danger:true}).then(ok=>{if(ok)window.deleteBill(id,true)});return}bills=bills.filter(b=>b.id!==id);save();setUnsaved();render();renderCalendar()}
+async function clearAll(){if(!bills.length)return;if(appSettings.confirmClearAll!==false && !(await window.PayAviatorConfirm({title:'Delete all bills?',message:'Delete all bills? This cannot be undone.',confirmText:'Delete all',danger:true})))return;bills=[];save();setUnsaved();render();renderCalendar()}
 
 const SETTINGS_KEY='payAviator_settings_v2';
 let appSettings={homeMode:'easy',theme:'light',textSize:'normal',cardDensity:'comfortable',notificationsEnabled:false,reminderNotificationsEnabled:true,notificationDays:3,notificationTime:'09:00',notificationVibrate:true,notificationSound:'default',defaultBillNotify:false,defaultBillDays:3,defaultBillTime:'09:00',defaultBillSound:'default',defaultBillVibrate:true,calendarRangeDefault:1,showCalendarPaid:true,showCalendarPaychecks:true,showCalendarReminders:true,confirmDelete:true,confirmClearAll:true};
@@ -5560,7 +5560,7 @@ function showCategorySummary(){const y=calDate.getFullYear(),m=calDate.getMonth(
 
 function openPaycheckPlanner(){const today=toISO(new Date()),next=nextPaycheckAfter(today);$('paycheckPlannerTitle').textContent='Paycheck Planner';if(!next){$('paycheckPlannerContent').innerHTML='<div class="empty">Add a paycheck schedule first so the planner can match bills to your next check.</div>';paycheckPlannerDlg.showModal();return}const following=nextPaycheckAfter(toISO(new Date(new Date(next.iso+'T00:00:00').getTime()+86400000)));const endIso=following?following.iso:toISO(new Date(new Date(next.iso+'T00:00:00').getTime()+13*86400000));const due=[];let total=0;for(let d=new Date(next.iso+'T00:00:00');d<new Date(endIso+'T00:00:00');d.setDate(d.getDate()+1)){const iso=toISO(d);bills.forEach(b=>{if(isRecurringOnDate(b,d)&&billStatus(b,iso)!=='paid'){const rem=Math.max(0,Number(b.amount||0)-billPaidAmount(b,iso));due.push({b,iso,rem});total+=rem}})}const amt=Number(next.amount||0),left=amt-total;$('paycheckPlannerContent').innerHTML=`<div class="summary-stat-grid"><div class="summary-stat"><div class="label">Next paycheck</div><div class="value">${money(amt)}</div><div class="meta">${fmtLong(next.iso)}</div></div><div class="summary-stat"><div class="label">Left after bills</div><div class="value">${money(left)}</div><div class="meta">Bills before next check</div></div></div>${due.length?groupedBillHTML(due,x=>x.iso,x=>`<div class="bill"><div class="billmain"><div class="name">${esc(x.b.name)}</div><div class="meta">${esc(x.b.category||'Uncategorized')}</div></div><div class="amount">${money(x.rem)}</div></div>`):'<div class="empty">No unpaid bills due before the following paycheck.</div>'}`;paycheckPlannerDlg.showModal()}
 
-function copyPreviousMonthBills(){const y=calDate.getFullYear(),m=calDate.getMonth(),prev=new Date(y,m-1,1),py=prev.getFullYear(),pm=prev.getMonth();const prevRows=monthBillOccurrencesV47(py,pm,true).filter(x=>!x.b.recurring);const unique=[];const seen=new Set();prevRows.forEach(x=>{if(!seen.has(x.b.id)){seen.add(x.b.id);unique.push(x.b)}});if(!unique.length){alert('There are no non-recurring bills in the previous month to copy.');return}if(!confirm(`Copy ${unique.length} non-recurring bill${unique.length===1?'':'s'} from ${prev.toLocaleDateString('en-US',{month:'long'})} into this month?`))return;let added=0;unique.forEach(b=>{const old=new Date(b.due+'T00:00:00'),day=Math.min(old.getDate(),new Date(y,m+1,0).getDate()),due=toISO(new Date(y,m,day));if(bills.some(x=>!x.recurring&&x.name===b.name&&x.due===due))return;bills.push({...b,id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():'bill-'+Date.now()+'-'+Math.random(),due,paid:false});added++});persistBills();setUnsaved();render();renderCalendar();alert(`${added} bill${added===1?'':'s'} copied.`)}
+async function copyPreviousMonthBills(){const y=calDate.getFullYear(),m=calDate.getMonth(),prev=new Date(y,m-1,1),py=prev.getFullYear(),pm=prev.getMonth();const prevRows=monthBillOccurrencesV47(py,pm,true).filter(x=>!x.b.recurring);const unique=[];const seen=new Set();prevRows.forEach(x=>{if(!seen.has(x.b.id)){seen.add(x.b.id);unique.push(x.b)}});if(!unique.length){alert('There are no non-recurring bills in the previous month to copy.');return}if(!(await window.PayAviatorConfirm({title:'Copy previous month?',message:`Copy ${unique.length} non-recurring bill${unique.length===1?'':'s'} from ${prev.toLocaleDateString('en-US',{month:'long'})} into this month?`,confirmText:'Copy'})))return;let added=0;unique.forEach(b=>{const old=new Date(b.due+'T00:00:00'),day=Math.min(old.getDate(),new Date(y,m+1,0).getDate()),due=toISO(new Date(y,m,day));if(bills.some(x=>!x.recurring&&x.name===b.name&&x.due===due))return;bills.push({...b,id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():'bill-'+Date.now()+'-'+Math.random(),due,paid:false});added++});persistBills();setUnsaved();render();renderCalendar();alert(`${added} bill${added===1?'':'s'} copied.`)}
 
 function exportMonthlySummary(){const y=calDate.getFullYear(),m=calDate.getMonth(),label=new Date(y,m,1).toLocaleDateString('en-US',{month:'long',year:'numeric'}),rows=monthBillOccurrencesV47(y,m,true),income=monthlyIncomeFor(y,m),budget=viewedBudget();let text=`PayAviator — ${label}\
 \
@@ -5610,7 +5610,7 @@ function editSavingsGoal(id){
   const rows=loadSavingsGoals(),g=rows.find(x=>x.id===id);if(!g)return;
   const target=prompt(`Target amount for ${g.name}:`,Number(g.target||0).toFixed(2));if(target===null)return;const n=Number(target);if(!Number.isFinite(n)||n<=0){alert('Enter a valid target.');return}g.target=n;persistSavingsGoals(rows);renderSavingsGoals();
 }
-function removeSavingsGoal(id){if(!confirm('Remove this savings goal?'))return;persistSavingsGoals(loadSavingsGoals().filter(x=>x.id!==id));renderSavingsGoals();updateFinanceDashboard()}
+async function removeSavingsGoal(id){if(!(await window.PayAviatorConfirm({title:'Remove goal?',message:'Remove this savings goal?',confirmText:'Remove',danger:true})))return;persistSavingsGoals(loadSavingsGoals().filter(x=>x.id!==id));renderSavingsGoals();updateFinanceDashboard()}
 function renderSavingsGoals(){
   const rows=loadSavingsGoals(),saved=totalSavedAcrossGoals(),targets=totalSavingsTargets(),y=calDate.getFullYear(),m=calDate.getMonth();
   const sum=$('savingsSummary');if(sum)sum.innerHTML=`<div class="summary-stat"><div class="label">Total saved</div><div class="value">${money(saved)}</div></div><div class="summary-stat"><div class="label">Added this month</div><div class="value">${money(savingsContributionsFor(y,m))}</div></div>`;
@@ -5960,10 +5960,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
    try{if(window.indexedDB)indexedDB.deleteDatabase(DB_NAME)}catch(e){}
    if(reload)setTimeout(()=>location.reload(),120); return true;
  }
- window.restoreAppMemory=function(){
+ window.restoreAppMemory=async function(){
    let snap=null;try{snap=JSON.parse(localStorage.getItem(MEMORY_KEY)||'null')}catch(e){}
    if(!snap){alert('No app-memory save is available yet.');return}
-   if(confirm('Restore the last app-memory save? This replaces the current inputs with the last saved inputs.'))applySnapshot(snap,true);
+   if((await window.PayAviatorConfirm({title:'Restore save?',message:'Restore the last app-memory save? This replaces the current inputs with the last saved inputs.',confirmText:'Restore'})))applySnapshot(snap,true);
  };
  function captureUndo(){
    try{
@@ -5977,7 +5977,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
      console.warn('Undo snapshot skipped because storage is full.',e);
    }
  }
- window.undoLastChange=function(){let snap=null;try{snap=JSON.parse(localStorage.getItem(UNDO_KEY)||'null')}catch(e){}if(!snap){alert('There is no change to undo.');return}if(confirm('Undo the last saved change?'))applySnapshot(snap,true)};
+ window.undoLastChange=async function(){let snap=null;try{snap=JSON.parse(localStorage.getItem(UNDO_KEY)||'null')}catch(e){}if(!snap){alert('There is no change to undo.');return}if((await window.PayAviatorConfirm({title:'Undo change?',message:'Undo the last saved change?',confirmText:'Undo'})))applySnapshot(snap,true)};
  function showUndoToast(){const t=document.getElementById('v57UndoToast');if(!t)return;t.style.display='flex';clearTimeout(t._tm);t._tm=setTimeout(()=>t.style.display='none',7000)}
  function wrapBefore(name){const old=window[name];if(typeof old!=='function'||old._v57)return;const f=function(){captureUndo();return old.apply(this,arguments)};f._v57=true;window[name]=f}
  function setupActionWrapping(){['saveReminder','deleteReminder','savePaycheck','savePaycheckOccurrence','deletePaycheck','deleteBill','clearAll','saveBillPaymentFromDialog'].forEach(wrapBefore)}
@@ -6687,16 +6687,16 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <script>
 (function(){
-  function simpleDeleteCurrentBill(){
+  async function simpleDeleteCurrentBill(){
     const id = (typeof billViewId !== 'undefined' && billViewId) ? billViewId :
                (window.billViewId || window.currentBillViewId || window.viewingBillId);
     if(!id) return;
     // Deletion is destructive, so this is intentionally the one confirmation we keep.
-    if(!confirm('Delete this bill?')) return;
+    if(!(await window.PayAviatorConfirm({title:'Delete bill?',message:'Delete this bill?',confirmText:'Delete',danger:true}))) return;
 
     try{
       if(typeof deleteBillById === 'function') deleteBillById(id);
-      else if(typeof deleteBill === 'function') deleteBill(id);
+      else if(typeof deleteBill === 'function') deleteBill(id,true);
       else if(Array.isArray(window.bills)){
         const i = window.bills.findIndex(b => String(b.id) === String(id));
         if(i >= 0) window.bills.splice(i,1);
@@ -6780,13 +6780,13 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   // then persist and redraw. Confirmation remains mandatory for destructive deletion.
   const delBtn = document.getElementById('billViewDeleteBtn');
   if(delBtn){
-    delBtn.onclick = function(ev){
+    delBtn.onclick = async function(ev){
       ev.preventDefault();
       ev.stopImmediatePropagation();
       const id = window.billViewId || window.currentBillViewId || window.viewingBillId ||
                  (typeof billViewId !== 'undefined' ? billViewId : null);
       if(!id) return;
-      if(!confirm('Delete this bill?')) return;
+      if(!(await window.PayAviatorConfirm({title:'Delete bill?',message:'Delete this bill?',confirmText:'Delete',danger:true}))) return;
 
       let handled = false;
       try {
@@ -7302,7 +7302,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }
   window.refreshEverythingV78=refreshEverything;
 
-  function removeSelectedHours(){
+  async function removeSelectedHours(){
     const id=document.getElementById('editHoursId')?.value || '';
     const date=document.getElementById('hoursDate')?.value || '';
     const row=(typeof workHours!=='undefined' && Array.isArray(workHours))
@@ -7310,7 +7310,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       : null;
 
     if(!row) return;
-    if(!confirm('Remove hours for this day?')) return;
+    if(!(await window.PayAviatorConfirm({title:'Remove hours?',message:'Remove hours for this day?',confirmText:'Remove',danger:true}))) return;
 
     workHours=workHours.filter(x=>x.id!==row.id);
     try{ persistWorkHours(); }catch(e){}
@@ -8557,11 +8557,11 @@ function openAvailableNowSpendingV88(){
   window.restoreBills=function(event){
     const file=event?.target?.files?.[0];if(event?.target)event.target.value='';if(!file)return;
     const reader=new FileReader();
-    reader.onload=()=>{try{
+    reader.onload=async()=>{try{
       const data=JSON.parse(reader.result);
       const imported=Array.isArray(data)?data:(Array.isArray(data.bills)?data.bills:null);
       if(!imported)throw new Error('Invalid backup');
-      if(!confirm(`Restore ${imported.length} bill${imported.length===1?'':'s'} from this backup? This will replace the current PayAviator data.`))return;
+      if(!(await window.PayAviatorConfirm({title:'Restore backup?',message:`Restore ${imported.length} bill${imported.length===1?'':'s'} from this backup? This will replace the current PayAviator data.`,confirmText:'Restore'})))return;
       if(data.masterState?.storage&&typeof data.masterState.storage==='object'){
         const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&(k==='payAviator_v1'||k.startsWith('payAviator_')))keys.push(k)}keys.forEach(k=>localStorage.removeItem(k));
         Object.entries(data.masterState.storage).forEach(([k,v])=>{if(v!==null&&v!==undefined)localStorage.setItem(k,String(v))});
@@ -24892,6 +24892,197 @@ window.PayAviatorOpenPaycheckPlanner=open;
 // Re-render if something else repaints the dialog body while it is open.
 const d=$('paycheckPlannerDlg');
 if(d)new MutationObserver(()=>{const b=$('paycheckPlannerContent');if(d.open&&b&&!b.querySelector('[data-pa400-check],[data-pa400-empty],.pa400p-empty'))render()}).observe(d,{childList:true,subtree:true});
+})();
+</script>
+<!-- PayAviator 4.0: in-app confirm sheet + Budget report sheets (Snapshot, Categories, Payment History) look and taps. -->
+<style id="pa400-budget-sheets-css">
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog#paConfirm400{border:0!important;padding:0!important;background:transparent!important;width:min(92vw,460px)!important;max-width:92vw!important;margin:auto!important;color:var(--pa4-text,#fff)!important;font-family:var(--pa4-font,system-ui,sans-serif)!important;filter:drop-shadow(0 24px 48px rgba(0,0,0,.55))}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog#paConfirm400::backdrop{background:rgba(3,8,20,.62)!important;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+#paConfirm400 .pa400c-card{background:var(--pa4-card,#0b234b);border:1px solid var(--pa4-line2,rgba(255,255,255,.17));border-radius:24px;padding:18px 18px 18px 20px;box-sizing:border-box}
+#paConfirm400 .pa400c-head{display:flex;align-items:center;gap:12px}
+#paConfirm400 .pa400c-tile{flex:0 0 40px;width:40px;height:40px;border-radius:12px;background:var(--pa4-accent-soft,rgba(0,245,255,.14));position:relative}
+#paConfirm400 .pa400c-tile::after{content:"";position:absolute;left:9px;top:9px;width:22px;height:22px;background:var(--pa4-accent,#00f5ff);-webkit-mask:var(--pa400c-ico) center/contain no-repeat;mask:var(--pa400c-ico) center/contain no-repeat}
+#paConfirm400 .pa400c-tile[hidden]{display:none}
+#paConfirm400.danger .pa400c-tile{background:color-mix(in srgb,var(--pa4-bad,#fb7185) 16%,transparent)}
+#paConfirm400.danger .pa400c-tile::after{background:var(--pa4-bad,#fb7185)}
+#paConfirm400 .pa400c-title{flex:1 1 auto;min-width:0;font-size:clamp(18px,5.3vw,21px);font-weight:800;letter-spacing:-.015em;line-height:1.2}
+#paConfirm400 .pa400c-msg{margin:14px 0 18px;color:var(--pa4-muted,rgba(255,255,255,.72));font-size:15px;line-height:1.45;white-space:pre-line}
+#paConfirm400 .pa400c-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#paConfirm400 .pa400c-actions button{min-height:46px;border-radius:var(--pa4-r-md,14px);font:inherit;font-size:15px;font-weight:800;cursor:pointer}
+#paConfirm400 .pa400c-cancel{background:var(--pa4-raised,#1f4f86);color:var(--pa4-text,#fff);border:1px solid var(--pa4-line2,rgba(255,255,255,.17))}
+#paConfirm400 .pa400c-ok{background:var(--pa4-accent,#00f5ff);color:#04223a;border:0}
+#paConfirm400.danger .pa400c-ok{background:var(--pa4-bad,#fb7185);color:#2a0610}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paConfirm400 .pa400c-x{flex:0 0 38px;width:38px;height:38px;min-height:38px;border-radius:50%;padding:0;font-size:20px;line-height:1;background:var(--pa4-raised,#1f4f86);border:1px solid var(--pa4-line2,rgba(255,255,255,.17));color:var(--pa4-text,#fff);box-shadow:none;cursor:pointer}
+/* in-app alert sheet uses the same look */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pp993Alert .box{background:var(--pa4-card,#0b234b)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;border-radius:24px!important;box-shadow:0 24px 48px rgba(0,0,0,.55)!important;padding:20px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pp993Alert h3{font-size:21px!important;font-weight:800!important;margin:0 0 10px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pp993Alert p{color:var(--pa4-muted,rgba(255,255,255,.72))!important;font-size:15px!important;line-height:1.45!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pp993Alert button{width:100%!important;min-height:46px!important;border-radius:var(--pa4-r-md,14px)!important;background:var(--pa4-accent,#00f5ff)!important;color:#04223a!important;border:0!important;font-weight:800!important;box-shadow:none!important}
+/* report sheets: icon tile header, round x, card rows */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report .pp51-header{display:flex!important;align-items:center!important;gap:12px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report .pp51-title{position:relative!important;flex:1 1 auto!important;min-width:0!important;min-height:40px!important;display:flex!important;align-items:center!important;padding:0 0 0 52px!important;margin:0!important;font-size:clamp(18px,5.3vw,21px)!important;font-weight:800!important;letter-spacing:-.015em!important;line-height:1.2!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report .pp51-title::before{content:""!important;position:absolute!important;left:0!important;top:50%!important;transform:translateY(-50%)!important;width:40px!important;height:40px!important;border-radius:12px!important;background:var(--pa4-accent-soft,rgba(0,245,255,.14))!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report .pp51-title::after{content:""!important;position:absolute!important;left:9px!important;top:50%!important;transform:translateY(-50%)!important;width:22px!important;height:22px!important;background:var(--pa4-accent,#00f5ff)!important;-webkit-mask:var(--pa400-ico) center/contain no-repeat!important;mask:var(--pa400-ico) center/contain no-repeat!important}
+#financialSnapshotDlg{--pa400-ico:var(--pa-i-snapshot)}#categorySummaryDlg{--pa400-ico:var(--pa-i-categories)}#paymentHistoryDlg{--pa400-ico:var(--pa-i-history)}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report .pp51-header .pp51-close{position:static!important;flex:0 0 38px!important;align-self:center!important;margin:0!important;transform:none!important}
+.pa400-monthnav{display:grid;grid-template-columns:38px 1fr 38px;align-items:center;gap:10px;margin:2px 0 12px}
+.pa400-monthnav b{text-align:center;font-size:15px;font-weight:800}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body .pa400-monthnav button{width:38px!important;height:38px!important;min-height:38px!important;padding:0!important;border-radius:50%!important;background:var(--pa4-raised,#1f4f86)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;color:var(--pa4-text,#fff)!important;font-size:22px!important;line-height:1!important;box-shadow:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report .settings-section{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;margin:0 0 14px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report .settings-section h3,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report .date-bill-header{font-size:12px!important;font-weight:800!important;letter-spacing:.1em!important;text-transform:uppercase!important;color:var(--pa4-muted,rgba(255,255,255,.72))!important;margin:4px 2px 8px!important;padding:0!important;border:0!important;background:transparent!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report .snapshot-row,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report .mb2037-category-row,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report #paymentHistoryContent .bill{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;background:var(--pa4-raised,#1f4f86)!important;background-image:none!important;border:1px solid var(--pa4-line,rgba(255,255,255,.12))!important;border-radius:var(--pa4-r-md,14px)!important;padding:12px 14px!important;margin:0 0 8px!important;box-shadow:none!important;color:var(--pa4-text,#fff)!important;min-height:48px!important;box-sizing:border-box!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report .snapshot-row.snapshot-total{background:var(--pa4-card,#0b234b)!important;border-color:var(--pa4-line2,rgba(255,255,255,.17))!important;font-weight:800!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report [data-pa400-tap]{cursor:pointer!important;position:relative!important;padding-right:34px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report [data-pa400-tap]::after{content:"›";position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:22px;line-height:1;color:var(--pa4-muted,rgba(255,255,255,.72))}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report .mb2037-category-row.pa400-open::after{transform:translateY(-50%) rotate(90deg)}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report .mb2037-category-row.pa400-open{border-color:var(--pa4-accent-line,rgba(0,245,255,.4))!important;border-bottom-left-radius:0!important;border-bottom-right-radius:0!important;margin-bottom:0!important}
+.pa400-catbills{background:var(--pa4-card,#0b234b);border:1px solid var(--pa4-accent-line,rgba(0,245,255,.4));border-top:0;border-radius:0 0 var(--pa4-r-md,14px) var(--pa4-r-md,14px);margin:0 0 8px;padding:4px 10px 8px}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body .pa400-catbills button{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:2px 10px!important;width:100%!important;text-align:left!important;background:transparent!important;border:0!important;border-bottom:1px solid var(--pa4-line,rgba(255,255,255,.12))!important;border-radius:0!important;padding:10px 4px!important;color:var(--pa4-text,#fff)!important;font:inherit!important;box-shadow:none!important;min-height:0!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body .pa400-catbills button:last-child{border-bottom:0!important}
+.pa400-catbills .n{font-weight:800;font-size:14px;overflow-wrap:anywhere}.pa400-catbills .a{font-weight:800;font-size:14px;text-align:right}
+.pa400-catbills .d{font-size:12px;color:var(--pa4-muted,rgba(255,255,255,.72))}
+.pa400-catbills .s{justify-self:end;font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;background:color-mix(in srgb,var(--pa4-text,#fff) 10%,transparent);color:var(--pa4-muted,rgba(255,255,255,.72))}
+.pa400-catbills .s.paid{background:color-mix(in srgb,var(--pa4-good,#3ddc97) 18%,transparent);color:#9ff5cd}
+.pa400-catbills .s.late{background:color-mix(in srgb,var(--pa4-bad,#fb7185) 18%,transparent);color:#ffc2cc}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body dialog.pa400-report #paymentHistoryContent .bill[data-pa400-tap]{padding-right:34px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paConfirm400 .pa400c-x{flex:0 0 54px!important;width:54px!important;height:38px!important;min-height:38px!important;min-width:0!important;padding:0!important;margin:0 0 0 auto!important;border-radius:50%!important;background:var(--pa4-raised,#1f4f86)!important;background-image:none!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;color:var(--pa4-text,#fff)!important;font-size:22.4px!important;font-weight:950!important;line-height:1!important;box-shadow:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paConfirm400 .pa400c-cancel{background:var(--pa4-raised,#1f4f86)!important;background-image:none!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;color:var(--pa4-text,#fff)!important;box-shadow:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paConfirm400 .pa400c-ok{background:var(--pa4-accent,#00f5ff)!important;background-image:none!important;border:1px solid var(--pa4-accent,#00f5ff)!important;color:#03111f!important;box-shadow:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paConfirm400.danger .pa400c-ok{background:var(--pa4-bad,#fb7185)!important;border-color:var(--pa4-bad,#fb7185)!important;color:#1a0508!important}
+/* Payoff Planner close button: same as the standard sheet x */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-head .pa3102-close{flex:0 0 54px!important;width:54px!important;height:38px!important;min-height:38px!important;align-self:flex-start!important;margin:0!important;padding:0!important;border-radius:50%!important;font-size:22.4px!important;font-weight:950!important;line-height:1!important;background:var(--pa4-raised,#1f4f86)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;color:var(--pa4-text,#fff)!important;box-shadow:none!important}
+.pa400-catbills .none{padding:10px 4px;font-size:13px;color:var(--pa4-muted,rgba(255,255,255,.72))}
+</style>
+<script id="pa400-budget-sheets">
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cash=n=>{try{return money(Number(n)||0)}catch(_){return '$'+(Number(n)||0).toFixed(2)}};
+
+/* ---------- In-app confirm sheet (replaces native confirm) ---------- */
+let pending=null;
+function confirmDlg(){
+  let d=$('paConfirm400');if(d)return d;
+  d=document.createElement('dialog');d.id='paConfirm400';d.dataset.pp51='1';d.setAttribute('aria-labelledby','paConfirm400Title');
+  d.innerHTML='<div class="pa400c-card"><div class="pa400c-head"><div class="pa400c-tile" aria-hidden="true"></div><div class="pa400c-title" id="paConfirm400Title" role="heading" aria-level="2"></div><button type="button" class="pa400c-x" aria-label="Close">×</button></div><div class="pa400c-msg"></div><div class="pa400c-actions"><button type="button" class="pa400c-cancel">Cancel</button><button type="button" class="pa400c-ok">OK</button></div></div>';
+  document.body.appendChild(d);
+  const finish=v=>{const p=pending;pending=null;try{if(d.open)d.close()}catch(_){d.removeAttribute('open')}if(p)p(v)};
+  d.querySelector('.pa400c-ok').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();finish(true)});
+  d.querySelector('.pa400c-cancel').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();finish(false)});
+  d.querySelector('.pa400c-x').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();finish(false)});
+  d.addEventListener('cancel',e=>{e.preventDefault();finish(false)});
+  d.addEventListener('close',()=>{if(pending)finish(false)});
+  d.addEventListener('click',e=>{if(e.target===d)finish(false)});
+  return d;
+}
+window.PayAviatorConfirm=function(opts){
+  if(typeof opts==='string')opts={message:opts};opts=opts||{};
+  const d=confirmDlg();
+  if(pending){const p=pending;pending=null;p(false)}
+  d.querySelector('.pa400c-title').textContent=opts.title||'Are you sure?';
+  d.querySelector('.pa400c-msg').textContent=String(opts.message||'');
+  d.querySelector('.pa400c-ok').textContent=opts.confirmText||'OK';
+  d.querySelector('.pa400c-cancel').textContent=opts.cancelText||'Cancel';
+  const tile=d.querySelector('.pa400c-tile');const ico=opts.icon||(/^copy/i.test(opts.confirmText||'')?'copy':'');
+  tile.hidden=!ico;if(ico)d.style.setProperty('--pa400c-ico','var(--pa-i-'+ico+')');
+  d.classList.toggle('danger',!!opts.danger);
+  try{document.activeElement?.blur?.()}catch(_){}
+  return new Promise(res=>{pending=res;try{if(!d.open)d.showModal()}catch(_){d.setAttribute('open','')}});
+};
+
+/* ---------- Report sheets ---------- */
+const SHEETS={financialSnapshotDlg:'showFinancialSnapshot',categorySummaryDlg:'showCategorySummary',paymentHistoryDlg:'showPaymentHistoryAll'};
+const CONTENT={financialSnapshotDlg:'financialSnapshotContent',categorySummaryDlg:'categorySummaryContent',paymentHistoryDlg:'paymentHistoryContent'};
+let busy=false;
+function viewMonth(d){try{return new Date(calDate.getFullYear(),calDate.getMonth()+(Number(d.dataset.pa400Off)||0),1)}catch(_){return new Date()}}
+function render(id,off){
+  const d=$(id),fn=window[SHEETS[id]];if(!d||typeof fn!=='function')return;
+  d.dataset.pa400Off=String(off);
+  let saved=null;try{saved=new Date(calDate.getTime())}catch(_){}
+  busy=true;
+  try{if(saved){calDate=new Date(saved.getFullYear(),saved.getMonth()+off,1)}fn()}catch(e){console.warn('PayAviator report',e)}
+  finally{try{if(saved)calDate=saved}catch(_){}busy=false}
+  enhance(id);
+}
+function closeDlg(d){try{d.close()}catch(_){d.removeAttribute('open')}}
+function openEdit(d,bill){if(!bill)return;closeDlg(d);setTimeout(()=>{try{editBill(bill.id)}catch(e){console.warn('PayAviator edit bill',e)}},60)}
+function occurrences(dt){try{return monthBillOccurrencesV47(dt.getFullYear(),dt.getMonth(),true)||[]}catch(_){return []}}
+function status(b,iso){try{return billStatus(b,iso)}catch(_){return ''}}
+function nav(d){
+  const body=d.querySelector('.pp51-body')||d.querySelector('.form');if(!body)return;
+  let n=d.querySelector('.pa400-monthnav');
+  if(!n){n=document.createElement('div');n.className='pa400-monthnav';n.innerHTML='<button type="button" data-pa400-month="-1" aria-label="Previous month">‹</button><b></b><button type="button" data-pa400-month="1" aria-label="Next month">›</button>';const c=$(CONTENT[d.id]);(c&&c.parentElement?c.parentElement:body).insertBefore(n,c||null)}
+  const lbl=viewMonth(d).toLocaleDateString('en-US',{month:'long',year:'numeric'}),lb=n.querySelector('b');if(lb.textContent!==lbl)lb.textContent=lbl;
+}
+function enhance(id){
+  const d=$(id);if(!d)return;
+  d.classList.add('pa400-report');nav(d);
+  const c=$(CONTENT[id]);if(!c)return;
+  if(id==='financialSnapshotDlg'){
+    c.querySelectorAll('.snapshot-row').forEach(r=>{const t=(r.querySelector('span')?.textContent||'').trim().toLowerCase();const k=t.startsWith('money in')?'income':t.startsWith('bills paid')?'paid':t.startsWith('other spending')?'spending':'';if(k){r.dataset.pa400Tap=k;r.setAttribute('role','button');r.tabIndex=0}});
+  }else if(id==='categorySummaryDlg'){
+    c.querySelectorAll('.mb2037-category-row').forEach(r=>{r.dataset.pa400Tap='cat';r.setAttribute('role','button');if(!r.hasAttribute('aria-expanded'))r.setAttribute('aria-expanded','false');r.tabIndex=0});
+  }else{
+    c.querySelectorAll('.bill').forEach(r=>{if(billFromHistory(r,d)){r.dataset.pa400Tap='bill';r.setAttribute('role','button');r.tabIndex=0}});
+  }
+}
+function billFromHistory(r,d){
+  const name=(r.querySelector('.name')?.textContent||'').trim();if(!name)return null;
+  const head=r.closest('.date-bill-group')?.querySelector('.date-bill-header')?.textContent||'';
+  let iso='';const dt=new Date(head);if(!isNaN(dt))try{iso=toISO(dt)}catch(_){}
+  const list=(()=>{try{return bills}catch(_){return []}})();
+  const occ=occurrences(viewMonth(d)).find(o=>o.b&&o.b.name===name&&o.iso===iso);
+  return occ?occ.b:(list.find(b=>b.name===name)||null);
+}
+function toggleCategory(row,d){
+  const open=row.classList.toggle('pa400-open');row.setAttribute('aria-expanded',open?'true':'false');
+  const next=row.nextElementSibling;if(next&&next.classList.contains('pa400-catbills'))next.remove();
+  if(!open)return;
+  const cat=(row.querySelector('b')?.textContent||'').trim();
+  const items=occurrences(viewMonth(d)).filter(o=>o.b&&(((o.b.category||'Uncategorized').trim()||'Uncategorized')===cat)).sort((a,b)=>a.iso<b.iso?-1:1);
+  const box=document.createElement('div');box.className='pa400-catbills';
+  box.innerHTML=items.length?items.map(o=>{const st=status(o.b,o.iso);const cls=st==='paid'?'paid':(st==='late'||st==='overdue'?'late':'');const lbl=st==='paid'?'Paid':(cls==='late'?'Late':'Unpaid');let when=o.iso;try{when=fmtLong(o.iso)}catch(_){}
+    return `<button type="button" data-pa400-bill="${esc(o.b.id)}"><span class="n">${esc(o.b.name)}</span><span class="a">${cash(o.b.amount)}</span><span class="d">Due ${esc(when)}</span><span class="s ${cls}">${lbl}</span></button>`}).join(''):'<div class="none">No bills in this category this month.</div>';
+  row.after(box);
+}
+function collapseOpen(){const r=document.querySelector('#categorySummaryDlg[open] .mb2037-category-row.pa400-open');if(!r)return false;toggleCategory(r,$('categorySummaryDlg'));return true}
+document.addEventListener('click',e=>{
+  const t=e.target;if(!t||!t.closest)return;
+  const d=t.closest('dialog.pa400-report');if(!d)return;
+  const mb=t.closest('[data-pa400-month]');
+  if(mb){e.preventDefault();e.stopPropagation();render(d.id,(Number(d.dataset.pa400Off)||0)+Number(mb.dataset.pa400Month));return}
+  const bb=t.closest('[data-pa400-bill]');
+  if(bb){e.preventDefault();e.stopPropagation();const list=(()=>{try{return bills}catch(_){return []}})();openEdit(d,list.find(b=>String(b.id)===bb.dataset.pa400Bill));return}
+  const r=t.closest('[data-pa400-tap]');if(!r)return;
+  e.preventDefault();e.stopPropagation();
+  const k=r.dataset.pa400Tap;
+  if(k==='cat'){toggleCategory(r,d);return}
+  if(k==='bill'){openEdit(d,billFromHistory(r,d));return}
+  const off=Number(d.dataset.pa400Off)||0;closeDlg(d);
+  setTimeout(()=>{
+    if(k==='paid')render('paymentHistoryDlg',off);
+    else if(k==='spending')document.querySelector('.mb119-nav[data-view="spending"]')?.click();
+    else if(k==='income'){try{openPaycheckForm()}catch(err){console.warn('PayAviator paycheck form',err)}}
+  },60);
+},true);
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target?.dataset?.pa400Tap){e.preventDefault();e.target.click()}});
+function watch(){
+  Object.keys(SHEETS).forEach(id=>{
+    const d=$(id);if(!d||d.dataset.pa400Watch)return;d.dataset.pa400Watch='1';
+    const mo=new MutationObserver(()=>{if(d.open&&!busy){if(!d.dataset.pa400Seen){d.dataset.pa400Seen='1';d.dataset.pa400Off='0'}enhance(id);mo.takeRecords()}if(!d.open)delete d.dataset.pa400Seen});mo.observe(d,{attributes:true,attributeFilter:['open'],childList:true,subtree:true});
+  });
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch,{once:true});else watch();
+window.addEventListener('load',watch);
+
+/* Android Back: collapse an expanded category before the sheet closes. */
+try{
+  const desc=Object.getOwnPropertyDescriptor(window,'payAviatorHandleAndroidBack');
+  const getPrev=()=>desc&&desc.get?desc.get.call(window):(desc?desc.value:null);
+  const mine=function(){if(collapseOpen())return true;const f=getPrev();return typeof f==='function'?f.apply(this,arguments):false};
+  Object.defineProperty(window,'payAviatorHandleAndroidBack',{configurable:true,get(){return mine},set(v){if(v===mine)return;if(desc&&desc.set)desc.set.call(window,v);else if(desc)desc.value=v}});
+}catch(_){}
 })();
 </script>
 </body>
