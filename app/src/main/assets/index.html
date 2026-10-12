@@ -12,6 +12,60 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PayAviator">
 <title>PayAviator</title>
+<script id="pa-402-available-now-js">
+/* 4.0.2: ONE definition of Available now, shared by Home, Monthly Snapshot,
+   the Cash gauge and the Paycheck Planner.
+   Available now = sum of spendable balances:
+     - connected (Plaid) accounts with type 'depository' (checking, savings, etc.):
+       balances.available, falling back to balances.current when available is null/empty
+     - manual spendable accounts stored with type 'depository' (source 'manual')
+     - manually entered cash on hand (Cash wallet: spendable + set-aside cash),
+       unless it is marked as already held in a bank account
+   Credit, loan, investment and every other type are excluded.
+   With no accounts and no cash set up, it falls back to the old
+   paychecks - bills - spending estimate and says so (estimate:true). */
+(function(){'use strict';
+  const ACC='payaviator_connected_accounts_v1', CASH='payaviator_cash_wallet_v950';
+  const read=(k,f)=>{try{const v=JSON.parse(localStorage.getItem(k)||'');return v??f}catch(_){return f}};
+  const blank=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v));
+  const r2=n=>Math.round((Number(n)||0)*100)/100;
+  function accountAmount(a){
+    const b=a&&a.balances&&typeof a.balances==='object'?a.balances:null;
+    const av=b?(blank(b.available)?a.available:b.available):a?.available;
+    const cur=b?(blank(b.current)?a.current:b.current):(a?.current??a?.balance);
+    // A stored mapper may already have folded current into available; prefer raw Plaid fields when present.
+    if(b&&!blank(b.available))return Number(b.available);
+    if(b&&blank(b.available)&&!blank(b.current))return Number(b.current);
+    if(!blank(av))return Number(av);
+    if(!blank(cur))return Number(cur);
+    return 0;
+  }
+  function isSpendable(a){return String(a?.type||'').toLowerCase()==='depository'}
+  function label(a){const inst=a.institutionName||a.institution||a.institution_name||'';const nm=a.name||a.officialName||a.official_name||'Account';return (inst&&!/^connected institution$/i.test(inst)?inst+' ':'')+nm+(a.mask?' ••'+a.mask:'')}
+  function compute(){
+    const accts=read(ACC,[]);const list=Array.isArray(accts)?accts:[];
+    const items=[],excluded=[];
+    list.forEach(a=>{if(!a)return;const amt=r2(accountAmount(a));
+      if(isSpendable(a)){const b=a.balances&&typeof a.balances==='object'?a.balances:null;const basis=b?(blank(b.available)&&!blank(b.current)?'current':'available'):(blank(a.available)?'current':'available');items.push({kind:a.source==='manual'?'manual':'bank',name:label(a),subtype:String(a.subtype||'depository'),amount:amt,basis,id:String(a.id||a.account_id||'')})}
+      else{const b=a.balances||{};const cur=blank(b.current)?(blank(a.current)?accountAmount(a):a.current):b.current;excluded.push({name:label(a),type:String(a.type||'other'),subtype:String(a.subtype||''),amount:r2(cur)})}});
+    const w=read(CASH,{})||{};const cashSet=Number(w.spendable)>0||Number(w.saved)>0;
+    const inBank=!!(w.inBankAccount||w.sameAsAccountId);
+    if(cashSet){
+      const amt=r2(Math.max(0,Number(w.spendable)||0)+Math.max(0,Number(w.saved)||0));
+      if(inBank)excluded.push({name:'Cash on hand (already in a bank account)',type:'cash',subtype:'',amount:amt});
+      else items.push({kind:'cash',name:'Cash on hand',subtype:'cash',amount:amt,id:'cash'});
+    }
+    if(items.length||(cashSet&&inBank)){
+      return {total:r2(items.reduce((s,x)=>s+x.amount,0)),estimate:false,source:'accounts',items,excluded};
+    }
+    let est=0;try{const d=new Date();const ms=window.PayAviatorMonthState985;if(typeof ms==='function')est=Number(ms(d.getFullYear(),d.getMonth())?.available)||0}catch(_){}
+    return {total:r2(est),estimate:true,source:'estimate',items:[],excluded,label:'Estimate: paychecks minus bills and spending'};
+  }
+  window.PayAviatorAvailableNow=compute;
+  window.PayAviatorAvailableNowTotal=()=>compute().total;
+  window.PayAviatorAvailableNowAmountOf=accountAmount;
+})();
+</script>
 <script id="pa-400-minpay-repair-js">
 /* PayAviator design refresh — one-time repair of minimum payments that older builds overwrote with $25.
    Runs once (flag: payaviator_min_payment_repair_v1). Existing keys are read and written in their
@@ -21096,7 +21150,7 @@ body.pp821-theme-live .mb137-color-row{
   async function syncPlaidAccounts(){
     const data=await api('/api/plaid/accounts');
     const rows=Array.isArray(data.accounts)?data.accounts:[];
-    const mapped=rows.map(a=>({id:a.account_id||a.id,name:a.name||a.official_name||'Account',officialName:a.official_name||'',institution:a.institution_name||a.institution||'Connected institution',institutionName:a.institution_name||a.institution||'Connected institution',mask:a.mask||'',type:a.type||'',subtype:a.subtype||'',current:Number(a.balances?.current??a.current??0)||0,available:Number(a.balances?.available??a.balances?.current??a.available??a.current??0)||0,itemId:a.item_id||'',lastSync:new Date().toISOString(),source:'plaid'}));
+    const mapped=rows.map(a=>({id:a.account_id||a.id,name:a.name||a.official_name||'Account',officialName:a.official_name||'',institution:a.institution_name||a.institution||'Connected institution',institutionName:a.institution_name||a.institution||'Connected institution',mask:a.mask||'',type:a.type||'',subtype:a.subtype||'',current:Number(a.balances?.current??a.current??0)||0,available:((v,c)=>(v===null||v===undefined||v===''||!Number.isFinite(Number(v)))?(Number(c)||0):Number(v))(a.balances?.available??a.available,a.balances?.current??a.current),balances:a.balances||null,itemId:a.item_id||'',lastSync:new Date().toISOString(),source:'plaid'}));
     const old=loadAccounts(), byId=new Map(old.map(a=>[String(a.id),a]));
     const merged=mapped.map(a=>Object.assign({},byId.get(String(a.id))||{},a)); saveAccounts(merged); ensureChoices(); refreshGauge(); return merged;
   }
@@ -22290,7 +22344,7 @@ setState(readNative());
       institutionName:a.institution_name||a.institution||'Connected institution',
       mask:a.mask||'', type:a.type||'', subtype:a.subtype||'',
       current:Number(a.balances?.current??a.current??0)||0,
-      available:Number(a.balances?.available??a.balances?.current??a.available??a.current??0)||0,
+      available:((v,c)=>(v===null||v===undefined||v===''||!Number.isFinite(Number(v)))?(Number(c)||0):Number(v))(a.balances?.available??a.available,a.balances?.current??a.current),balances:a.balances||null,
       itemId:a.item_id||'', lastSync:new Date().toISOString(), source:'plaid'
     }));
     const old=loadAccounts(), byId=new Map(old.map(a=>[String(a.id),a]));
@@ -22829,7 +22883,7 @@ setState(readNative());
   function accountClass(a){const t=String(a?.type||'').toLowerCase(),st=String(a?.subtype||'').toLowerCase();if(t==='credit'||t==='loan'||['credit card','mortgage','student','auto'].some(x=>st.includes(x)))return 'debt';if(st==='savings'||st==='money market'||st==='cd')return 'savings';if(t==='depository'&&['checking','cash management'].includes(st))return 'checking';return t==='depository'?'cash':'other'}
   function defaultIncluded(a){const k=accountClass(a);return k==='checking'||k==='cash'}
   function included(a,c){return c[accountKey(a)]!==undefined?c[accountKey(a)]===true:defaultIncluded(a)}
-  function availableNow(){const c=choices();return accounts().reduce((s,a)=>s+(included(a,c)?balance(a):0),0)}
+  function availableNow(){if(typeof window.PayAviatorAvailableNowTotal==='function')return window.PayAviatorAvailableNowTotal();const c=choices();return accounts().reduce((s,a)=>s+(included(a,c)?balance(a):0),0)}
 
   // Keep one immutable reference to the underlying app state, then make all callers
   // receive the exact same Available Now / Safe to Spend snapshot.
@@ -22841,7 +22895,7 @@ setState(readNative());
     const savings=Math.max(0,num(base.savings));
     const cushion=Math.max(0,num(base.cushion));
     const useSavings=!!base.s?.useSavings;
-    const spendBase=available+(useSavings?savings:0);
+    const AN402=window.PayAviatorAvailableNow?.();const spendBase=available+((useSavings&&!(AN402&&!AN402.estimate))?savings:0);
     return Object.assign({},base,{available,base:spendBase,safe:Math.max(0,spendBase-cushion),savings,cushion});
   }
   moneyState.__pp924Authoritative=true;
@@ -22851,7 +22905,7 @@ setState(readNative());
   function snapshot(){
     const x=moneyState();
     return {
-      available:Math.max(0,num(x.available)),
+      available:num(x.available),
       savings:Math.max(0,num(x.savings)),
       cushion:Math.max(0,num(x.cushion)),
       safe:Math.max(0,num(x.safe)),
@@ -23105,7 +23159,7 @@ body.pp-help-off #pp925TipLauncher{display:none!important}
     const savings=Math.max(0,num(base?.savings));
     const cushion=Math.max(0,num(base?.cushion));
     const useSavings=!!base?.s?.useSavings;
-    const spendBase=available+(useSavings?savings:0);
+    const AN402=window.PayAviatorAvailableNow?.();const spendBase=available+((useSavings&&!(AN402&&!AN402.estimate))?savings:0);
     return {base,available,savings,cushion,safe:Math.max(0,spendBase-cushion),useSavings};
   }
 
@@ -25225,6 +25279,77 @@ window.PayAviatorMoveChoice=function(){
 })();
 </script>
 
+
+<style id="pa-402-available-css">
+#pa402AvailDlg .pa402-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+#pa402AvailDlg .pa402-row small,.pa402-bd small{display:block;opacity:.7;font-size:.78rem}
+#pa402AvailDlg .pa402-row.out,.pa402-bd .out{opacity:.6}
+#pa402AvailDlg .pa402-total{font-weight:800;border-bottom:0}
+.pa402-bd{margin:6px 0 0;font-size:.9rem}
+.pa402-bd .pa402-line{display:flex;justify-content:space-between;gap:10px;padding:4px 0}
+#pa402AvailDlg label.pa402-check{display:flex!important;gap:10px;align-items:center;margin:12px 0 4px;font-size:.9rem;font-weight:600;text-align:left}
+#pa402AvailDlg label.pa402-check input{width:22px!important;height:22px!important;min-height:0!important;flex:0 0 22px;margin:0;padding:0;accent-color:#18e2eb}
+</style>
+<dialog id="pa402AvailDlg" aria-labelledby="pa402AvailTitle"><div class="form">
+<h2 id="pa402AvailTitle">Available now</h2>
+<div class="meta" id="pa402AvailMeta"></div>
+<div id="pa402AvailBody"></div>
+<div class="form-actions"><button class="primary" type="button" data-pa402-close="1" aria-label="Close">Done</button></div>
+</div></dialog>
+<script id="pa-402-available-authority-js">
+/* 4.0.2: every screen reads window.PayAviatorAvailableNow(). This layer points the
+   older canonical APIs at it and owns the Available now breakdown sheet. */
+(function(){'use strict';
+const $=id=>document.getElementById(id);
+const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(n)||0);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const AN=()=>window.PayAviatorAvailableNow();
+const total=()=>window.PayAviatorAvailableNowTotal();
+function kindLabel(x){return x.kind==='cash'?'Entered by you':x.kind==='manual'?'Manual account':(x.subtype?x.subtype.replace(/^./,c=>c.toUpperCase()):'Bank')}
+window.PayAviatorAvailableNowBreakdownHTML=function(a){a=a||AN();
+  if(a.estimate)return `<div class="pa402-bd"><div class="pa402-line"><span>Estimate: paychecks − bills − spending</span><b>${money(a.total)}</b></div></div>`;
+  return `<div class="pa402-bd">${a.items.map(x=>`<div class="pa402-line"><span>${esc(x.name)}<small>${esc(kindLabel(x))}</small></span><b>${money(x.amount)}</b></div>`).join('')}${a.excluded.length?`<div class="pa402-line out"><span>Not counted: ${esc(a.excluded.map(x=>x.name).join(', '))}</span></div>`:''}</div>`};
+function render(){const a=AN(),body=$('pa402AvailBody'),meta=$('pa402AvailMeta');if(!body)return;
+  meta.textContent=a.estimate?'No bank accounts or cash are set up, so this is an estimate: paychecks minus bills and spending this month.':'The total of your spendable accounts. Credit cards, loans and investments are not counted.';
+  const w=(()=>{try{return JSON.parse(localStorage.getItem('payaviator_cash_wallet_v950')||'{}')||{}}catch(_){return{}}})();
+  const cashSet=Number(w.spendable)>0||Number(w.saved)>0;
+  let h='';
+  a.items.forEach(x=>{h+=`<div class="pa402-row" data-pa402-item="${esc(x.id)}"><span>${esc(x.name)}<small>${esc(kindLabel(x))}${x.kind==='bank'?(x.basis==='current'?' · current balance (no available balance reported)':' · available balance'):''}</small></span><b>${money(x.amount)}</b></div>`});
+  a.excluded.forEach(x=>{h+=`<div class="pa402-row out"><span>${esc(x.name)}<small>Not counted · ${esc(x.type)}</small></span><b>${money(x.amount)}</b></div>`});
+  if(a.estimate)h+=`<div class="pa402-row"><span>Estimate<small>Paychecks − bills − spending this month</small></span><b>${money(a.total)}</b></div>`;
+  h+=`<div class="pa402-row pa402-total"><span>${a.estimate?'Available now (estimate)':'Available now'}</span><b id="pa402AvailTotal">${money(a.total)}</b></div>`;
+  if(cashSet)h+=`<label class="pa402-check"><input type="checkbox" id="pa402CashInBank" ${w.inBankAccount?'checked':''}> My cash on hand is already in one of these bank accounts (don't count it twice)</label>`;
+  body.innerHTML=h;
+}
+function open(){const d=$('pa402AvailDlg');if(!d)return;render();try{if(!d.open)d.showModal()}catch(_){d.setAttribute('open','')}}
+function close(){const d=$('pa402AvailDlg');try{d.close()}catch(_){d?.removeAttribute('open')}}
+function refreshAll(){try{window.pp2059RenderGauge?.()}catch(_){}try{window.PayAviatorGauge967?.render?.()}catch(_){}try{document.dispatchEvent(new CustomEvent('payaviator:gaugechange'))}catch(_){}try{if(typeof window.render==='function')window.render()}catch(_){}}
+window.PayAviatorOpenAvailableNow=open;
+const TRIG='[data-pa402-avail],[aria-label="View Available Now breakdown"],[data-pp-open-accounts],.health-cell[data-health-action="available-now"],#availableNowCard';
+// window capture runs before the older document-level Available now handlers.
+window.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const t=e.target.closest?.(TRIG);if(!t||(t.matches('#pp2059GaugeMetrics .pp967-metric')&&!/available now/i.test(t.textContent)))return;e.preventDefault();e.stopImmediatePropagation();open()},true);
+window.addEventListener('click',e=>{
+  const c=e.target.closest?.('[data-pa402-close]');if(c){e.preventDefault();close();return}
+  const t=e.target.closest?.(TRIG);if(!t)return;
+  if(t.matches('#pp2059GaugeMetrics .pp967-metric')&&!/available now/i.test(t.textContent))return;
+  e.preventDefault();e.stopImmediatePropagation();open();
+},true);
+document.addEventListener('change',e=>{if(e.target?.id!=='pa402CashInBank')return;let w={};try{w=JSON.parse(localStorage.getItem('payaviator_cash_wallet_v950')||'{}')||{}}catch(_){}w.inBankAccount=!!e.target.checked;localStorage.setItem('payaviator_cash_wallet_v950',JSON.stringify(w));render();refreshAll()},true);
+function install(){
+  window.PayAviatorCanonicalAvailableNow906=total;window.PayAviatorCanonicalAvailableNow909=total;window.PayAviatorCanonicalAvailableNow920=total;window.PayAviatorCanonicalAvailableNow924=total;
+  window.PayAviatorConnectedAccounts=window.PayAviatorConnectedAccounts||{};
+  window.PayAviatorConnectedAccounts.availableBalance=total;window.PayAviatorConnectedAccounts.includedBalance=total;
+  if(window.PayAviatorGauge924)window.PayAviatorGauge924.availableNow=total;
+  // Older modules re-assign these on refresh; pin them to the shared function.
+  const pin=(o,k)=>{try{Object.defineProperty(o,k,{configurable:true,enumerable:true,get(){return total},set(_){}})}catch(_){}};
+  ['availableBalance','includedBalance'].forEach(k=>pin(window.PayAviatorConnectedAccounts,k));
+  ['906','909','920','924','948'].forEach(v=>pin(window,'PayAviatorCanonicalAvailableNow'+v));
+}
+install();
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{install();setTimeout(install,300)},{once:true});else setTimeout(install,300);
+window.addEventListener('payaviator:accounts-updated',()=>{install();if($('pa402AvailDlg')?.open)render()});
+})();
+</script>
 </body>
 
 <script>
@@ -25477,7 +25602,7 @@ window.__PAYAVIATOR_GAUGE_AUTHORITY__='pp967';
 const VERSION=window.PayAviatorVersion?.name?.()||'dev',ACCOUNT_KEY='payaviator_connected_accounts_v1',CHOICE_KEY='payaviator_account_choices_v920',CASH_KEY='payaviator_cash_wallet_v950',TX_KEY='payaviator_bank_transactions_v954',ADV_KEY='payaviator_advanced_details_open_v967',SYNC_KEY='payaviator_last_bank_sync_v960';
 function getGaugeHost(){let host=$('pp2059Gauge');if(host)return host;const card=$('mb20419HealthCard');if(!card)return null;host=document.createElement('div');host.id='pp2059Gauge';const forecast=$('mb20419Forecast');if(forecast)card.insertBefore(host,forecast);else card.prepend(host);return host;}
 const $=id=>document.getElementById(id),num=v=>{const n=Number(v);return Number.isFinite(n)?n:0},read=(k,f)=>{try{const v=JSON.parse(localStorage.getItem(k)||'');return v??f}catch(_){return f}},money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2}).format(num(n));
-const short=n=>{n=Math.max(0,num(n));if(n>=1e6)return '$'+(n/1e6).toFixed(1).replace(/\.0$/,'')+'M';if(n>=10000)return '$'+(n/1000).toFixed(n>=100000?0:1).replace(/\.0$/,'')+'K';return money(n)};
+const short=n=>{n=num(n);if(n<0)return '−'+short(-n);if(n>=1e6)return '$'+(n/1e6).toFixed(1).replace(/\.0$/,'')+'M';if(n>=10000)return '$'+(n/1000).toFixed(n>=100000?0:1).replace(/\.0$/,'')+'K';return money(n)};
 function institution(a){return String(a?.institutionName||a?.institution_name||a?.institution||'Connected institution')}
 function item(a){return String(a?.itemId||a?.item_id||a?.plaid_item_id||'')}
 function rawId(a){return String(a?.account_id||a?.id||'')}
@@ -25564,8 +25689,8 @@ function state(){
      available balances are the authority for Available Now. The paycheck/manual
      cash ledger is only the fallback when live accounts are not active. This keeps
      cash/manual spending from masquerading as the main Safe to Spend balance. */
-  const connectedSpendable=inc.length>0,available=connectedSpendable?bankAvailable:checksAvailable,cush=cushion(),includeSavings=localStorage.getItem('payaviator_include_savings_v996')==='1';
-  return{accounts:aa,included:inc,cash:cw,bankAvailable,bankSavings,savings:bankSavings,checksAvailable,availableSource:(connectedSpendable?'bank':'checks'),available,cushion:cush,includeSavings,safe:Math.max(0,available-cush+(includeSavings?bankSavings:0))}
+  const AN402=typeof window.PayAviatorAvailableNow==='function'?window.PayAviatorAvailableNow():null,connectedSpendable=AN402?!AN402.estimate:inc.length>0,available=AN402?AN402.total:(connectedSpendable?bankAvailable:checksAvailable),cush=cushion(),includeSavings=localStorage.getItem('payaviator_include_savings_v996')==='1';
+  const savingsInAvail=!!(AN402&&!AN402.estimate&&AN402.items.some(x=>/saving|money market|cd/i.test(x.subtype)));return{accounts:aa,included:inc,cash:cw,bankAvailable,bankSavings,savings:bankSavings,checksAvailable,availableSource:(AN402?(AN402.estimate?'estimate':'accounts'):(connectedSpendable?'bank':'checks')),available,cushion:cush,includeSavings:includeSavings||savingsInAvail,safe:Math.max(0,available-cush+((includeSavings&&!savingsInAvail)?bankSavings:0))}
 }
 /* No Cash swipe page: cash is represented by the mini gauge below. */
 function pages(s){const out=[{name:'All Spendable',value:s.safe,available:s.available,label:'SAFE TO SPEND'}];for(const a of s.included){const inst=institution(a),acct=String(a?.name||a?.officialName||a?.subtype||'Account'),mask=String(a?.mask||'').trim(),name=(inst+(mask?' •••• '+mask:(acct&&acct!==inst?' • '+acct:''))),v=bal(a);out.push({name,value:v,available:v,label:'SPENDABLE IN '+acct.toUpperCase(),rows:[a]})}return out}
@@ -25605,7 +25730,7 @@ function pp973Scale(pageIndex,p){
   const max=niceMax(value);
   return {max,marks:[0,max*.10,max*.25,max*.50,max],custom:false};
 }
-function render(){const host=getGaugeHost();if(!host||busy)return;busy=true;try{const preservedMini=$('pp959MiniCash');const s=state(),pp=pages(s);if(page>=pp.length)page=0;const p=pp[page],sig=JSON.stringify({page,name:p.name,value:p.value,available:p.available,savings:s.savings,cushion:s.cushion,cash:s.cash,accounts:s.included.map(a=>[key(a),bal(a),bal(a,'current')]),advanced:localStorage.getItem(ADV_KEY)});if(sig===lastGaugeSignature&&host.querySelector('#pp954Gauge.pp967-gauge'))return;lastGaugeSignature=sig;const gs=pp973Scale(page,p),max=gs.max,marks=gs.marks,ratio=Math.max(0,Math.min(1,p.value/max)),start=130,end=410,span=end-start,ang=start+span*ratio,[nx,ny]=pt(200,200,116,ang),a1=start+span*(marks[1]/max),a2=start+span*(marks[2]/max),a3=start+span*(marks[3]/max);const label=(v,i)=>{const a=start+span*(v/max),q=pt(200,200,166,a);return `<text class="pp9162-scale-label" x="${q[0]}" y="${q[1]+7}" text-anchor="middle" font-size="21" font-weight="900" fill="#fff" stroke="#07182f" stroke-width="3" paint-order="stroke fill">${i===0?'$0':(v>=1000?'$'+(v/1000).toFixed(v%1000?1:0)+'k':'$'+Math.round(v))}</text>`};host.innerHTML=`<div id="pp954Gauge" class="pp959-gauge pp967-gauge"><i id="pp955Gauge" hidden></i><i id="pp958Gauge" hidden></i><div class="pp967-head"><div class="pp967-title">PayAviator Gauge</div><div class="pp967-bank">${p.name}</div></div>${pp.length>1?`<div class="pp967-pager"><div class="pp967-dots">${pp.map((x,i)=>`<button type="button" class="pp967-dot ${i===page?'active':''}" data-pp967-page="${i}" aria-label="View ${x.name} gauge"></button>`).join('')}</div><div class="pp967-swipe">Swipe left or right to view another gauge</div></div>`:''}<div class="pp967-dial"><svg viewBox="0 0 400 400" aria-label="${p.label} ${money(p.value)}"><circle cx="200" cy="200" r="174" fill="#0a315f" stroke="#71808e" stroke-width="10"/><circle cx="200" cy="200" r="158" fill="none" stroke="#d8e0e7" stroke-width="34"/><path d="${arc(200,200,158,start,a1)}" fill="none" stroke="#e23a3a" stroke-width="27"/><path d="${arc(200,200,158,a1,a2)}" fill="none" stroke="#f27827" stroke-width="27"/><path d="${arc(200,200,158,a2,a3)}" fill="none" stroke="#e9ce31" stroke-width="27"/><path d="${arc(200,200,158,a3,end)}" fill="none" stroke="#2cad48" stroke-width="27"/><g stroke="#0b2847" stroke-width="3">${Array.from({length:29},(_,i)=>{const d=start+span*i/28,A=pt(200,200,i%7===0?142:147,d),B=pt(200,200,169,d);return`<line x1="${A[0]}" y1="${A[1]}" x2="${B[0]}" y2="${B[1]}"/>`}).join('')}</g><line x1="200" y1="200" x2="${nx}" y2="${ny}" stroke="#fff" stroke-width="10" stroke-linecap="round"/><circle cx="200" cy="200" r="25" fill="#c7d0d9" stroke="#091a30" stroke-width="8"/><circle cx="200" cy="200" r="10" fill="#07182f"/>${marks.map(label).join('')}</svg><div class="pp967-readout"><div class="amt">${money(p.value)}</div><div class="lbl">${p.label}</div></div></div><div id="pp2059GaugeMetrics" class="pp967-metrics"><div class="pp967-metric" data-pp906-bound="1" role="button" tabindex="0" aria-label="View Available Now breakdown"><span>${page===0?'Available now':'This gauge'}</span><strong>${short(p.available)}</strong></div><button class="pp967-metric action" id="pp967Savings" type="button"><span>Savings</span><strong>${short(s.savings)} <i class="chev">›</i></strong><small class="pp996-savings-mode">${s.includeSavings?'Included':'Protected'}</small></button><div class="pp967-metric"><span>Cushion</span><strong>${short(s.cushion)}</strong></div></div>${tech(p,s)}${renderMini(s)}</div>`;const freshMini=$('pp959MiniCash');
+function render(){const host=getGaugeHost();if(!host||busy)return;busy=true;try{const preservedMini=$('pp959MiniCash');const s=state(),pp=pages(s);if(page>=pp.length)page=0;const p=pp[page],sig=JSON.stringify({page,name:p.name,value:p.value,available:p.available,savings:s.savings,cushion:s.cushion,cash:s.cash,accounts:s.included.map(a=>[key(a),bal(a),bal(a,'current')]),advanced:localStorage.getItem(ADV_KEY)});if(sig===lastGaugeSignature&&host.querySelector('#pp954Gauge.pp967-gauge'))return;lastGaugeSignature=sig;const gs=pp973Scale(page,p),max=gs.max,marks=gs.marks,ratio=Math.max(0,Math.min(1,p.value/max)),start=130,end=410,span=end-start,ang=start+span*ratio,[nx,ny]=pt(200,200,116,ang),a1=start+span*(marks[1]/max),a2=start+span*(marks[2]/max),a3=start+span*(marks[3]/max);const label=(v,i)=>{const a=start+span*(v/max),q=pt(200,200,166,a);return `<text class="pp9162-scale-label" x="${q[0]}" y="${q[1]+7}" text-anchor="middle" font-size="21" font-weight="900" fill="#fff" stroke="#07182f" stroke-width="3" paint-order="stroke fill">${i===0?'$0':(v>=1000?'$'+(v/1000).toFixed(v%1000?1:0)+'k':'$'+Math.round(v))}</text>`};host.innerHTML=`<div id="pp954Gauge" class="pp959-gauge pp967-gauge"><i id="pp955Gauge" hidden></i><i id="pp958Gauge" hidden></i><div class="pp967-head"><div class="pp967-title">PayAviator Gauge</div><div class="pp967-bank">${p.name}</div></div>${pp.length>1?`<div class="pp967-pager"><div class="pp967-dots">${pp.map((x,i)=>`<button type="button" class="pp967-dot ${i===page?'active':''}" data-pp967-page="${i}" aria-label="View ${x.name} gauge"></button>`).join('')}</div><div class="pp967-swipe">Swipe left or right to view another gauge</div></div>`:''}<div class="pp967-dial"><svg viewBox="0 0 400 400" aria-label="${p.label} ${money(p.value)}"><circle cx="200" cy="200" r="174" fill="#0a315f" stroke="#71808e" stroke-width="10"/><circle cx="200" cy="200" r="158" fill="none" stroke="#d8e0e7" stroke-width="34"/><path d="${arc(200,200,158,start,a1)}" fill="none" stroke="#e23a3a" stroke-width="27"/><path d="${arc(200,200,158,a1,a2)}" fill="none" stroke="#f27827" stroke-width="27"/><path d="${arc(200,200,158,a2,a3)}" fill="none" stroke="#e9ce31" stroke-width="27"/><path d="${arc(200,200,158,a3,end)}" fill="none" stroke="#2cad48" stroke-width="27"/><g stroke="#0b2847" stroke-width="3">${Array.from({length:29},(_,i)=>{const d=start+span*i/28,A=pt(200,200,i%7===0?142:147,d),B=pt(200,200,169,d);return`<line x1="${A[0]}" y1="${A[1]}" x2="${B[0]}" y2="${B[1]}"/>`}).join('')}</g><line x1="200" y1="200" x2="${nx}" y2="${ny}" stroke="#fff" stroke-width="10" stroke-linecap="round"/><circle cx="200" cy="200" r="25" fill="#c7d0d9" stroke="#091a30" stroke-width="8"/><circle cx="200" cy="200" r="10" fill="#07182f"/>${marks.map(label).join('')}</svg><div class="pp967-readout"><div class="amt">${money(p.value)}</div><div class="lbl">${p.label}</div></div></div><div id="pp2059GaugeMetrics" class="pp967-metrics"><div class="pp967-metric" data-pp906-bound="1" role="button" tabindex="0" aria-label="View Available Now breakdown"><span>${page===0?((window.PayAviatorAvailableNow?.().estimate)?'Available now (est.)':'Available now'):'This gauge'}</span><strong>${short(p.available)}</strong></div><button class="pp967-metric action" id="pp967Savings" type="button"><span>Savings</span><strong>${short(s.savings)} <i class="chev">›</i></strong><small class="pp996-savings-mode">${s.includeSavings?'Included':'Protected'}</small></button><div class="pp967-metric"><span>Cushion</span><strong>${short(s.cushion)}</strong></div></div>${tech(p,s)}${renderMini(s)}</div>`;const freshMini=$('pp959MiniCash');
 if(preservedMini&&freshMini&&preservedMini!==freshMini)freshMini.replaceWith(preservedMini);
 wire(pp.length);
 requestAnimationFrame(()=>{
@@ -25718,25 +25843,8 @@ function authoritativeSnapshot(){
     if(manual>0 && spending<=0) spending=manual;
   }catch(_){}
   const residual=cents(moneyIn-billsPaid-spending);
-  let bankAvail=cents(s.available||0);
-  try{
-    const gs=window.PayAviatorGauge967?.state?.();
-    if(gs&&Number.isFinite(Number(gs.available))) bankAvail=cents(Math.max(0,Number(gs.available)));
-  }catch(_){}
-  // Also try connected checking balances
-  try{
-    const accts=JSON.parse(localStorage.getItem('payaviator_connected_accounts_v1')||'[]');
-    let sum=0; let any=false;
-    (Array.isArray(accts)?accts:[]).forEach(a=>{
-      const sub=String(a.subtype||a.type||'').toLowerCase();
-      if(sub.includes('credit')) return;
-      if(a.includeInGauge===false) return;
-      if(sub.includes('saving')&&a.includeInGauge!==true) return;
-      const v=Number(a.available??a.current??a.balances?.available??a.balances?.current);
-      if(Number.isFinite(v)){ sum+=v; any=true; }
-    });
-    if(any) bankAvail=cents(Math.max(0,sum));
-  }catch(_){}
+  const AN=typeof window.PayAviatorAvailableNow==='function'?window.PayAviatorAvailableNow():{total:cents(s.available||0),estimate:true,items:[],excluded:[]};
+  const bankAvail=AN.total;
   const title=$('financialSnapshotTitle'), content=$('financialSnapshotContent');
   if(title) title.textContent=`Monthly Snapshot — ${label}`;
   if(content) content.innerHTML=`
@@ -25749,11 +25857,9 @@ function authoritativeSnapshot(){
     </div>
     <div class="settings-section">
       <h3>Right now</h3>
-      <div class="snapshot-row snapshot-total"><span>Available Now (bank)</span><b>${money(bankAvail)}</b></div>
-      <div class="meta" style="margin-top:12px">
-        Month leftover is pure arithmetic from the three lines above.
-        Available Now is your live connected bank balance (not the same as month leftover — prior balance, timing, and excluded accounts can differ).
-      </div>
+      <div class="snapshot-row snapshot-total" data-pa402-avail="1" role="button" tabindex="0" aria-label="View Available now breakdown"><span>${AN.estimate?'Available now (estimate)':'Available now'}</span><b>${money(bankAvail)}</b></div>
+      ${window.PayAviatorAvailableNowBreakdownHTML?window.PayAviatorAvailableNowBreakdownHTML(AN):''}
+      <div class="meta" style="margin-top:12px">${AN.estimate?'No bank accounts or cash are set up yet, so Available now is an estimate: paychecks minus bills and spending this month.':'Available now is the total of your spendable accounts: bank checking and savings plus cash on hand. Credit cards and loans are not counted. Month leftover above is this month\'s arithmetic only.'}</div>
     </div>`;
   const dlg=$('financialSnapshotDlg');
   if(dlg){try{if(!dlg.open&&dlg.showModal)dlg.showModal();else dlg.setAttribute('open','')}catch(_){dlg.setAttribute('open','')}}
