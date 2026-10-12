@@ -31512,6 +31512,33 @@ dialog form > button[type="button"]:last-child {
     localStorage.setItem(MOVE_KEY,JSON.stringify(moves));
     finish();
   }
+  // 4.0.1: an "all future dates" edit supersedes earlier "only this date" moves of the same series from that date on.
+  // Without this, Rent moved Nov 1 -> Nov 3 (only this date) and then Nov 1 -> Nov 3 (all future) showed two Rents on Nov 3.
+  function absorbSingleMoves(src,original,target){
+    const moves=readMoves();let changed=false;
+    Object.keys(moves).forEach(key=>{
+      const i=key.indexOf('|');if(i<0)return;const id=key.slice(0,i),iso=key.slice(i+1);
+      if(id!==src.id||!(iso>=original))return;
+      const mv=moves[key]||{},moveId=mv.moveId||('once-'+src.id+'-'+iso);
+      const idx=bills.findIndex(b=>b.id===moveId);const once=idx>=0?bills[idx]:null;
+      if(once){
+        const oldKey=moveId+'|'+once.due,newKey=target.id+'|'+once.due;
+        let lands=false;try{lands=isRecurringOnDate(target,new Date(once.due+'T00:00:00'))}catch(_){}
+        if(lands){
+          if(Object.prototype.hasOwnProperty.call(billPaidAmounts,oldKey)&&!Object.prototype.hasOwnProperty.call(billPaidAmounts,newKey))billPaidAmounts[newKey]=billPaidAmounts[oldKey];
+          if(billOverrides[oldKey]?.paid!==undefined&&billOverrides[newKey]?.paid===undefined)billOverrides[newKey]={...(billOverrides[newKey]||{}),paid:!!billOverrides[oldKey].paid};
+        }
+        delete billPaidAmounts[oldKey];delete billOverrides[oldKey];
+        bills.splice(idx,1);
+      }
+      delete moves[key];
+      if(billOverrides[key]){const o={...billOverrides[key]};delete o.deleted;delete o.movedTo;if(Object.keys(o).length)billOverrides[key]=o;else delete billOverrides[key]}
+      changed=true;
+    });
+    if(changed)localStorage.setItem(MOVE_KEY,JSON.stringify(moves));
+    return changed;
+  }
+  window.PayAviatorAbsorbSingleMoves=absorbSingleMoves;
   function moveSeriesFrom(src,original,details){
     // Keep all earlier occurrences (and their payment history) untouched.
     // A new recurring series begins on the requested date.
@@ -31528,7 +31555,9 @@ dialog form > button[type="button"]:last-child {
       delete next.instanceOriginal;
       next.paid=false;
       bills.push(next);
+      absorbSingleMoves(src,original,next);
     }
+    if(starting)absorbSingleMoves(src,original,src);
     finish();
   }
   const previousEdit=window.editBillOccurrence;
@@ -31720,7 +31749,7 @@ dialog form > button[type="button"]:last-child {
     if(!details.name||!Number.isFinite(details.amount)||details.amount<0||!valid(details.due)){
       alert('Enter a valid bill name, amount, and date.');return;
     }
-    const sourceKey=id+'|'+ctx.iso,moves=readMoves();
+    const sourceKey=id+'|'+ctx.iso,moves=readMoves();let seriesTarget=null;
     if(mode==='single'){
       const onceId='once-'+id+'-'+ctx.iso,existing=bills.find(x=>x.id===onceId),oldKey=onceId+'|'+(existing?.due||ctx.iso);
       const replacement={...details,id:onceId,recurring:false,recurrence:'once',paid:false,
@@ -31749,7 +31778,11 @@ dialog form > button[type="button"]:last-child {
       const child={...details,id:newid(),recurring:details.recurring,paid:false};
       delete child.recurringUntil;delete child.dateMoves;delete child.instanceOf;delete child.instanceOriginal;
       bills.push(child);
+      seriesTarget=child;
     }
+    // 4.0.1: a future/all edit absorbs earlier "only this date" moves of this series from the edited date on,
+    // so the moved one-time copy and the new schedule never both show (e.g. two Rents on Nov 3).
+    if(mode!=='single'){try{window.PayAviatorAbsorbSingleMoves?.(src,ctx.iso,seriesTarget||src)}catch(err){console.warn('PayAviator: could not merge earlier date moves',err)}}
     finishEdit();
   };
   console.info('[PayAviator] Calendar save v3.9.2 activated');
