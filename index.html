@@ -24767,6 +24767,33 @@ document.addEventListener('payaviator:viewchange',a11y);
 #paycheckPlannerDlg .pa400p-empty button{margin-top:12px;width:100%}
 #paycheckPlannerDlg .pa400p-none{font-size:13px;opacity:.85;margin-top:8px}
 </style>
+<style id="pa400-paycheck-look-css">
+/* PayAviator 4.0: Paycheck Planner uses the same look as the Payoff Planner (presentation only). */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pp51-title{position:relative!important;display:flex!important;align-items:center!important;min-height:40px!important;padding-left:52px!important;font-size:clamp(18px,5.3vw,21px)!important;white-space:nowrap!important;font-weight:800!important;letter-spacing:-.015em!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pp51-title::before{content:""!important;position:absolute!important;left:0!important;top:50%!important;transform:translateY(-50%)!important;width:40px!important;height:40px!important;border-radius:12px!important;background:var(--pa4-accent-soft,rgba(0,245,255,.14))!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pp51-title::after{content:""!important;position:absolute!important;left:9px!important;top:50%!important;transform:translateY(-50%)!important;width:22px!important;height:22px!important;background:var(--pa4-accent,#00f5ff)!important;-webkit-mask:var(--pa-i-paycheck) center/contain no-repeat!important;mask:var(--pa-i-paycheck) center/contain no-repeat!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-sum{gap:8px!important;margin:6px 0 12px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-sum div{background:var(--pa4-card,#0b234b)!important;border:1px solid var(--pa4-line,rgba(255,255,255,.12))!important;border-radius:var(--pa4-r-md,14px)!important;padding:9px 10px!important;box-shadow:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-sum small{color:var(--pa4-muted,rgba(255,255,255,.72))!important;opacity:1!important;font-size:11px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-sum b{font-size:15px!important;font-weight:800!important;color:var(--pa4-text,#fff)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-check{background:var(--pa4-raised,#1f4f86)!important;background-image:none!important;border:1px solid var(--pa4-line,rgba(255,255,255,.12))!important;border-radius:var(--pa4-r-lg,20px)!important;box-shadow:var(--pa4-shadow,none)!important;padding:14px!important;margin:0 0 12px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-check.short{border-color:var(--pa4-bad,#fb7185)!important;box-shadow:inset 0 0 0 1px var(--pa4-bad,#fb7185)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-head h3{font-size:16px!important;font-weight:800!important;color:var(--pa4-text,#fff)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-head .meta,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-bill .d,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-none{color:var(--pa4-muted,rgba(255,255,255,.72))!important;opacity:1!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-left{font-size:18px!important;font-weight:800!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-left.pos{color:#52ff69!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-left.neg{color:#ff9aaa!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-warn{background:#4a1a2e!important;border:1px solid var(--pa4-bad,#fb7185)!important;border-left-width:4px!important;border-radius:12px!important;color:#ffe4e8!important;font-size:13px!important;font-weight:700!important;line-height:1.4!important;padding:9px 11px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-bill{border-top:1px solid var(--pa4-line,rgba(255,255,255,.12))!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-bill .n{font-size:15px!important;font-weight:800!important;color:var(--pa4-text,#fff)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-act select,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-act button{min-height:42px!important;height:42px!important;border-radius:var(--pa4-r-md,14px)!important;font-family:var(--pa4-font,system-ui,sans-serif)!important;font-size:13px!important;font-weight:700!important;box-shadow:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-act select{background-color:var(--pa4-card,#0b234b)!important;color:var(--pa4-text,#fff)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;padding:0 10px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-act button{background:var(--pa4-card,#0b234b)!important;color:var(--pa4-text,#fff)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-empty{background:var(--pa4-raised,#1f4f86)!important;border:1px solid var(--pa4-line,rgba(255,255,255,.12))!important;border-radius:var(--pa4-r-lg,20px)!important;padding:18px 16px!important;box-shadow:var(--pa4-shadow,none)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-empty b{font-size:16px!important;font-weight:800!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-empty button.primary,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .form-actions button.primary{background:var(--pa4-accent,#00f5ff)!important;color:#04223a!important;border:0!important;border-radius:var(--pa4-r-md,14px)!important;font-weight:800!important;box-shadow:none!important;min-height:44px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-empty button.ghost,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #paycheckPlannerDlg .pa400p-check ~ div button.ghost{background:var(--pa4-raised,#1f4f86)!important;color:var(--pa4-text,#fff)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;border-radius:var(--pa4-r-md,14px)!important;font-weight:700!important;box-shadow:none!important}
+</style>
 <script id="pa400-paycheck-planner">
 (function(){
 'use strict';
