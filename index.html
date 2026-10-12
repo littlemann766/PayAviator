@@ -25350,6 +25350,35 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 window.addEventListener('payaviator:accounts-updated',()=>{install();if($('pa402AvailDlg')?.open)render()});
 })();
 </script>
+
+<style id="pa401-bills-add-css">
+/* 4.0.1: Bills tab Add Bill — same card + button look as the Calendar tab's Add Bill (#pp9170CalendarActions) */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa401BillsActions{margin:0 0 12px!important;padding:12px!important;background:var(--pa4-card,#0b234b)!important;border:1px solid var(--pa4-line,rgba(255,255,255,.12))!important;border-radius:20px!important;box-shadow:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa401BillsActions .quick-actions{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;margin:0!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa401BillsActions .quick-actions button{
+  min-height:48px!important;margin:0!important;font-size:13.5px!important;font-weight:650!important;padding:6px 4px!important;width:100%!important;
+  background:var(--pa4-raised,#1f4f86)!important;color:var(--pa4-text,#fff)!important;border:1px solid var(--pa4-line2,rgba(255,255,255,.17))!important;box-shadow:none!important;border-radius:14px!important}
+/* Bills header: hint moves under the title so the title + Clear All row isn't cramped */
+#mb119BillsMount .section-head h2 .pa401-hint{display:block!important;margin-top:2px}
+</style>
+<script id="pa401-bills-add">
+(function(){'use strict';
+function place(){
+  const head=[...document.querySelectorAll('#mb119BillsMount .section-head')].find(h=>h.querySelector('[onclick*="clearAll"]'));
+  if(!head)return;
+  const sp=head.querySelector('h2 span');if(sp)sp.classList.add('pa401-hint');
+  let box=document.getElementById('pa401BillsActions');
+  if(!box){box=document.createElement('section');box.id='pa401BillsActions';
+    // Same markup, class and handler as the Calendar tab's Add Bill button.
+    box.innerHTML='<div class="quick-actions"><button class="primary" type="button" onclick="openForm()">▤ Add Bill</button></div>';}
+  if(box.nextElementSibling!==head)head.parentElement.insertBefore(box,head);
+}
+function run(){try{place()}catch(e){console.warn('PayAviator bills add',e)}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
+window.addEventListener('load',()=>{run();setTimeout(run,800);setTimeout(run,2500)});
+document.addEventListener('click',e=>{if(e.target?.closest?.('.mb119-nav'))setTimeout(run,0)},true);
+})();
+</script>
 </body>
 
 <script>
