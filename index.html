@@ -22355,13 +22355,15 @@ setState(readNative());
     const e=new Error(j.error||('Bank service returned HTTP '+status));
     e.code=j.code||('HTTP_'+status); e.status=status; e.requestId=j.request_id||null;
     if(e.requestId)console.warn('PayAviator bank service error',e.code,'request_id='+e.requestId);
+    // 4.1.0: email-verify / one-free-bank gates open their in-app screens.
+    try{window.PayAviatorAccountGate&&window.PayAviatorAccountGate.handle(e,j)}catch(_){ }
     return e;
   }
   function pp920SignInRequired(){const e=new Error('Sign in to use bank features.');e.code='SIGN_IN_REQUIRED';return e}
   async function pp920Api(path,options={}){
     // /api/plaid/* needs a signed-in Firebase user. The ID token is attached natively by
     // AndroidBridge.apiRequest and never enters the page.
-    if(String(path).startsWith('/api/plaid/') && !(window.PayAviatorAuth&&window.PayAviatorAuth.isSignedIn())) throw pp920SignInRequired();
+    if(/^\/api\/(plaid|billing)\//.test(String(path)) && !(window.PayAviatorAuth&&window.PayAviatorAuth.isSignedIn())) throw pp920SignInRequired();
     // Android: use the native HTTPS bridge. This avoids WebView CORS/origin/network
     // differences entirely while keeping credentials and Plaid secrets on Railway.
     if(window.AndroidBridge && typeof window.AndroidBridge.apiRequest==='function'){
@@ -22372,6 +22374,7 @@ setState(readNative());
         e.code='BANK_SERVICE_UNREACHABLE'; throw e;
       }
       if(raw.status<200 || raw.status>=300) throw pp920ApiError(raw.status,j);
+      if(j&&j.skipped&&typeof j.skipped==='object'){try{pp920ApiError(Number(j.skipped.status)||402,j.skipped)}catch(_){ }}
       return j;
     }
     const controller=new AbortController();
@@ -25797,6 +25800,173 @@ if(q)show(q);
 else if(SHOW_ON_LAUNCH&&localStorage.getItem(CHOICE_KEY)==null&&!(window.PayAviatorAuth&&window.PayAviatorAuth.isSignedIn()))show('welcome');
 })();
 </script>
+<style id="pa-410-accounts-css">
+.pa410-dlg .pa410-msg{margin:6px 0 12px;line-height:1.45;font-size:.95rem}
+.pa410-dlg .pa410-status{margin:8px 0 0;font-size:.85rem;opacity:.8}
+.pa410-dlg .form-actions{display:flex;flex-direction:column;gap:8px}
+.pa410-dlg .form-actions button{width:100%;min-height:48px!important;height:auto!important;padding:12px 14px!important;flex:0 0 auto!important}
+.pa410-dlg{max-height:92vh;overflow:auto}
+#ppOnb .pa410-reason{margin:0 0 10px;font-weight:600}
+</style>
+<dialog id="pa410VerifyDlg" class="pa410-dlg" aria-labelledby="pa410VerifyTitle"><div class="form">
+<h2 id="pa410VerifyTitle">Verify your email</h2>
+<p class="pa410-msg" id="pa410VerifyMsg">Before you link a bank, confirm your email address. We'll send you a link.</p>
+<p class="pa410-status" id="pa410VerifyStatus" role="status"></p>
+<div class="form-actions">
+<button class="primary" type="button" data-pa410-verify="send">Send verification email</button>
+<button type="button" data-pa410-verify="done">I've verified my email</button>
+<button type="button" data-pa410-close="pa410VerifyDlg">Not now</button>
+</div></div></dialog>
+<script id="pa-410-accounts-js">
+/* 4.1.0 accounts: wires Beth's window.PayAviatorAuthScreens (welcome, create, sign in, biometrics,
+   guest -> sign up, upgrade) to native Firebase Auth and backend PR #8 (email gate, one free bank,
+   Google Play billing). Only depends on the PayAviatorAuthScreens hooks/controls, so a restyled v2 drops in.
+   Stored on the phone: Beth's start-up choice key and (opt-in) saved email. Billing plan stays in memory. */
+(function(){'use strict';
+const $=id=>document.getElementById(id);
+const CHOICE_KEY='payaviator_onboarding_choice_v1';
+const REASONS={
+  device_already_used_free:'This phone already used its free bank on another PayAviator account. Subscribe to link a bank on this account.',
+  account_already_used_free:'This bank account is already the free bank on another PayAviator account, so it wasn\'t linked. Subscribe to link it here.',
+  integrity_failed:'This device or app version can\'t use the free plan. Install PayAviator from Google Play or subscribe.',
+  '':'Your free plan includes one linked bank. Subscribe to link more.'
+};
+const NOT_YET='Subscriptions aren\'t available yet. We\'ll let you know when they open. Your free bank keeps working.';
+let billing=null;
+const auth=()=>window.PayAviatorAuth||null;
+const screens=()=>window.PayAviatorAuthScreens||null;
+const api=(p,o)=>window.PayAviatorBankApi(p,o);
+function show(id){const d=$(id);if(!d)return;try{if(!d.open)d.showModal()}catch(_){d.setAttribute('open','')}}
+function hide(id){const d=$(id);if(!d)return;try{d.close()}catch(_){d.removeAttribute('open')}}
+function notice(t){try{window.PayAviatorThemeNotice&&window.PayAviatorThemeNotice(t,{autoClose:2600})}catch(_){}}
+function bridge(m){const b=window.AndroidBridge;return b&&typeof b[m]==='function'?b:null}
+/* Native auth call with its own requestId; chains to the auth module's PayAviatorAuthResult for others. */
+function nativeCall(method,...args){
+  return new Promise(resolve=>{
+    const b=bridge(method);if(!b)return resolve({ok:false,code:'AUTH_UNAVAILABLE',error:'Accounts are available in the PayAviator Android app.'});
+    const id='a410-'+Date.now().toString(36)+Math.random().toString(36).slice(2);
+    const prev=window.PayAviatorAuthResult;
+    const done=d=>{clearTimeout(t);if(window.PayAviatorAuthResult===mine)window.PayAviatorAuthResult=prev;resolve(d)};
+    const t=setTimeout(()=>done({ok:false,code:'TIMEOUT',error:'This is taking too long. Check your connection and try again.'}),method==='authSignInWithGoogle'?180000:45000);
+    const mine=function(p){let d={};try{d=typeof p==='string'?JSON.parse(p||'{}'):(p||{})}catch(_){}
+      if(String(d.requestId)!==id)return prev&&prev(p);
+      if(d.state&&window.PayAviatorAuthStateChanged)window.PayAviatorAuthStateChanged(JSON.stringify(d.state));done(d)};
+    window.PayAviatorAuthResult=mine;
+    try{b[method](id,...args)}catch(e){done({ok:false,code:'AUTH_FAILED',error:String(e&&e.message||e)})}
+  });
+}
+const res=r=>({ok:!!r.ok,error:r.ok?'':(r.code==='CANCELLED'?'':(r.error||'Something went wrong. Please try again.'))});
+/* ---- billing ---- */
+async function refreshStatus(){
+  try{billing=await api('/api/billing/status')}catch(e){billing={plan:'free',billingConfigured:false,error:e.code||'ERROR',status:e.status||0}}
+  try{document.dispatchEvent(new CustomEvent('payaviator:billingchange',{detail:billing}))}catch(_){}
+  return billing;
+}
+async function verifyPurchase(p){
+  if(!p||!p.productId||!p.purchaseToken)return{ok:false,code:'missing_purchase'};
+  try{const r=await api('/api/billing/google-play/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:String(p.productId),purchaseToken:String(p.purchaseToken)})});await refreshStatus();return Object.assign({ok:true},r)}
+  catch(e){return{ok:false,code:e.code||'ERROR',status:e.status||0,error:e.message}}
+}
+function nativePurchases(){const b=bridge('billingGetPurchases');if(!b)return[];try{const l=JSON.parse(b.billingGetPurchases()||'[]');return Array.isArray(l)?l:[]}catch(_){return[]}}
+async function restore(){
+  const a=auth();if(!a||!a.isSignedIn())return{ok:false,found:0};
+  const list=nativePurchases();let any=false,r503=false;
+  for(const p of list){const r=await verifyPurchase(p);any=any||r.ok;r503=r503||r.status===503}
+  await refreshStatus();return{ok:any,found:list.length,unavailable:r503||billing.status===503||billing.billingConfigured===false};
+}
+let purchaseWaiter=null;
+/* Native Play Billing (later) calls this with {productId,purchaseToken} or {cancelled:true}. */
+window.PayAviatorBillingPurchaseResult=async function(p){
+  try{p=typeof p==='string'?JSON.parse(p||'{}'):(p||{})}catch(_){p={}}
+  const r=p.cancelled?{ok:false,code:'cancelled'}:await verifyPurchase(p);
+  const w=purchaseWaiter;purchaseWaiter=null;if(w)w(r);return r;
+};
+/* ---- Beth's screen hooks ---- */
+const hooks={
+  createAccount:async(email,pw)=>res(await nativeCall('authCreateAccount',email,pw)),   // native also sends the verification email
+  signIn:async(email,pw)=>res(await nativeCall('authSignInWithEmail',email,pw)),
+  forgotPassword:async(email)=>{await nativeCall('authSendPasswordReset',email);return{ok:true,error:''}},
+  /* No native BiometricPrompt yet: say so instead of pretending. */
+  biometricSignIn:async()=>({ok:false,error:'Fingerprint and face sign-in are coming in a later update. Use your password for now.'}),
+  enableBiometrics:async()=>({ok:false,error:'Fingerprint and face unlock are coming in a later update. Tap Not now to continue.'}),
+  skipBiometrics:async()=>({ok:true,error:''}),
+  continueAsGuest:async()=>({ok:true,error:''}),
+  startSubscription:async(sel)=>{   // sel = {amount, period:'mo'|'yr'} from the selected plan card
+    const b=bridge('billingPurchase');
+    if(!b||!billing||billing.billingConfigured===false||billing.status===503)return{ok:false,error:NOT_YET};
+    const r=await new Promise(res=>{purchaseWaiter=res;try{b.billingPurchase(sel&&sel.period==='yr'?'yr':'mo')}catch(_){purchaseWaiter=null;res({ok:false,error:'Google Play could not open. Try again.'})}});
+    if(r.ok)return{ok:true,error:''};
+    if(r.code==='cancelled')return{ok:false,error:''};
+    return{ok:false,error:r.status===503?NOT_YET:(r.error||'We couldn\'t confirm the purchase. Try again.')};
+  },
+  restorePurchase:async()=>{const r=await restore();if(r.ok)return{ok:true,error:''};return{ok:false,error:r.unavailable?NOT_YET:'No purchase found for this Google account.'}},
+  onClose:async()=>({ok:true})
+};
+function wireScreens(){const s=screens();if(s&&!s._pa410){s._pa410=1;s.setHooks(hooks)}}
+/* ---- upgrade (402) ---- */
+function setReason(reason){
+  const sec=document.querySelector('#ppOnb section[data-onb="upgrade"]');if(!sec)return;
+  let el=sec.querySelector('.pa410-reason');
+  if(!el){el=document.createElement('p');el.className='pa410-reason';el.setAttribute('data-pa410-reason','');const h=sec.querySelector('h2');h?h.after(el):sec.prepend(el)}
+  el.textContent=REASONS[reason||'']||REASONS[''];el.dataset.reason=reason||'';
+}
+function openUpgrade(reason){
+  const s=screens();if(!s)return;
+  s.showUpgrade();setReason(reason);
+  refreshStatus();
+}
+/* ---- email verification ---- */
+function openVerify(){$('pa410VerifyStatus').textContent='';show('pa410VerifyDlg')}
+async function verifyAction(kind){
+  const st=$('pa410VerifyStatus');
+  if(kind==='send'){st.textContent='Sending…';const r=await nativeCall('authSendEmailVerification');
+    st.textContent=r.ok?'Check your inbox for the verification link, then come back and tap "I\'ve verified my email".':(r.error||'Could not send the email. Try again.');return}
+  st.textContent='Checking…';
+  const r=await nativeCall('authReloadUser');   // reloads the user and force-refreshes the Firebase ID token natively
+  const v=!!(r.state?r.state.emailVerified:(auth()&&auth().getState().emailVerified));
+  if(r.ok&&v){st.textContent='Email verified. Tap Connect a bank again.';setTimeout(()=>hide('pa410VerifyDlg'),1500)}
+  else st.textContent=r.ok||r.code==='AUTH_UNAVAILABLE'?'Your email isn\'t verified yet. Open the link in the email, then try again.':(r.error||'Could not check. Try again.');
+}
+/* ---- gate errors from new-bank calls (create-link-token, exchange, hosted-status) ---- */
+function handle(err,body){
+  const code=String(err&&err.code||'').toUpperCase();
+  if(code==='EMAIL_NOT_VERIFIED'){err.message='Verify your email to link a bank.';setTimeout(openVerify,0);return true}
+  if(code==='SUBSCRIPTION_REQUIRED'){const r=String((body&&body.reason)||'');err.reason=r;err.message=(REASONS[r]||REASONS['']).split('.')[0]+'.';setTimeout(()=>openUpgrade(r),0);return true}
+  if(code==='DEVICE_ID_REQUIRED'||code==='DEVICE_ID_INVALID'){err.message='Please update PayAviator from Google Play to link a bank.';return true}
+  if(code==='INTEGRITY_FAILED'){err.reason='integrity_failed';err.message=REASONS.integrity_failed;setTimeout(()=>openUpgrade('integrity_failed'),0);return true}
+  if(code==='INTEGRITY_NOT_CONFIGURED'){err.message='Bank linking is briefly unavailable. Please try again later.';return true}
+  if(code==='FREE_TIER_NOT_CONFIGURED'){err.message='Bank linking is briefly unavailable. Please try again later.';return true}
+  return false;
+}
+/* Guest taps Connect bank -> Beth's guest prompt (sign up with email). Resolves false; after sign-in they tap Connect again. */
+let connectTap=0;   /* only Connect bank taps get the guest prompt; Settings > Sign in keeps the sign-in sheet */
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#pp920ConnectBank,[data-pp920-connect],[data-pp-connect-bank]'))connectTap=Date.now()},true);
+function guestGate(){
+  const a=auth();if(!a||a._pa410)return;a._pa410=1;
+  const orig=a.ensureSignedIn.bind(a);
+  a.ensureSignedIn=function(opts){
+    if(!a.isSignedIn()&&!(opts&&(opts.mode||opts.notice))&&a.isAvailable()&&screens()&&Date.now()-connectTap<2000){connectTap=0;screens().showGuestLinkPrompt();return Promise.resolve(false)}
+    return orig(opts);
+  };
+}
+function maybeWelcome(){
+  const a=auth(),s=screens();if(!a||!s||!a.isAvailable()||a.isSignedIn())return;
+  if(/[?&]authscreens=/.test(location.search))return;
+  if(localStorage.getItem(CHOICE_KEY)!=null)return;
+  s.show('welcome');
+}
+window.PayAviatorAccountGate={handle,openUpgrade,openVerify,refreshStatus,verifyPurchase,restore,maybeWelcome,hooks,get billing(){return billing},reasons:REASONS};
+document.addEventListener('click',e=>{
+  const v=e.target.closest&&e.target.closest('[data-pa410-verify]');if(v){e.preventDefault();verifyAction(v.dataset.pa410Verify);return}
+  const c=e.target.closest&&e.target.closest('[data-pa410-close]');if(c){e.preventDefault();hide(c.dataset.pa410Close)}
+});
+document.addEventListener('payaviator:authchange',e=>{const r=e.detail&&e.detail.reason;if(r==='signed_in'){if(localStorage.getItem(CHOICE_KEY)==null)localStorage.setItem(CHOICE_KEY,'account');restore()}});
+function start(){wireScreens();guestGate();setTimeout(maybeWelcome,600);restore()}
+wireScreens();
+if(document.readyState==='complete')start();else window.addEventListener('load',start,{once:true});
+})();
+</script>
+
 </body>
 
 <script>
