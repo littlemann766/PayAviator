@@ -120,6 +120,12 @@ with sync_playwright() as p:
         pg.evaluate("__mock.routes['/api/billing/google-play/verify']={status:503,body:{error:'billing_not_configured',code:'BILLING_NOT_CONFIGURED'}}")
         r=pg.evaluate("window.PayAviatorBillingPurchaseResult({productId:'payaviator_premium',purchaseToken:'tok'})")
         check('verify 503 handled without throwing',r['ok']==False and r['status']==503)
+        pg.evaluate("PayAviatorLinkStats.reset()")
+        pg.evaluate("window.PayAviatorPlaidNativeResult(JSON.stringify({status:'exit',error_code:'INVALID_CREDENTIALS',error_message:'x',institution_id:'ins_3',link_session_id:'sess-1'}))"); pg.wait_for_timeout(300)
+        pg.evaluate("__mock.routes['/api/plaid/exchange-public-token']={status:200,body:{}};window.PayAviatorPlaidNativeResult(JSON.stringify({status:'connected',public_token:'public-sandbox-abc',institution_name:'Chase',institution_id:'ins_3',link_session_id:'sess-2'}))"); pg.wait_for_timeout(800)
+        ls=pg.evaluate("PayAviatorLinkStats.get()"); raw=pg.evaluate("localStorage.getItem('payaviator_link_stats_v1')")
+        check('link stats: exit code + success counted',ls.get('counts',{}).get('exit_native')==1 and ls.get('counts',{}).get('success_native')==1 and ls.get('codes',{}).get('exit_native:INVALID_CREDENTIALS')==1,ls)
+        check('link stats store no ids/tokens/institutions',not any(x in raw for x in ['ins_3','sess','public-','Chase','u1','a@b']),raw)
         check('no native alert/confirm/prompt',not pg.evaluate("window.__native||0"))
         check('no page errors (signed in)',not pg.errs,pg.errs); c.close()
         # 3. restore on start with an existing purchase

@@ -22453,6 +22453,20 @@ setState(readNative());
     saveAccounts(merged); ensureChoices(); refreshGauge();
     return merged;
   }
+  /* 4.1.0: Plaid Link conversion counters, on this phone only. No tokens, account numbers, institution or user ids:
+     just event counts, Plaid error codes (e.g. INVALID_CREDENTIALS) and a last-event time. CONTRACT.md has no logging endpoint. */
+  const PP410_LINK_STATS='payaviator_link_stats_v1';
+  function pp410LinkStat(evt,code){
+    try{
+      const k=String(evt).replace(/[^a-z_]/g,'').slice(0,32); if(!k)return;
+      const st=JSON.parse(localStorage.getItem(PP410_LINK_STATS)||'{}')||{};
+      st.v=1; st.counts=st.counts||{}; st.counts[k]=(st.counts[k]||0)+1;
+      const c=String(code||'').toUpperCase().replace(/[^A-Z0-9_]/g,'').slice(0,48);
+      if(c){st.codes=st.codes||{}; const ck=k+':'+c; st.codes[ck]=(st.codes[ck]||0)+1;}
+      st.last=Date.now(); localStorage.setItem(PP410_LINK_STATS,JSON.stringify(st));
+    }catch(_){ }
+  }
+  window.PayAviatorLinkStats={get(){try{return JSON.parse(localStorage.getItem(PP410_LINK_STATS)||'{}')}catch(_){return{}}},reset(){localStorage.removeItem(PP410_LINK_STATS)},record:pp410LinkStat};
   async function pp920ConnectPlaidBank(){
     if(!(await window.PayAviatorAuth?.ensureSignedIn?.()))return;
     // 3.9.8: consent screen before Plaid Link (web Link and Android Hosted Link). Nothing extra goes to the backend.
@@ -22475,6 +22489,7 @@ setState(readNative());
       // secure tab. The backend may return hosted_link_url after it is upgraded.
       if(tok.hosted_link_url && window.AndroidBridge && typeof window.AndroidBridge.openPlaidHostedLink==='function'){
         try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }
+        pp410LinkStat('open_hosted');
         window.AndroidBridge.openPlaidHostedLink(String(tok.hosted_link_url));
         return;
       }
@@ -22484,6 +22499,7 @@ setState(readNative());
       // when the Hosted Link endpoint has not yet been deployed.
       if(window.AndroidBridge){
         if(tok.link_token && typeof window.AndroidBridge.openPlaidLink==='function'){
+          pp410LinkStat('open_native');
           window.AndroidBridge.openPlaidLink(String(tok.link_token));
           return;
         }
@@ -22495,6 +22511,8 @@ setState(readNative());
       const handler=window.Plaid.create({
         token:tok.link_token,
         onSuccess:async(public_token,metadata)=>{
+          pp410LinkStat('success_web');
+          if(btn && document.body.contains(btn)){btn.disabled=false;btn.textContent=original}
           try{
             await pp920Api('/api/plaid/exchange-public-token',{
               method:'POST',headers:{'Content-Type':'application/json'},
@@ -22504,11 +22522,17 @@ setState(readNative());
             pp920Toast((metadata?.institution?.name||'Bank')+' connected to PayAviator');
           }catch(err){pp920Toast('Bank connected, but account sync failed: '+(err?.message||err))}
         },
-        onExit:(err)=>{if(err)pp920Toast('Plaid connection closed: '+(err.display_message||err.error_message||'Please try again'))}
+        onExit:(err)=>{
+          pp410LinkStat('exit_web',err&&err.error_code);
+          if(btn && document.body.contains(btn)){btn.disabled=false;btn.textContent=original}
+          if(err)pp920Toast('Plaid connection closed: '+(err.display_message||err.error_message||'Please try again'))
+        }
       });
+      pp410LinkStat('open_web');
       handler.open();
     }catch(err){
       console.error('PayAviator Plaid open failed',err);
+      pp410LinkStat('open_failed',err&&err.code);
       try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }
       pp920Toast('Could not open secure bank connection: '+(err?.message||'Please check your internet connection and try again.'));
       if(btn && document.body.contains(btn)){btn.disabled=false;btn.textContent=original}
@@ -22522,6 +22546,7 @@ setState(readNative());
     try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }
     try{
       const data=typeof payload==='string'?JSON.parse(payload||'{}'):(payload||{});
+      pp410LinkStat(data.status==='connected'?'success_native':(data.status==='exit'?'exit_native':'error_native'),data.error_code);
       if(data.status==='connected'){
         const updateItemId=pp920PendingNativeUpdateItemId;
         pp920PendingNativeUpdateItemId=null;
@@ -22578,6 +22603,7 @@ setState(readNative());
     try{
       pp920Toast('Finishing secure bank connection…');
       const result=await pp941WaitForHostedStatus();
+      pp410LinkStat(result.connected?'hosted_return_connected':(result.pending?'hosted_return_pending':'hosted_return_not_connected'),result.connected?'':result.status);
       if(result.connected && result.mode==='update'){
         await pp920SyncPlaidAccounts(); render();
         try{await window.PayAviatorSyncLiveBank982?.()}catch(_){ }
