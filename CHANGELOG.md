@@ -1,4 +1,5 @@
-## Unreleased (accounts-410) — accounts, email verification, one free bank
+## 4.1.0 — accounts, email verification, one free bank
+- Version 4.1.0 everywhere; service-worker cache payaviator-4.1.0; Android versionCode floor 410000.
 - Beth's auth screens (window.PayAviatorAuthScreens) are wired: welcome on first start (Android, signed out), Create account / Sign in / Forgot password through native Firebase, guest mode, guest Connect bank -> guest sign-up prompt. Biometric unlock says "coming in a later update" (no native BiometricPrompt yet). New email accounts get a verification email.
 - 403 email_not_verified opens a Verify your email dialog (send link / I've verified). "I've verified" reloads the Firebase user and force-refreshes the ID token natively.
 - 402 subscription_required opens Beth's upgrade screen with a distinct message for device_already_used_free, account_already_used_free and the plain one-bank limit (also hosted-status partial `skipped`). Price stays a placeholder ($X.XX/mo, $XX.XX/yr); startSubscription gets the selected {amount, period} and passes 'mo'|'yr' to the native billingPurchase stub.
