@@ -107,7 +107,9 @@ public class MainActivity extends Activity {
     private String pendingTextFilename;
     private boolean pendingTextBase64 = false;
     private FirebaseSignIn signIn;
-    private final FirebaseAuth.AuthStateListener authStateListener = a -> pushAuthState(null);
+    /** 4.1.2: alert target from a notification tap, handed to the web app via takeLaunchAlert / PayAviatorOpenAlert. */
+    private String pendingAlertOpen;
+    private final FirebaseAuth.AuthStateListener authStateListener = a -> { pushAuthState(null); registerPushTokenIfSignedIn(); };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,6 +120,9 @@ public class MainActivity extends Activity {
         signIn.addStateListener(authStateListener);
 
         Uri launchData = getIntent() == null ? null : getIntent().getData();
+        if (getIntent() != null) pendingAlertOpen = alertTargetFrom(getIntent());
+        // 4.1.2: re-arm stored alarms on every start (covers phones that delay or block BOOT_COMPLETED).
+        try { NotificationScheduler.arm(getApplicationContext()); } catch (Exception ignored) {}
         if (isPlaidReturnUri(launchData)) {
             pendingHostedReturn = true;
         }
@@ -133,6 +138,9 @@ public class MainActivity extends Activity {
 
     private void unlockAndCreateWebView() {
         authenticatedForSession = true;
+        // 4.1.2: reconnect push channel + FCM token registration on app start (quietly no-op when signed out).
+        try { PushService.ensureReconnectChannel(this); } catch (Exception ignored) {}
+        registerPushTokenIfSignedIn();
         if (isAppLockEnabled()) rememberSuccessfulUnlock();
         authenticationInProgress = false;
 
@@ -577,6 +585,16 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        String alertOpen = alertTargetFrom(intent);
+        if (alertOpen != null && !alertOpen.isEmpty()) {
+            if (webView != null) {
+                final String q = JSONObject.quote(alertOpen);
+                runOnUiThread(() -> webView.evaluateJavascript(
+                        "window.PayAviatorOpenAlert&&window.PayAviatorOpenAlert(" + q + ");", null));
+            } else {
+                pendingAlertOpen = alertOpen;
+            }
+        }
         Uri data = intent == null ? null : intent.getData();
         if (isPlaidReturnUri(data)) {
             // The native Plaid SDK owns its OAuth result. Do not mistake its
@@ -586,6 +604,85 @@ public class MainActivity extends Activity {
             hostedLinkInProgress = false;
             pendingHostedReturn = false;
             notifyHostedLinkReturned();
+        }
+    }
+
+    /** Notification tap target: our own extra, or FCM data extras when the system showed a background push. */
+    private static String alertTargetFrom(Intent intent) {
+        if (intent == null) return null;
+        String o = intent.getStringExtra(NotificationScheduler.EXTRA_OPEN);
+        if (o != null && !o.isEmpty()) return o;
+        if ("bank_reconnect".equals(intent.getStringExtra("type"))) {
+            String id = intent.getStringExtra("item_id");
+            return "reconnect:" + (id == null ? "" : id);
+        }
+        return null;
+    }
+
+    // ---- 4.1.2 FCM device registration (Lucian: POST/DELETE /api/devices/fcm). Fails quietly (404 until deployed). ----
+    void registerPushTokenIfSignedIn() {
+        try {
+            if (signIn == null || signIn.currentUser() == null) return;
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
+                    .addOnSuccessListener(t -> { if (t != null && !t.isEmpty()) registerPushToken(t); });
+        } catch (Exception ignored) {}
+    }
+
+    void registerPushToken(final String token) {
+        if (token == null || token.isEmpty()) return;
+        getSharedPreferences(PushService.PREFS, MODE_PRIVATE).edit().putString(PushService.TOKEN_KEY, token).apply();
+        if (signIn == null || signIn.currentUser() == null) return;
+        new Thread(() -> {
+            try {
+                JSONObject b = new JSONObject();
+                b.put("token", token);
+                b.put("platform", "android");
+                callBackend("POST", "/api/devices/fcm", b.toString());
+            } catch (Exception ignored) {}
+        }, "PayAviatorPushRegister").start();
+    }
+
+    /** Blocking; call off the UI thread before signing out. */
+    private void unregisterPushTokenBlocking() {
+        String token = getSharedPreferences(PushService.PREFS, MODE_PRIVATE).getString(PushService.TOKEN_KEY, "");
+        if (token == null || token.isEmpty() || signIn == null || signIn.currentUser() == null) return;
+        try {
+            JSONObject b = new JSONObject();
+            b.put("token", token);
+            callBackend("DELETE", "/api/devices/fcm", b.toString());
+        } catch (Exception ignored) {}
+    }
+
+    void deliverPushToWeb(final String json) {
+        if (webView == null) return;
+        final String q = JSONObject.quote(json);
+        runOnUiThread(() -> webView.evaluateJavascript(
+                "window.PayAviatorPush&&window.PayAviatorPush.onMessage(" + q + ");", null));
+    }
+
+    static void showReconnectNotification(Context ctx, String title, String body, String itemId) {
+        PushService.ensureReconnectChannel(ctx);
+        Intent launch = new Intent(ctx, MainActivity.class);
+        launch.setAction("com.payaviator.app.OPEN_ALERT");
+        launch.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        launch.putExtra(NotificationScheduler.EXTRA_OPEN, "reconnect:" + itemId);
+        String tag = "bank_reconnect_" + itemId;
+        PendingIntent pi = PendingIntent.getActivity(ctx, tag.hashCode() & 0x7fffffff, launch,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Notification.Builder nb = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? new Notification.Builder(ctx, PushService.CHANNEL_RECONNECT) : new Notification.Builder(ctx);
+        nb.setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(title).setContentText(body)
+                .setAutoCancel(true).setContentIntent(pi).setVisibility(Notification.VISIBILITY_PRIVATE);
+        try {
+            JSONObject a = new JSONObject();
+            a.put("key", tag); a.put("type", "reconnect"); a.put("title", title); a.put("text", body);
+            a.put("open", "reconnect:" + itemId);
+            NotificationScheduler.recordFired(ctx, a);
+        } catch (Exception ignored) {}
+        if (Build.VERSION.SDK_INT < 33 || ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+            nm.notify(tag, 1, nb.build());
         }
     }
 
@@ -653,7 +750,8 @@ public class MainActivity extends Activity {
                 if (it != null) conn.setRequestProperty(BackendHeaders.INTEGRITY_HEADER, it);
             }
             conn.setRequestMethod(verb);
-            if (!"GET".equals(verb) && !"HEAD".equals(verb) && !"DELETE".equals(verb)) {
+            boolean deleteWithBody = "DELETE".equals(verb) && safePath.startsWith("/api/devices/") && body != null;
+            if ((!"GET".equals(verb) && !"HEAD".equals(verb) && !"DELETE".equals(verb)) || deleteWithBody) {
                 conn.setDoOutput(true);
                 conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
                 byte[] bytes = (body == null ? "" : body).getBytes(StandardCharsets.UTF_8);
@@ -927,11 +1025,15 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void authSignOut(final String requestId) {
-            runOnUiThread(() -> {
-                signIn.signOut();
-                deliverAuthResult(requestId, true, "", "");
-                pushAuthState("signed_out");
-            });
+            // 4.1.2: remove this phone's push token from the server first (best effort, never blocks sign-out on errors).
+            new Thread(() -> {
+                unregisterPushTokenBlocking();
+                runOnUiThread(() -> {
+                    signIn.signOut();
+                    deliverAuthResult(requestId, true, "", "");
+                    pushAuthState("signed_out");
+                });
+            }, "PayAviatorSignOut").start();
         }
 
         @JavascriptInterface
@@ -1086,6 +1188,27 @@ public class MainActivity extends Activity {
             });
         }
 
+        /** 4.1.2: notifications that fired while the app was closed, for the Alerts center (cleared once read). */
+        @JavascriptInterface
+        public String takeFiredAlerts() {
+            return NotificationScheduler.takeFired(MainActivity.this);
+        }
+
+        /** 4.1.2: the alert target the app was launched from (notification tap), once. */
+        @JavascriptInterface
+        public String takeLaunchAlert() {
+            String v = pendingAlertOpen;
+            pendingAlertOpen = null;
+            return v == null ? "" : v;
+        }
+
+        /** 4.1.2: true when Android allows PayAviator to post notifications. */
+        @JavascriptInterface
+        public boolean notificationsAllowed() {
+            if (Build.VERSION.SDK_INT < 33) return true;
+            return checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+        }
+
         @JavascriptInterface
         public void requestNotificationPermission() {
             runOnUiThread(() -> requestNotificationPermissionIfNeeded());
@@ -1114,6 +1237,18 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 try {
                     JSONObject root = new JSONObject(json);
+                    if (root.has("alarms")) {
+                        // 4.1.2 plan: flat list built by the web app; stored for reboot re-arm.
+                        cancelScheduledNotifications();
+                        String snd = root.optString("sound", "default");
+                        boolean vib = root.optBoolean("vibrate", true);
+                        ensureChannel(MainActivity.this, snd, vib);
+                        boolean any = root.optBoolean("enabled", false) || root.optBoolean("reminderEnabled", true);
+                        JSONArray al = root.optJSONArray("alarms");
+                        if (any && al != null && al.length() > 0) requestNotificationPermissionIfNeeded();
+                        NotificationScheduler.apply(MainActivity.this, json);
+                        return;
+                    }
                     boolean billsEnabled = root.optBoolean("enabled", false);
                     boolean remindersEnabled = root.optBoolean("reminderEnabled", true);
                     String sound = root.optString("sound", "default");
@@ -1281,6 +1416,22 @@ public class MainActivity extends Activity {
     public static class ReminderReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
+            String key = intent.getStringExtra("key");
+            if (key != null) {
+                // 4.1.2 plan alarm: only show it if it is still in the current plan (not paid / edited / deleted).
+                JSONObject a = NotificationScheduler.find(context, key);
+                if (a == null) return;
+                String snd = a.optString("sound", "default");
+                boolean vib = a.optBoolean("vibrate", true);
+                ensureChannel(context, snd, vib);
+                showNotification(context, a.optString("title", "PayAviator"), a.optString("text", ""),
+                        snd, vib, a.optString("open", "home"),
+                        a.optString("publicTitle", "PayAviator reminder"),
+                        a.optString("publicText", "Unlock to see details."),
+                        a.optBoolean("_showAmounts", false), key.hashCode() & 0x7fffffff);
+                NotificationScheduler.recordFired(context, a);
+                return;
+            }
             String title = intent.getStringExtra("title");
             String text = intent.getStringExtra("text");
             String sound = intent.getStringExtra("sound");
@@ -1298,20 +1449,33 @@ public class MainActivity extends Activity {
     private static void showNotification(Context context,
                                          String title, String text,
                                          String sound, boolean vibrate) {
+        showNotification(context, title, text, sound, vibrate, "home",
+                "PayAviator", "Unlock to see details.", false,
+                (int)(System.currentTimeMillis() & 0x7fffffff));
+    }
+
+    /**
+     * 4.1.2: tapping opens the related screen (open target), and the lock screen shows a generic public
+     * version ("A bill is due tomorrow") unless the user turned on "Show amounts on lock screen".
+     */
+    static void showNotification(Context context,
+                                         String title, String text,
+                                         String sound, boolean vibrate,
+                                         String open, String publicTitle, String publicText,
+                                         boolean showOnLockScreen, int notifyId) {
         NotificationManager nm =
                 (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 
         String channel = channelId(sound, vibrate);
         ensureChannel(context, sound, vibrate);
 
-        Intent launch = context.getPackageManager()
-                .getLaunchIntentForPackage(context.getPackageName());
-        PendingIntent contentIntent = null;
-        if (launch != null) {
-            contentIntent = PendingIntent.getActivity(
-                    context, 0, launch,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        }
+        Intent launch = new Intent(context, MainActivity.class);
+        launch.setAction("com.payaviator.app.OPEN_ALERT");
+        launch.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        launch.putExtra(NotificationScheduler.EXTRA_OPEN, open == null || open.isEmpty() ? "home" : open);
+        PendingIntent contentIntent = PendingIntent.getActivity(
+                context, notifyId, launch,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         Notification.Builder builder =
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
@@ -1322,6 +1486,20 @@ public class MainActivity extends Activity {
                 .setContentTitle(title)
                 .setContentText(text)
                 .setAutoCancel(true);
+
+        if (showOnLockScreen) {
+            builder.setVisibility(Notification.VISIBILITY_PUBLIC);
+        } else {
+            Notification.Builder pub =
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                            ? new Notification.Builder(context, channel)
+                            : new Notification.Builder(context);
+            pub.setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .setContentTitle(publicTitle)
+                    .setContentText(publicText);
+            builder.setVisibility(Notification.VISIBILITY_PRIVATE)
+                    .setPublicVersion(pub.build());
+        }
 
         if (contentIntent != null) builder.setContentIntent(contentIntent);
 
@@ -1334,7 +1512,7 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT < 33 ||
                 context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
                         == PackageManager.PERMISSION_GRANTED) {
-            nm.notify((int)(System.currentTimeMillis() & 0x7fffffff), builder.build());
+            nm.notify(notifyId, builder.build());
         }
     }
 
@@ -1582,8 +1760,15 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        if (PushService.foreground == this) PushService.foreground = null;
+        super.onPause();
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
+        PushService.foreground = this;
         if (webView != null) {
             webView.setVisibility(View.VISIBLE);
             webView.setAlpha(1f);

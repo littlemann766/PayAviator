@@ -140,6 +140,7 @@ public class AuthedRequestTest {
     @Test public void onlyPlaidRoutesRequireAuth() {
         assertTrue(AuthedRequest.requiresAuth("/api/plaid/accounts"));
         assertTrue(AuthedRequest.requiresAuth("/api/plaid/user"));
+        assertTrue(AuthedRequest.requiresAuth("/api/devices/fcm"));
         assertFalse(AuthedRequest.requiresAuth("/api/health"));
         assertFalse(AuthedRequest.requiresAuth(null));
     }

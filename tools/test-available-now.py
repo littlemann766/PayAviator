@@ -15,7 +15,9 @@ def accts(chk_av=1240.5, sav_av=None):
      {'id':'acc-loan','name':'Auto Loan','institutionName':'Ally','mask':'4444','type':'loan','subtype':'auto','source':'plaid','balances':{'available':None,'current':9400}},
      {'id':'acc-inv','name':'Brokerage','institutionName':'Fidelity','mask':'5555','type':'investment','subtype':'brokerage','source':'plaid','balances':{'available':None,'current':5000}}]
 BASE="""(()=>{localStorage.clear();localStorage.setItem('payAviator_v1',JSON.stringify([{id:'b-rent',name:'Rent',amount:1450,due:'2026-10-01',recurring:true,recurrence:'monthly',paid:false,color:'#3b82f6',category:'Housing',notes:''}]));
-localStorage.setItem('payAviator_onboarding_v1_done','1');localStorage.setItem('payaviator_tip_popup_seen_v1','1');localStorage.setItem('payAviator_security_tip_launch_count_v1','99')})()"""
+localStorage.setItem('payAviator_onboarding_v1_done','1');localStorage.setItem('payaviator_tip_popup_seen_v1','1');localStorage.setItem('payAviator_security_tip_launch_count_v1','99');
+/* 4.1.2: Beth's Simple Home (setup-411) hides the Available now / Savings tiles; these checks are for Detailed Home. */
+localStorage.setItem('payAviator_settings_v2',JSON.stringify({homeMode:'advanced'}))})()"""
 ok=True
 def check(name,cond,detail=''):
     global ok

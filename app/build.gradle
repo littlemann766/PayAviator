@@ -119,6 +119,8 @@ dependencies {
     // and generates R.string.default_web_client_id for Credential Manager's setServerClientId.
     implementation platform('com.google.firebase:firebase-bom:35.0.0')
     implementation 'com.google.firebase:firebase-auth'
+    // 4.1.2: FCM bank reconnect pushes (free; no Blaze needed)
+    implementation 'com.google.firebase:firebase-messaging'
     // Native Plaid Link fallback when the backend does not supply Hosted Link.
     // Plaid SDK v6 runs as a secure separate Activity; never embed Plaid in WebView.
     implementation 'com.plaid.link:sdk-core:6.2.2'

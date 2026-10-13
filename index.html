@@ -128,7 +128,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='4.1.1';
+  const BUNDLED_VERSION='4.1.2';
   const code=n=>{const p=String(n||'').replace(/^Version:\s*/i,'').trim().split('.').map(Number);return p.length===3&&p.every(Number.isFinite)?p[0]*10000+p[1]*100+p[2]:0};
   const S={name:BUNDLED_VERSION,code:code(BUNDLED_VERSION)};
   function paint(root=document){
@@ -11557,33 +11557,60 @@ function openAvailableNowSpendingV88(){
 
 
 
-<dialog id="mb212Onboarding" class="mb212-onboarding">
+<dialog id="mb212Onboarding" class="mb212-onboarding pa41-setup">
   <div class="mb212-wrap">
+    <div class="pa41-progress" aria-hidden="true"><div class="pa41-kicker">Step <b data-pa41-n>1</b> of <b data-pa41-total>5</b></div><div class="pa41-dots"></div></div>
+
     <section class="mb212-step active" data-mb212-step="0">
-      <div class="mb212-kicker">Setup 1 of 4</div>
-      <h2>Let's get you set up</h2>
-      <p>Answer a few quick questions so PayAviator can calculate your income, bills, spending, and what you have available. You can change everything later.</p>
-      <div class="mb212-callout">
-        <strong>Your budget is saved on this phone.</strong>
-        <span>Signing in keeps your banks synced, and backups are only made when you choose.</span>
+      <div class="pa41-icon"><svg viewBox="0 0 24 24"><path d="M2 16l20-7-6 11-3-5-5 3 1-4-7 2z"/></svg></div>
+      <h2>Welcome aboard</h2>
+      <p class="pa41-lead">A few quick steps and PayAviator can show what's safe to spend. You can change anything later.</p>
+      <div class="mb212-callout pa41-trust">
+        <svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        <span>Your budget is saved on this phone. Signing in keeps your banks synced, and backups are only made when you choose.</span>
       </div>
-      <div class="mb20426-home-choice">
-        <strong>How much detail do you want on your Home screen?</strong>
-        <p>Choose the style that feels more comfortable. You can change this later in Settings under App Colors (Home Screen Appearance).</p>
-        <div class="mb20426-choice-buttons">
-          <button id="mb20426ChooseEasy" type="button">Keep it simple</button>
-          <button id="mb20426ChooseAdvanced" type="button">Show me more detail</button>
+      <div class="mb20426-home-choice pa41-modes">
+        <strong>Pick your Home screen</strong>
+        <div class="mb20426-choice-buttons pa41-mode-cards" role="radiogroup">
+          <button id="mb20426ChooseEasy" type="button" class="pa41-mode" role="radio">
+            <span class="pa41-prev pa41-prev-easy" aria-hidden="true"><i class="pv-swipe"><svg class="pv-gauge" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 9-19" stroke="#ef4444"/><path d="M14 12a25 25 0 0 1 27-5" stroke="#facc15"/><path d="M41 7a25 25 0 0 1 14 24" stroke="#22c55e"/><path d="M30 31l9-13" stroke="#fff"/></svg><svg class="pv-mini" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 50 0" stroke="#22c55e"/><path d="M30 31l-6-13" stroke="#fff"/></svg><svg class="pv-mini" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 50 0" stroke="#22c55e"/><path d="M30 31l-6-13" stroke="#fff"/></svg></i><i class="pv-why">On track: safe after bills</i><i class="pv-dots"><u></u><u></u><u></u></i><i class="pv-cush">Cushion $0 ›</i><i class="pv-next"><s>Next up: Rent, Fri</s><em>$850</em></i></span>
+            <b>Simple</b><small>Your 3 gauges, each explained in one line, your Cushion, and what is due next</small>
+          </button>
+          <button id="mb20426ChooseAdvanced" type="button" class="pa41-mode" role="radio">
+            <span class="pa41-prev pa41-prev-adv" aria-hidden="true"><svg class="pv-gauge" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 9-19" stroke="#ef4444"/><path d="M14 12a25 25 0 0 1 27-5" stroke="#facc15"/><path d="M41 7a25 25 0 0 1 14 24" stroke="#22c55e"/><path d="M30 31l9-13" stroke="#fff"/></svg><i class="pv-tiles"><u>Available</u><u>Savings</u><u>Cushion</u></i><i class="pv-row"><s>Advanced money details</s><em>›</em></i><i class="pv-cards"><svg class="pv-mini" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 50 0" stroke="#22c55e"/><path d="M30 31l-6-13" stroke="#fff"/></svg><svg class="pv-mini" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 50 0" stroke="#22c55e"/><path d="M30 31l-6-13" stroke="#fff"/></svg></i><i class="pv-row"><s>More information</s><em>›</em></i></span>
+            <b>Detailed</b><small>Everything: gauges, money details, cash and credit, more info</small>
+          </button>
         </div>
+        <p class="pa41-hint">Change it anytime in Settings under App Colors (Home Screen Appearance).</p>
       </div>
       <div class="mb212-actions">
-        <button type="button" class="mb212-primary" data-mb212-next>Get Started</button>
+        <button type="button" class="mb212-primary" data-mb212-next>Next</button>
       </div>
     </section>
 
     <section class="mb212-step" data-mb212-step="1">
-      <div class="mb212-kicker">Setup 2 of 4</div>
-      <h2>Tell us about your income</h2>
-      <p>This gives PayAviator a starting point for paycheck projections. If your pay changes, you can edit it anytime.</p>
+      <div class="pa41-icon"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18"/></svg></div>
+      <h2>How do you want to add your money?</h2>
+      <p class="pa41-lead">Pick one. You can always do the other later.</p>
+      <div class="pa41-paths">
+        <button id="pa41PathBank" type="button" class="pa41-path">
+          <span class="pa41-path-ic"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18"/></svg></span>
+          <span><b>Connect bank accounts</b><small>Balances and spending sync for you. Your free account includes 1 bank; add more with a subscription. Read-only, through Plaid.</small></span>
+        </button>
+        <button id="pa41PathManual" type="button" class="pa41-path">
+          <span class="pa41-path-ic"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg></span>
+          <span><b>Add manually</b><small>Enter your pay and monthly amount yourself. No bank needed.</small></span>
+        </button>
+      </div>
+      <div class="mb212-actions">
+        <button type="button" class="mb212-secondary" data-mb212-back>Back</button>
+      </div>
+    </section>
+
+    <section class="mb212-step" data-mb212-step="2">
+      <div class="pa41-icon"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9v.01M18 15v.01"/></svg></div>
+      <h2>Your paycheck</h2>
+      <p class="pa41-lead">Helps PayAviator plan around payday. Edit it anytime.</p>
 
       <label class="mb212-label">How are you paid?
         <select id="mb216IncomeType">
@@ -11596,11 +11623,11 @@ function openAvailableNowSpendingV88(){
         <input id="mb212Wage" type="number" min="0" step="0.01" inputmode="decimal" placeholder="18.50">
       </label>
 
-      <label class="mb212-label" id="mb216SalaryWrap" hidden>Annual salary <span>before taxes</span>
+      <label class="mb212-label" id="mb216SalaryWrap" hidden>Yearly salary <span>before taxes</span>
         <input id="mb216Salary" type="number" min="0" step="0.01" inputmode="decimal" placeholder="50000.00">
       </label>
 
-      <label class="mb212-label">How often are you paid?
+      <label class="mb212-label">How often?
         <select id="mb212Frequency">
           <option value="weekly">Weekly</option>
           <option value="biweekly">Every 2 weeks</option>
@@ -11608,66 +11635,64 @@ function openAvailableNowSpendingV88(){
         </select>
       </label>
 
-      <label class="mb212-label">Next or most recent payday
+      <label class="mb212-label">Most recent payday <span>counts this month's pay</span>
         <input id="mb212Payday" type="date">
       </label>
 
-      <label class="mb212-label">Typical take-home check <span>optional — overrides estimate</span>
+      <label class="mb212-label">Take-home per check <span>optional</span>
         <input id="mb212CheckAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="750.00">
       </label>
 
       <div class="mb212-actions split">
         <button type="button" class="mb212-secondary" data-mb212-back>Back</button>
-        <button type="button" class="mb212-primary" data-mb212-next>Continue</button>
+        <button type="button" class="mb212-primary" data-mb212-next>Next</button>
       </div>
-    </section>
-
-    <section class="mb212-step" data-mb212-step="2">
-      <div class="mb212-kicker">Setup 3 of 4</div>
-      <h2>Set your starting monthly amount</h2>
-      <p>This is the amount PayAviator uses as the starting point for “Available Now” this month. Paid bills and spending come out of it, while refunds add money back.</p>
-
-      <label class="mb212-label">Money available this month
-        <input id="mb212Budget" type="number" min="0" step="0.01" inputmode="decimal" placeholder="2500.00">
-      </label>
-
-      <div class="mb212-tip">
-        You can leave this blank and set it later under <strong>Budget → Monthly Budget</strong>.
-      </div>
-
-      <div class="mb212-actions split">
-        <button type="button" class="mb212-secondary" data-mb212-back>Back</button>
-        <button type="button" class="mb212-primary" data-mb212-next>Continue</button>
-      </div>
+      <button type="button" class="mb212-link pa41-skip" data-pa41-skip>Skip for now</button>
     </section>
 
     <section class="mb212-step" data-mb212-step="3">
-      <div class="mb212-kicker">Setup 4 of 4</div>
-      <h2>PIN Lock <span class="mb216-optional">(optional)</span></h2>
+      <div class="pa41-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div>
+      <h2>Money for this month</h2>
+      <p class="pa41-lead">Your spending plan for the month. The Budget tab tracks paid bills and spending against it.</p>
 
-      <div class="mb216-lock-simple">
-        <strong>PIN Lock uses the lock already on your phone.</strong>
-        <div><b>PIN:</b> use the same PIN that unlocks your phone.</div>
-        <div><b>Fingerprint:</b> use the fingerprint already set up on your phone.</div>
-        <small>PayAviator never sees or saves either one.</small>
+      <label class="mb212-label">Amount for this month <span>optional</span>
+        <input id="mb212Budget" type="number" min="0" step="0.01" inputmode="decimal" placeholder="2500.00">
+      </label>
+
+      <div class="mb212-tip">Not sure yet? Leave it blank and set it later on the Budget tab under <strong>Monthly Budget</strong>.</div>
+
+      <div class="mb212-actions split">
+        <button type="button" class="mb212-secondary" data-mb212-back>Back</button>
+        <button type="button" class="mb212-primary" data-mb212-next>Next</button>
       </div>
+    </section>
+
+    <section class="mb212-step" data-mb212-step="4">
+      <div class="pa41-icon"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+      <h2>Lock the app? <span class="mb216-optional">optional</span></h2>
+      <p class="pa41-lead">Use the same PIN or fingerprint that unlocks your phone. PayAviator never sees or saves either one.</p>
 
       <label id="mb212LockChoiceRow" class="mb212-lock-choice">
         <input id="mb212EnableLock" type="checkbox">
         <span>
-          <strong>Turn on PIN Lock (optional)</strong>
-          <small>You can change this later in Settings. If you briefly switch apps, PayAviator stays unlocked for 5 minutes.</small>
+          <strong>Turn on PIN Lock</strong>
+          <small>Stays unlocked for 5 minutes if you briefly switch apps. Change it in Settings.</small>
         </span>
       </label>
 
-      <div class="mb212-callout compact">
-        <strong>You're ready.</strong>
-        <span>Next, add your first bill so PayAviator can start calculating what is due and what you have available.</span>
+      <div class="mb212-callout compact pa41-ready">
+        <strong>You're ready for takeoff.</strong>
+        <span data-pa41-ready-manual>Next, add your first bill so PayAviator can show what's due.</span>
+        <span data-pa41-ready-bank hidden>Next, sign in to your bank through Plaid. You can add bills anytime.</span>
       </div>
 
       <div class="mb212-actions stack">
-        <button type="button" class="mb212-primary" id="mb212FinishAddBill">Finish & Add My First Bill</button>
-        <button type="button" class="mb212-link" data-mb212-back>Back</button>
+        <button type="button" class="mb212-primary" id="mb212FinishAddBill">Finish &amp; add my first bill</button>
+        <button type="button" class="mb212-primary" id="pa41FinishBank" hidden>Finish &amp; connect my bank</button>
+        <div class="pa41-row2">
+          <button type="button" class="mb212-secondary" data-mb212-back>Back</button>
+          <button type="button" class="mb212-secondary" id="pa41FinishHome">Go to Home</button>
+        </div>
       </div>
     </section>
   </div>
@@ -11805,15 +11830,34 @@ function openAvailableNowSpendingV88(){
     }catch(e){return false}
   }
 
-  let step=0;
+  let step=0, path='manual';
+  /* 4.1.1: steps follow the chosen path. Bank: welcome, choice, finish. Manual: all five. */
+  function order(){return path==='bank'?[0,1,4]:[0,1,2,3,4]}
   function showStep(next){
-    step=Math.max(0,Math.min(3,next));
+    const list=order();
+    step=Math.max(0,Math.min(4,next));
+    if(list.indexOf(step)<0)step=list[list.length-1];
     document.querySelectorAll('#mb212Onboarding .mb212-step').forEach((el,i)=>{
       el.classList.toggle('active',i===step);
     });
     const dlg=q('mb212Onboarding');
-    if(dlg)dlg.scrollTop=0;
+    if(dlg){
+      dlg.scrollTop=0;
+      const w=dlg.querySelector('.mb212-wrap'); if(w)w.scrollTop=0;
+      const pos=list.indexOf(step);
+      const n=dlg.querySelector('[data-pa41-n]'),tot=dlg.querySelector('[data-pa41-total]'),dots=dlg.querySelector('.pa41-dots');
+      if(n)n.textContent=String(pos+1);
+      if(tot)tot.textContent=String(list.length);
+      if(dots)dots.innerHTML=list.map((_,i)=>'<i class="'+(i<pos?'done':i===pos?'on':'')+'"></i>').join('');
+      const bank=path==='bank';
+      if(q('mb212FinishAddBill'))q('mb212FinishAddBill').hidden=bank;
+      if(q('pa41FinishBank'))q('pa41FinishBank').hidden=!bank;
+      dlg.querySelector('[data-pa41-ready-manual]')?.toggleAttribute('hidden',bank);
+      dlg.querySelector('[data-pa41-ready-bank]')?.toggleAttribute('hidden',!bank);
+    }
   }
+  function move(dir){const list=order();let i=list.indexOf(step);if(i<0)i=0;showStep(list[Math.max(0,Math.min(list.length-1,i+dir))])}
+  function choosePath(p){path=p;const list=order();showStep(list[2])}
 
   function currentDateISO(){
     const d=new Date(),off=d.getTimezoneOffset();
@@ -11911,10 +11955,15 @@ function openAvailableNowSpendingV88(){
     try{if(typeof refreshNet137==='function')refreshNet137()}catch(e){}
   }
 
-  function finish(addBill){
+  function finish(addBill,connectBank){
     saveSetup();
     const dlg=q('mb212Onboarding');
     if(dlg?.open)dlg.close();
+    try{document.querySelector('[data-view="home"],#mb119BottomNav [data-mb119-view="home"]')?.click()}catch(e){}
+    if(connectBank){
+      setTimeout(()=>{try{window.PayAviatorConnectBank?.()}catch(e){}},150);
+      return;
+    }
     if(addBill){
       setTimeout(()=>{
         try{
@@ -11974,9 +12023,13 @@ function openAvailableNowSpendingV88(){
   function init(){
     q('mb212Onboarding')?.addEventListener('cancel',e=>e.preventDefault());
     q('mb216IncomeType')?.addEventListener('change',toggleOnboardingIncome216);
-    document.querySelectorAll('[data-mb212-next]').forEach(b=>b.addEventListener('click',()=>showStep(step+1)));
-    document.querySelectorAll('[data-mb212-back]').forEach(b=>b.addEventListener('click',()=>showStep(step-1)));
+    document.querySelectorAll('[data-mb212-next],[data-pa41-skip]').forEach(b=>b.addEventListener('click',()=>move(1)));
+    document.querySelectorAll('[data-mb212-back]').forEach(b=>b.addEventListener('click',()=>move(-1)));
+    q('pa41PathBank')?.addEventListener('click',()=>choosePath('bank'));
+    q('pa41PathManual')?.addEventListener('click',()=>choosePath('manual'));
     q('mb212FinishAddBill')?.addEventListener('click',()=>finish(true));
+    q('pa41FinishBank')?.addEventListener('click',()=>finish(false,true));
+    q('pa41FinishHome')?.addEventListener('click',()=>finish(false));
 
     setTimeout(maybeShowOnboarding,350);
     setTimeout(maybeShowSecurityTip,800);
@@ -17258,38 +17311,7 @@ body.pp-help-off .pp-help-btn{display:none!important}
   const enabled=(key,def=true)=>{const v=localStorage.getItem(key);return v===null?def:v!=='false'};
   const setEnabled=(key,v)=>localStorage.setItem(key,v?'true':'false');
 
-  const help={
-    home:{title:'Home',intro:'Your money at a glance. Home combines the PayAviator Gauge with the numbers that explain what is actually spendable right now.',sections:[
-      ['Understanding the numbers',['Available Now is the money PayAviator considers currently available after money that has already moved.','Safe to Spend is Available Now minus your Cushion. It will not go below $0.00.','Savings is money you intentionally set aside. Cushion is separate and protects everyday spending room.']],
-      ['PayAviator Gauge',['The main gauge shows Safe to Spend on your editable dollar scale.','Swipe left or right when additional gauge views are available.','Advanced money details breaks spendable money into views such as cash and connected credit.']],
-      ['More Information',['Open More Information for monthly income, total bills, paid and remaining amounts, bill count, YTD income, current-week hours and the monthly budget summary.','Use Add Spending when money leaves so your current numbers stay accurate.']]
-    ]},
-    calendar:{title:'Calendar',intro:'Your schedule for money and work. Use Calendar to see what is happening on a specific day and to add the items that belong on dates.',sections:[
-      ['Using the calendar',['Tap a day to view its bills, reminders, paychecks and work hours.','Use the month controls to move forward or backward while keeping each month\'s information separate.','Recurring items appear on their scheduled dates.']],
-      ['Add & edit',['Add Hours, Add Bill and Add Reminder live on Calendar so date-based actions stay together.','Hours can be viewed and edited for the selected day without changing unrelated days.','Edit an individual paycheck or dated item when only that occurrence needs to change.']],
-      ['Good to know',['Paid bills can remain visible on their dates so you can see what already happened.','Calendar activity feeds the totals used elsewhere in PayAviator.']]
-    ]},
-    bills:{title:'Bills',intro:'Manage monthly bills, payments and payoff planning while keeping paid and remaining amounts easy to separate.',sections:[
-      ['Monthly bills',['Bills Total Amount represents all bill occurrences for the month you are viewing.','Paid shows bills already recorded as paid; Remaining focuses on what still needs money.','Recurring bills continue into their scheduled future periods.']],
-      ['Payments',['Record a payment when a bill is paid so the monthly totals and spending activity stay in sync.','A bill paid in advance can still count as paid for its bill period without being treated as new income.','Use a bill\'s actions to edit or manage that specific bill.']],
-      ['Payoff Planner',['Payoff Planner helps compare payment approaches for eligible balances.','Credit utilization is based on the current balance and credit limit; payment previews show how a payment would change it.','Connected account information may update from your financial connection when that data is available.']]
-    ]},
-    spending:{title:'Spending',intro:'See paid bills, manual spending and connected-bank activity together so money going out is easier to understand.',sections:[
-      ['Reading Spending',['Categories groups activity by spending type. Location groups it by merchant or place when that information is available.','The chart total represents the activity in the selected period and the list below shows the transactions behind it.','Merchant information and logos are shown when PayAviator has a match.']],
-      ['Managing activity',['The spending activity list starts collapsed to keep the screen compact; expand it when you want transaction details.','Manual entries can be edited or deleted. Connected-bank transactions remain tied to their source data.','Refunds / Funds are money coming back in and should not be treated as spending.']],
-      ['Keep numbers current',['Add manual spending when an expense is not already coming from a connected account.','Avoid entering the same purchase manually if it is already present as a bank transaction.']]
-    ]},
-    budget:{title:'Budget',intro:'Track the monthly spending limit against paid bills and other spending, with one consistent view of what has been used and what remains.',sections:[
-      ['Budget math',['Spent combines the activity PayAviator counts against the selected month\'s spending limit.','Budget Left is the monthly spending limit minus Spent.','The progress bar and percentage show how much of the monthly limit has been used.']],
-      ['Bills & other spending',['Bills Paid and Other Spending are shown separately so you can see what created the total.','Projected after scheduled bills estimates the position after remaining scheduled bills are considered.','Add Spending records money going out; Add Funds records money coming back in.']],
-      ['Tracked money activity',['Tracked money activity shows the entries used by the budget so you can review what affected the totals.','Use the month you are viewing when comparing totals; changing months changes the period being summarized.']]
-    ]},
-    settings:{title:'Settings',intro:'Control PayAviator preferences, connections, protection and app behavior without changing the meaning of your financial records.',sections:[
-      ['Customize PayAviator',['App Colors changes the app\'s appearance. Accessibility options such as larger text or higher contrast can improve readability when enabled.','Gauge settings let you adjust the scale used by the PayAviator Gauge.','Tips & Tricks and Money Tips can be controlled independently.']],
-      ['Notifications & protection',['Notification settings control supported reminder sounds and vibration choices.','Backup & App contains backup/restore tools, app protection information and the installed PayAviator version.','Device authentication protects access when required for real connected financial accounts.']],
-      ['Connected accounts',['Connected banking lets PayAviator use supported account balances and transactions.','Disconnecting an account removes its connection from PayAviator; it does not close or change the actual bank or card account.','Only include an account in Available Now when you want that account considered in spendable-money calculations.']]
-    ]}
-  };
+  const help={"home": {"title": "Home", "intro": "Your money at a glance. The main PayAviator Gauge shows all your spendable money (Safe to Spend). The Cash and Credit gauges below it show cash and credit separately.", "sections": [["Reading the gauges", ["The main PayAviator Gauge shows all your spendable money: your Safe to Spend amount.", "The Cash gauge shows your cash on its own. The Credit gauge shows your credit card balances on their own.", "Safe to Spend is Available Now minus your Cushion and the bills you still owe. It never shows less than $0.00.", "If the gauge shows $0, check your Cushion and upcoming bills first. They may be using up all of Available Now."]], ["Cushion & Savings", ["Your Cushion starts at $0. Tap the Cushion tile under the gauge to set an amount you want kept off-limits.", "Savings is money you set aside on purpose. It is kept separate from your Cushion and from Safe to Spend."]], ["Quick actions", ["Tap Add Spending as soon as money leaves so the gauge stays current.", "Open Advanced money details or tap the Cash and Credit cards for a fuller breakdown.", "Tap ‹ and › on the Smart Money Tip card to go back or skip ahead."]]]}, "calendar": {"title": "Calendar", "intro": "Your month of bills, paychecks, reminders and work hours, laid out by date.", "sections": [["Using the calendar", ["Tap a day to see its bills, paychecks, reminders and hours.", "Swipe or use ‹ and › to change months, and tap Today to jump back.", "Use Filters to choose what shows on the calendar."]], ["Adding things", ["Add Hours, Add Bill and Add Reminder are at the top of Calendar.", "Recurring bills and paychecks repeat on their own scheduled dates.", "Use a reminder for a deadline that is not a bill, so it does not change your totals."]], ["Bill colors", ["Each bill’s color shows on its calendar dot, so you can spot it at a glance.", "Open Bill colors under the calendar and tap a color to change it.", "Paid bills show a ✓ on their date."]]]}, "bills": {"title": "Bills", "intro": "Every bill for the month in one list, sorted by due date, with what is due soon marked.", "sections": [["Finding bills", ["Bills are listed by due date, with Due Today and Due Soon labels.", "Tap a category to show only those bills.", "Tap a bill to view it, or hold it to edit."]], ["Adding & paying", ["Tap Add Bill to add a new bill. Set it to repeat only if the real bill does.", "Mark a bill paid when you pay it so Paid, Remaining and your gauge stay right.", "A partial payment lowers what is left without marking the whole bill paid."]], ["Handy extras", ["Use the Calculator at the bottom for quick math without leaving the app.", "To start a new month with the same bills, use Copy Previous Month on the Budget tab."]]]}, "spending": {"title": "Spending", "intro": "See where your money went, from paid bills, purchases you entered and connected-bank activity.", "sections": [["Reading Spending", ["Switch between Week, Month and Year to change the time period.", "Categories groups spending by type. Merchants groups it by store or company.", "Open Spending activity to see the transactions behind the chart."]], ["Adding entries", ["Add Spending records money going out. Add Refund / Funds records money coming back in.", "You can edit or delete entries you added yourself. Bank transactions come from your bank.", "If a purchase already came in from your bank, do not add it again."]]]}, "budget": {"title": "Budget", "intro": "Plan the month: set limits, track goals and see where your money is going.", "sections": [["Monthly tools", ["Monthly Budget & Limits sets your spending limit and shows how much is left.", "Monthly Snapshot sums up the month’s income, bills and spending on one screen.", "Categories shows which kinds of spending use the most money."]], ["History & planning", ["Payment History lists the bill payments you have recorded.", "Copy Previous Month copies last month’s bills into the month you are viewing.", "Paycheck Planner and Savings Goals help you plan each paycheck and save toward something specific."]], ["Payoff Planner", ["Payoff Planner shows how different payments could change a card balance and payoff date.", "Snowball and Avalanche are two payoff orders you can compare.", "Payoff dates and interest are estimates. Your card company’s statement is the final word."]]]}, "settings": {"title": "Settings", "intro": "Your account, connected banks, look, notifications, backups and app security.", "sections": [["Account & banks", ["Sign in with Google or email. Phone sign-in is coming soon.", "Connected Accounts links banks through Plaid. The free account includes 1 bank. A subscription ($3.99/month or $29.99/year) adds more.", "If a bank needs you to log in again, a Reconnect banner appears. Tap it to fix the connection.", "Disconnecting a bank removes it from PayAviator. Your actual bank account is not changed."]], ["Look & notifications", ["App Colors lets you switch between Easy and Advanced Home, change text size and contrast, and set app colors.", "Bills & Reminders sets the default reminder, notification time, sound and vibration.", "Calendar & Defaults chooses how many months to show and whether paid bills, paychecks and reminders appear."]], ["Backup & security", ["Backup & App lets you save a backup or restore one, and shows your app version.", "App Lock uses your phone’s fingerprint, face or PIN. It is required once a real bank is connected.", "Turn Tips & Tricks or Money Tips on or off under Tips & Help."]]]}};
 
   function ensureDialog(){
     if($('ppHelpDlg'))return;
@@ -17328,7 +17350,7 @@ body.pp-help-off .pp-help-btn{display:none!important}
   function settingsBlock(){
     return '<div id="pp20516TipSettings" class="settings-section pp-help-card">'+
       '<h3>Tips & Help</h3>'+
-      '<div class="settings-row pp-help-setting"><div><strong>Tips & Tricks</strong><div class="settings-help">Show the ? help buttons around PayAviator.</div></div><label class="pp-mini-switch"><input id="ppTipsToggle" type="checkbox"><span></span></label></div>'+
+      '<div class="settings-row pp-help-setting"><div><strong>Tips & Tricks</strong><div class="settings-help">Show the 💡 tips button and the ? help on each tab.</div></div><label class="pp-mini-switch"><input id="ppTipsToggle" type="checkbox"><span></span></label></div>'+
       '<div class="settings-row pp-help-setting"><div><strong>Money Tips</strong><div class="settings-help">Keep rotating financial tips on the Home page.</div></div><label class="pp-mini-switch"><input id="ppMoneyTipsToggle" type="checkbox"><span></span></label></div>'+
       '</div>';
   }
@@ -17344,48 +17366,30 @@ body.pp-help-off .pp-help-btn{display:none!important}
   }
 
   const general=[
-    ['Know what Safe to Spend means','Safe to Spend is Available Now minus your Cushion. It is designed to show everyday spending room without treating protected money as free cash.'],
-    ['Available Now follows real money','Available Now reflects money currently available after tracked activity. Connected-account balances can help keep this view current.'],
-    ['Your Cushion is intentional breathing room','Tap the Cushion tile under the gauge to choose how much money PayAviator protects before calculating Safe to Spend.'],
-    ['Savings stays protected','Money you mark as Savings is kept separate from ordinary spending so you can see what is available without losing sight of what you set aside.'],
-    ['Use the gauge as a quick check','The PayAviator Gauge turns Safe to Spend into a visual signal. Swipe between gauges when more than one money view is available.'],
-    ['Cash and credit tell different stories','The Cash gauge shows spendable cash. The Credit gauge shows connected card balances and utilization information when those details are available.'],
-    ['Connected accounts reduce guesswork','Connected banking can refresh balances and account activity, but review important numbers before making a payment or purchase.'],
-    ['Credit utilization changes with your balance','When PayAviator knows both a card balance and credit limit, the Credit gauge can show how much of the limit is currently being used.'],
-    ['Preview a card payment','The Payoff Planner can show how a payment may change balance, available credit and utilization before you record it.'],
-    ['Snowball keeps the payment smaller','In PayAviator, Snowball uses the smaller payment plan so you can preview a steadier payoff path.'],
-    ['Avalanche previews full payoff','In PayAviator, Avalanche shows the full-payoff path for the selected balance, including projected interest when available.'],
-    ['The planner is a projection','Payoff dates and projected interest are estimates. Actual card interest, transactions and issuer calculations can change the result.'],
-    ['Record payments when they happen','Recording a payment keeps Remaining, spending activity and payoff information closer to what actually happened.'],
-    ['Use Monthly Budget for the whole picture','Your Monthly Budget compares the spending limit with paid bills and other tracked spending so you can see what remains.'],
-    ['Bills and other spending are separate','Bills belong in the Bills area. Use Add Spending for purchases that are not already represented by a bill so they are not counted twice.'],
-    ['More Information keeps Home cleaner','Open More Information on Home when you want monthly income, bill totals, paid amounts, remaining amounts, YTD income and work-hour details.'],
-    ['Calendar is your planning center','Use Calendar to add hours, bills and reminders and to see what is happening on specific dates.'],
-    ['Recurring bills should match reality','Set a bill to weekly, biweekly or monthly only when that matches the actual schedule so future totals stay useful.'],
-    ['Paid and Remaining work together','Mark payments accurately so the Paid total increases while Remaining reflects what is still due for the viewed month.'],
-    ['Track partial payments too','A partial bill payment should reduce what remains without making the whole bill look paid.'],
-    ['Income belongs to the month received','Keeping paycheck dates and amounts current helps Monthly Income and YTD Income reflect what has actually been received.'],
-    ['Work hours can explain income changes','Record your hours on Calendar so Current Week Hours gives you a quick check against upcoming pay.'],
-    ['Reminders are for things money totals cannot say','Use reminders for deadlines or tasks you want visible on Calendar without turning them into a bill.'],
-    ['Use notes when context matters','A note or confirmation number on tracked activity can make it much easier to understand an older transaction later.'],
-    ['Check the next bill before optional spending','Safe to Spend is most useful alongside your upcoming obligations. A positive number does not make every future bill disappear.'],
-    ['Refresh connected data when numbers look stale','If a connected balance does not match your financial institution, refresh or resync before relying on the displayed amount.'],
-    ['Avoid counting the same purchase twice','If a purchase is already represented by a paid bill or imported activity, do not add it again as separate spending.'],
-    ['Use Backup before major changes','A current PayAviator backup gives you a recovery point before making large edits to your locally stored planning data.'],
-    ['Customize the gauge to your scale','The gauge scale can be adjusted in Settings so its visual range fits the amount of spending room that is useful to you.'],
-    ['Tips explain PayAviator, not your bank','Smart Money Tips are educational guidance about the app. Confirm balances, limits, due dates and payment requirements with the financial institution when they matter.']
+    ["Pay yourself first", "Move a small amount to Savings on payday, before other spending. Even $10 a paycheck adds up."],
+    ["Know your next bill", "Before an optional purchase, check what is due before your next paycheck."],
+    ["Try a 24-hour pause", "For non-essential buys, wait a day. If you still want it tomorrow, it will still be there."],
+    ["Start a small cushion", "A cushion of even $50–$100 can cover a surprise expense. Tap the Cushion tile under the gauge on Home to set one."],
+    ["Review subscriptions", "Look at your Subscriptions bills once a month and cancel any you no longer use."],
+    ["Pay on time", "Late fees add up fast. Turn on bill reminders so due dates do not sneak up on you."],
+    ["Pay more than the minimum when you can", "Paying extra on a card lowers the balance faster. Payoff Planner can show the difference."],
+    ["Keep card balances low", "Using less of your credit limit is usually better for your credit. The Credit gauge shows how much you use."],
+    ["Log spending the same day", "Entering purchases right away keeps your Safe to Spend number trustworthy."],
+    ["Check a month at a glance", "Monthly Snapshot on the Budget tab shows income, bills and spending in one place."],
+    ["Plan irregular bills", "Some bills come once or twice a year. Add them to Calendar now so they are not a surprise later."],
+    ["Small purchases add up", "Look at Spending by Merchants once a week. Small, frequent buys are often the easiest to trim."],
+    ["Keep a backup", "Save a backup in Settings › Backup & App before big changes."],
+    ["These tips are general", "Money Tips are general ideas, not personal financial advice. Check with your bank for exact balances and due dates."]
   ];
 
   const tight=[
-    ['Safe to Spend is at or near zero','Check Available Now, your Cushion, recent spending and upcoming bills to see what is limiting spending room.'],
-    ['A Cushion can intentionally make Safe to Spend zero','That does not necessarily mean the account balance is zero. It can mean PayAviator is protecting the Cushion you selected.'],
-    ['Check what is due before the next income','When spending room is tight, Calendar and Bills can show obligations that arrive before your next recorded paycheck.'],
-    ['Review tracked activity for surprises','If Safe to Spend changed unexpectedly, check paid bills and recent spending for an entry you did not expect.']
+    ["Safe to Spend is low", "Look at Available Now, your Cushion and bills due soon to see what is using up your money."],
+    ["$0 does not always mean empty", "Your Cushion and upcoming bills may be holding back the rest of Available Now."],
+    ["Cover essentials first", "When money is tight, put rent, utilities and food before anything optional."]
   ];
   const strong=[
-    ['Extra room can stay extra','A higher Safe to Spend number does not have to become spending. You can increase Savings or Cushion if you want more of it protected.'],
-    ['Use a comfortable month to look ahead','Check Calendar and recurring bills for larger obligations coming next month before treating extra room as permanent.'],
-    ['Compare the gauges before using credit','Cash and Credit answer different questions. Check both when deciding whether a purchase fits your current plan.']
+    ["Extra room can stay extra", "A good number does not have to be spent. Moving some to Savings is an option."],
+    ["Look ahead before spending", "Check next month’s Calendar for big bills before treating extra room as free."]
   ];
 
   let tipIndex=0, timer=null;
@@ -22525,6 +22529,7 @@ setState(readNative());
     }catch(_){ }
   }
   window.PayAviatorLinkStats={get(){try{return JSON.parse(localStorage.getItem(PP410_LINK_STATS)||'{}')}catch(_){return{}}},reset(){localStorage.removeItem(PP410_LINK_STATS)},record:pp410LinkStat};
+  window.PayAviatorConnectBank=function(){return pp920ConnectPlaidBank()};
   async function pp920ConnectPlaidBank(){
     if(!(await window.PayAviatorAuth?.ensureSignedIn?.()))return;
     // 3.9.8: consent screen before Plaid Link (web Link and Android Hosted Link). Nothing extra goes to the backend.
@@ -23196,12 +23201,12 @@ body.pp-help-off #pp925TipLauncher{display:none!important}
  const HELP_KEY='payaviator_context_help_v1', SEEN='payaviator_tip_popup_seen_v1';
  const $=id=>document.getElementById(id);
  const tips={
-  home:['Home tip','Your gauge is more useful than your bank balance alone. It shows the money PayAviator considers safe to spend after the amounts you protect.','Show Tips & Tricks','home'],
-  calendar:['Calendar tip','Tap a date to see what is due or coming in. Looking a few days ahead can keep a bill from surprising your Available Now.','Show Tips & Tricks','calendar'],
-  bills:['Bills tip','Use Remaining to focus on what still needs money. Paid bills stay available so you can see what already happened.','Show Tips & Tricks','bills'],
-  spending:['Spending tip','Enter purchases close to when they happen. That keeps Available Now and the gauge from getting stale.','Show Tips & Tricks','spending'],
-  budget:['Budget tip','Compare the month you are actually viewing. Savings and your cushion have different jobs, so PayAviator keeps them separate.','Show Tips & Tricks','budget'],
-  settings:['Settings tip','You can turn Tips & Tricks or Money Tips on and off independently here.','Show Tips & Tricks','settings']
+  home:['Home tip',"The big gauge shows all your spendable money. The Cash and Credit gauges show each one separately.",'Show Tips & Tricks','home'],
+  calendar:['Calendar tip',"Tap a day to see what is due. Each bill’s color shows on its calendar dot.",'Show Tips & Tricks','calendar'],
+  bills:['Bills tip',"Tap a bill to view it, or hold it to edit. Mark bills paid so your gauge stays right.",'Show Tips & Tricks','bills'],
+  spending:['Spending tip',"Switch between Week, Month and Year. Use Merchants to see which stores get the most money.",'Show Tips & Tricks','spending'],
+  budget:['Budget tip',"Monthly Snapshot, Categories and Payment History show where the month’s money went.",'Show Tips & Tricks','budget'],
+  settings:['Settings tip',"Connect banks, set App Lock and turn tips on or off here.",'Show Tips & Tricks','settings']
  };
  function current(){const v=document.querySelector('.mb119-view.active,.mb119-view[style*="display: block"]');const id=v?.id||'mb119Home';return ({mb119Home:'home',mb119Calendar:'calendar',mb119Bills:'bills',mb119Spending:'spending',mb119Budget:'budget',mb119Settings:'settings'})[id]||'home'}
  function ensure(){
@@ -26326,6 +26331,147 @@ window.PayAviatorOpenCushion=openCushion;
 })();
 </script>
 
+<!-- PayAviator 4.1.1: first-run setup redesign + distinct Simple / Detailed Home -->
+<style id="pa411-setup-css">
+html body #mb212Onboarding.pa41-setup{--s-cyan:var(--mb137-cyan,#00f5ff);--s-line:rgba(255,255,255,.14);--s-muted:rgba(255,255,255,.8);--s-grad:linear-gradient(135deg,#38bdf8 0%,#00f5ff 100%);background:linear-gradient(180deg,#0f2d5c 0%,var(--mb137-navy,#0b234b) 34%)!important;color:#fff!important}
+html body #mb212Onboarding .pa41-progress{padding:6px 0 10px;margin:0 0 2px;background:transparent}
+html body #mb212Onboarding .pa41-kicker{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--s-cyan);margin-bottom:7px}
+html body #mb212Onboarding .pa41-dots{display:flex;gap:6px}
+html body #mb212Onboarding .pa41-dots i{flex:1;height:5px;border-radius:9px;background:rgba(255,255,255,.16)}
+html body #mb212Onboarding .pa41-dots i.done{background:rgba(0,245,255,.55)}
+html body #mb212Onboarding .pa41-dots i.on{background:var(--s-grad);box-shadow:0 0 10px rgba(0,245,255,.5)}
+html body #mb212Onboarding .mb212-step h2{font-size:clamp(21px,6vw,25px)!important;line-height:1.2!important;margin:4px 0 6px!important}
+html body #mb212Onboarding .pa41-lead{color:var(--s-muted)!important;font-size:15px!important;line-height:1.45!important;margin:0 0 14px!important}
+html body #mb212Onboarding .pa41-icon{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.35);margin:2px 0 10px}
+html body #mb212Onboarding svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
+html body #mb212Onboarding .pa41-icon svg,html body #mb212Onboarding .pa41-path-ic svg,html body #mb212Onboarding .pa41-trust svg{width:24px;height:24px;stroke:var(--s-cyan);stroke-width:1.8}
+html body #mb212Onboarding .pa41-trust{display:flex!important;gap:10px!important;align-items:flex-start!important;padding:11px 12px!important;border-radius:14px!important;font-size:13.5px!important;line-height:1.4!important;margin:0 0 14px!important}
+html body #mb212Onboarding .pa41-trust span{font-size:14px!important;line-height:1.4!important;color:#fff!important}
+html body #mb212Onboarding .pa41-trust svg{flex:0 0 22px;margin-top:1px}
+html body #mb212Onboarding .pa41-modes{background:none!important;border:0!important;padding:0!important;box-shadow:none!important;margin:0!important}
+html body #mb212Onboarding .pa41-modes>strong{display:block;font-size:16px;margin:0 0 8px}
+html body #mb212Onboarding .pa41-mode-cards{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;margin:0!important}
+html body #mb212Onboarding .pa41-mode{display:flex!important;flex-direction:column!important;align-items:stretch!important;text-align:left!important;gap:3px!important;padding:9px!important;min-height:0!important;border-radius:16px!important;border:1.5px solid var(--s-line)!important;background:rgba(255,255,255,.05)!important;color:#fff!important;white-space:normal!important;box-shadow:none!important;font-weight:400!important;width:100%!important;margin:0!important}
+html body #mb212Onboarding .pa41-mode::before{content:none!important}
+html body #mb212Onboarding .pa41-mode.active{border-color:var(--s-cyan)!important;background:rgba(0,245,255,.12)!important;box-shadow:0 0 0 3px rgba(0,245,255,.22)!important;color:#fff!important}
+html body #mb212Onboarding .pa41-mode.active>b::after{content:" ✓";color:var(--s-cyan)}
+html body #mb212Onboarding .pa41-mode>b{font-size:15px;margin-top:4px}
+html body #mb212Onboarding .pa41-mode>small{font-size:12px;line-height:1.3;color:var(--s-muted)}
+html body #mb212Onboarding .pa41-prev{display:block;background:#081a37;border:1px solid rgba(255,255,255,.1);border-radius:11px;padding:7px 8px 6px;font-size:10px;line-height:1.25}
+html body #mb212Onboarding .pa41-prev i{display:flex;font-style:normal}
+html body #mb212Onboarding .pv-gauge{display:block;width:62%;height:auto;margin:0 auto 3px;stroke-width:5}
+html body #mb212Onboarding .pv-gauge path:last-child{stroke-width:2.5}
+html body #mb212Onboarding .pv-ok{justify-content:center;color:#4ade80;font-weight:700;margin-bottom:3px}
+html body #mb212Onboarding .pv-row{justify-content:space-between;border-top:1px solid rgba(255,255,255,.08);padding:2px 0}
+html body #mb212Onboarding .pv-row s{text-decoration:none;color:rgba(255,255,255,.75)}
+html body #mb212Onboarding .pv-row em{font-style:normal;font-weight:700}
+html body #mb212Onboarding .pv-swipe{display:flex!important;align-items:flex-end;gap:3px;overflow:hidden}
+html body #mb212Onboarding .pv-swipe .pv-gauge{flex:0 0 62%;margin:0 0 3px}
+html body #mb212Onboarding .pv-mini{display:block;flex:0 0 30%;width:30%;height:auto;stroke-width:5;opacity:.55}
+html body #mb212Onboarding .pv-mini path:last-child{stroke-width:2.5}
+html body #mb212Onboarding .pv-why{justify-content:center;color:#4ade80;font-weight:700;text-align:center}
+html body #mb212Onboarding .pv-dots{justify-content:center;gap:3px;margin:3px 0}
+html body #mb212Onboarding .pv-dots u{width:5px;height:5px;border-radius:5px;background:rgba(255,255,255,.3)}
+html body #mb212Onboarding .pv-dots u:first-child{background:var(--s-cyan)}
+html body #mb212Onboarding .pv-next{justify-content:space-between;gap:4px;background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.3);border-radius:6px;padding:3px 5px}
+html body #mb212Onboarding .pv-next s{text-decoration:none}html body #mb212Onboarding .pv-next em{font-style:normal;font-weight:700;color:var(--s-cyan)}
+html body #mb212Onboarding .pv-tiles{gap:3px;margin:2px 0}
+html body #mb212Onboarding .pv-tiles u{flex:1;text-decoration:none;text-align:center;font-size:7.5px;background:rgba(255,255,255,.08);border-radius:4px;padding:3px 0}
+html body #mb212Onboarding .pv-cards{gap:4px;justify-content:center}
+html body #mb212Onboarding .pv-cards .pv-mini{flex:0 0 40%;width:40%;opacity:.9;background:rgba(255,255,255,.05);border-radius:5px;padding:2px}
+html body #mb212Onboarding .pv-cush{justify-content:center;font-size:9px;margin:0 0 3px;color:#fff;opacity:.9}
+html body #mb212Onboarding .pv-pay{justify-content:center;color:var(--s-cyan);font-weight:700;margin-top:2px}
+html body #mb212Onboarding .pa41-hint{font-size:12.5px!important;color:var(--s-muted)!important;margin:9px 0 0!important}
+html body #mb212Onboarding .pa41-paths{display:grid;gap:12px}
+html body #mb212Onboarding .pa41-path{display:flex!important;gap:12px!important;align-items:flex-start!important;text-align:left!important;padding:14px!important;border-radius:16px!important;border:1.5px solid var(--s-line)!important;background:rgba(255,255,255,.05)!important;color:#fff!important;white-space:normal!important;min-height:0!important;width:100%!important;font-weight:400!important;box-shadow:none!important}
+html body #mb212Onboarding .pa41-path:active,html body #mb212Onboarding .pa41-path:focus-visible{border-color:var(--s-cyan)!important;background:rgba(0,245,255,.12)!important}
+html body #mb212Onboarding .pa41-path b{display:block;font-size:16px;margin-bottom:3px}
+html body #mb212Onboarding .pa41-path small{display:block;font-size:13px;line-height:1.4;color:var(--s-muted)}
+html body #mb212Onboarding .pa41-path-ic{flex:0 0 42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.35)}
+html body #mb212Onboarding .mb212-primary{background:var(--s-grad)!important;color:#071a36!important;border:0!important;border-radius:16px!important;min-height:52px!important;font-size:16px!important;font-weight:800!important;box-shadow:0 8px 22px -8px rgba(0,245,255,.6)!important}
+html body #mb212Onboarding .mb212-secondary{background:transparent!important;color:#fff!important;border:1.5px solid rgba(0,245,255,.45)!important;border-radius:16px!important;min-height:52px!important;font-size:16px!important;font-weight:700!important}
+html body #mb212Onboarding .mb212-actions{display:flex!important;gap:10px!important}
+html body #mb212Onboarding .mb212-actions>button{flex:1 1 0!important;width:auto!important;margin:0!important}
+html body #mb212Onboarding .mb212-actions.stack{flex-direction:column!important}
+html body #mb212Onboarding .mb212-actions.stack>button{flex:none!important;width:100%!important}
+html body #mb212Onboarding .pa41-row2{display:flex;gap:10px}
+html body #mb212Onboarding .pa41-row2>button{flex:1 1 0;margin:0!important}
+html body #mb212Onboarding [hidden]{display:none!important}
+html body #mb212Onboarding .pa41-skip{display:block!important;margin:0 auto!important;padding:10px 16px!important;background:none!important;border:0!important;color:var(--s-cyan)!important;font-weight:700!important;min-height:44px!important}
+html body #mb212Onboarding .mb212-step.active:has(.pa41-skip) .mb212-actions{margin-bottom:0!important}
+html body #mb212Onboarding .mb212-label{font-size:14px!important}
+html body #mb212Onboarding .pa41-ready{margin-top:12px!important}
+/* Simple Home: the 3 gauges (PayAviator, Cash, Credit) each get one plain line, plus one next-action line.
+   Denser detail is hidden. Advanced Home is unchanged: everything below is scoped to body.mb-home-easy. */
+.pa41-why,#pa41Next{display:none}
+body.mb-home-easy .pa41-why{display:block;margin:6px 4px 0;text-align:center;font-size:13px;line-height:1.35;color:rgba(255,255,255,.85)}
+body.mb-home-easy .pa41-why.ok{color:#4ade80;font-weight:700}body.mb-home-easy .pa41-why.warn{color:#fbbf24;font-weight:700}
+body.mb-home-easy #pa41Next{display:flex;align-items:center;gap:8px;margin:10px 0 0;padding:11px 14px;border-radius:16px;background:rgba(8,26,55,.6);border:1px solid rgba(0,245,255,.3);color:#fff;font-size:15px;line-height:1.3}
+body.mb-home-easy #pa41Next b{color:var(--mb137-cyan,#00f5ff);white-space:nowrap}
+body.mb-home-easy #pp2059GaugeMetrics{display:flex!important;justify-content:center!important}
+body.mb-home-easy #pp2059GaugeMetrics>.pp967-metric:not(.pa41-cushion){display:none!important}
+body.mb-home-easy #pp2059GaugeMetrics>.pa41-cushion{flex:0 1 220px!important;cursor:pointer;border:1px solid rgba(0,245,255,.4)!important}
+body.mb-home-easy #pp2059GaugeMetrics>.pa41-cushion:not(#pp967Cushion) strong::after{content:" ›";color:var(--mb137-cyan,#00f5ff)}
+body.mb-home-easy #pp2059GaugeMetrics>.pa41-cushion small.pa41-tap{display:block!important;font-size:11px;opacity:.8}
+.pa41-tap{display:none}
+body.mb-home-easy #pp967Advanced,body.mb-home-easy #pp959MiniCash .pp1200-foot,body.mb-home-easy #pp959MiniCash .pp1200-hint{display:none!important}
+</style>
+<script id="pa411-home-modes">
+/* Simple Home helper: one plain line under each gauge + one next-action line. Reads existing data only; writes nothing.
+   Main gauge line prefers Lucky's #ppGaugeReason / PayAviatorGauge.reasonText() when present. */
+(function(){
+  function $(id){return document.getElementById(id)}
+  function m(v){try{return money(v)}catch(e){return '$'+(Number(v)||0).toFixed(2)}}
+  function e(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+  function iso(d){try{return toISO(d)}catch(_){return d.toISOString().slice(0,10)}}
+  function day(s){const d=new Date(s+'T00:00:00'),t=new Date();t.setHours(0,0,0,0);const n=Math.round((d-t)/864e5);return n===0?'today':n===1?'tomorrow':n<7?d.toLocaleDateString('en-US',{weekday:'short'}):d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}
+  function num(sel){const a=document.querySelector(sel);if(!a)return null;const n=parseFloat((a.textContent||'').replace(/[^0-9.\-]/g,''));return isNaN(n)?null:n}
+  function nextBill(){try{const d=new Date();d.setHours(0,0,0,0);for(let i=0;i<62;i++){const s=iso(d);for(const b of (bills||[])){if(isRecurringOnDate(b,d)&&billStatus(b,s)!=='paid'){const rem=Math.max(0,Number(b.amount||0)-billPaidAmount(b,s));if(rem>0)return {b,s,rem}}}d.setDate(d.getDate()+1)}}catch(_){}return null}
+  function setLine(host,id,cls,text){if(!host)return;let el=$(id);if(!text){el&&el.remove();return}
+    if(!el){el=document.createElement('div');el.id=id;host.insertAdjacentElement('afterend',el)}else if(el.previousElementSibling!==host)host.insertAdjacentElement('afterend',el);
+    const c='pa41-why '+cls;if(el.className!==c)el.className=c;if(el.textContent!==text)el.textContent=text}
+  let busy=false;
+  function render(){if(busy)return;busy=true;try{
+    const dial=document.querySelector('#pp954Gauge .pp967-dial');
+    let main=null,kind='';
+    /* 4.1.1: the main-gauge line comes from PayAviatorGauge.reasonText(). When it has text, 4.1.1's own
+       #ppGaugeReason already shows it, so no second line; when it is 'ok' (safe > 0), show the on-track line. */
+    let r411=null;try{r411=window.PayAviatorGauge&&typeof window.PayAviatorGauge.reasonText==='function'?window.PayAviatorGauge.reasonText():null}catch(_){r411=null}
+    if(r411){
+      if(!r411.text&&r411.kind==='ok'){main='On track: this is what you can spend after bills and the money you protect.';kind='ok'}
+    }else if(!$('ppGaugeReason')){
+      let rs=null;try{rs=window.PayAviatorGauge&&typeof window.PayAviatorGauge.reasonText==='function'?window.PayAviatorGauge.reasonText():null}catch(_){rs=null}
+      if(rs&&rs.text){main=rs.text;kind=rs.kind==='ok'?'ok':(rs.kind==='none'?'':'warn')}
+      else{const v=num('#pp954Gauge .pp967-readout .amt');if(v!=null){const empty=!(((typeof bills!=='undefined'&&bills)||[]).length)&&!(()=>{try{return JSON.parse(localStorage.getItem('payAviator_paychecks_v1')||'[]').length}catch(_){return 0}})();if(empty&&v<=0){main='Add your pay and bills to see what is safe to spend.';kind=''}else main=v>0?'On track: this is what you can spend after bills and the money you protect.':'Bills and protected money are more than you have right now.';if(!empty||v>0)kind=v>0?'ok':'warn'}}
+    }
+    setLine(dial,'pa41WhyMain',kind,main);
+    const cards=document.querySelectorAll('#pp959MiniCash .pp1200-card');
+    if(cards[0])setLine(cards[0].querySelector('.pp1200-dial'),'pa41WhyCash','','Cash you can spend after money saved aside.');
+    if(cards[1]){const none=/no credit card/i.test(cards[1].textContent||'');setLine(cards[1].querySelector('.pp1200-dial'),'pa41WhyCredit','',none?'Connect a card to see how much credit you use.':'How much of your card limits you are using.')}
+    /* Cushion stays visible in Simple. 4.1.1's #pp967Cushion tile already opens the editor (PayAviatorOpenCushion),
+       so it is only styled here; the fallback below is for older builds without that tile. */
+    const cm=$('pp967Cushion')||[...document.querySelectorAll('#pp2059GaugeMetrics>.pp967-metric')].find(x=>/^\s*Cushion/i.test(x.textContent||''));
+    if(cm&&!cm.classList.contains('pa41-cushion')){cm.classList.add('pa41-cushion');if(!cm.matches('button,[role=button]')){cm.setAttribute('role','button');cm.setAttribute('tabindex','0');cm.setAttribute('aria-label','Edit Cushion')}if(!cm.querySelector('.pa41-tap')){const s=document.createElement('small');s.className='pa41-tap';s.textContent='Tap to edit';cm.appendChild(s)}cm.dataset.pa41Own=(cm.id==='pp967Cushion'||cm.dataset.pp906Bound)?'':'1'}
+    const home=$('mb20419HealthCard');
+    if(home){let n=$('pa41Next');if(!n){n=document.createElement('div');n.id='pa41Next';(($('mb20419Forecast'))||home.lastElementChild).insertAdjacentElement('beforebegin',n)}
+      const x=nextBill();const h=x?`<span>Next up: ${e(x.b.name||'Bill')} due ${e(day(x.s))}</span><b>${e(m(x.rem))}</b>`:'<span>No bills due soon. Add one from Bills.</span>';
+      if(n.innerHTML!==h)n.innerHTML=h}
+  }catch(_){}finally{busy=false}}
+  let t=0;function soon(){clearTimeout(t);t=setTimeout(render,150)}
+  function boot(){soon();
+    ['payaviator:viewchange','payaviator:gaugechange','visibilitychange'].forEach(n=>document.addEventListener(n,soon));
+    window.addEventListener('storage',soon);document.addEventListener('click',soon,true);
+    function openC(ev){const c=ev.target.closest&&ev.target.closest('.pa41-cushion');if(!c||!document.body.classList.contains('mb-home-easy'))return;
+      if(ev.type==='keydown'&&ev.key!=='Enter'&&ev.key!==' ')return;
+      if(c.dataset.pa41Own!=='1')return;
+      ev.preventDefault();ev.stopPropagation();
+      if(typeof window.openCushion2045==='function')window.openCushion2045();else document.getElementById('mb20419EditCushion')?.click()}
+    document.addEventListener('click',openC,true);document.addEventListener('keydown',openC,true);
+    const h=$('mb119Home');if(h)try{new MutationObserver(ms=>{if(ms.some(x=>{const n=x.target.nodeType===1?x.target:x.target.parentElement;return !(n&&n.closest&&n.closest('.pa41-why,#pa41Next'))}))soon()}).observe(h,{childList:true,subtree:true,characterData:true})}catch(_){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+</script>
 </body>
 
 <script>
@@ -33649,6 +33795,27 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gaugeread{p
 html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gaugeread b{font-size:32px!important;font-weight:950!important;line-height:1!important;letter-spacing:-.03em!important;color:#52ff69!important}
 html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gaugeread span{margin-top:4px!important;font-size:12.16px!important;font-weight:950!important;letter-spacing:.14em!important;color:#fff!important}
 </style>
+<style id="pa412-payoff-compact-css">
+/* PayAviator 4.1.2: compact Payoff Planner. Scales the card gauge view to Home/Budget tile size; colors and needle math unchanged. */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner{--pa400-dial:min(48vw,200px)}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gauge{padding:10px 10px 11px!important;margin:0 0 10px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-accountnav button{flex:0 0 32px!important;min-height:30px!important;font-size:20px!important;padding:0!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-accountnav strong,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-accountnav h3,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-accountnav b{font-size:16px!important;line-height:1.2!important;margin:0!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-accountnav small{font-size:11px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3103-dialwrap{margin:2px auto 0!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gaugeread{width:calc(var(--pa400-dial) * .78)!important;margin:calc(var(--pa400-dial) * -.13) auto 8px!important;padding:6px 8px 5px!important;border-radius:13px!important;box-shadow:0 6px 18px -8px rgba(0,0,0,.6),0 0 0 3px var(--pa4-raised,#1f4f86)!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gaugeread b{font-size:22px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gaugeread span{margin-top:2px!important;font-size:9.5px!important;letter-spacing:.12em!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-stats{gap:6px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-stats>div{padding:6px 4px!important;border-radius:11px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-stats small{font-size:10px!important;line-height:1.2!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-stats strong{font-size:13px!important;margin-top:2px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3102-gaugefoot{margin-top:5px!important;gap:6px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3103-projection{margin-top:7px!important;padding:7px 10px!important;border-radius:12px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3103-projection small,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3103-projection span,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3103-projection em{margin:1px 0!important;font-size:11px!important;line-height:1.3!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3103-projection em{font-size:10px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #pa3102Planner .pa3103-projection strong{margin:2px 0!important;font-size:13.5px!important;line-height:1.25!important}
+</style>
 <script id="pa3102-planner-js">
 (function(){
 'use strict';
@@ -33802,5 +33969,253 @@ window.PayAviatorPayoffPlanner3102={open,close,simulate,refreshLinked,rows,prefs
 // Let actual synced balances update a currently visible planner without a timer
 // or a MutationObserver that would re-create its controls while being edited.
 window.addEventListener('payaviator:accounts-updated',()=>{refreshLinked();if($(ROOT)&&!$(ROOT).hidden&&view==='main')draw()});
+})();
+</script>
+
+<!-- 4.1.2 notification rework, phase 1 (pa412-notif). Local only: no server, no paid service.
+     - Native alarms are one flat plan built here; paid/deleted occurrences are never in the plan and the plan is
+       rebuilt (debounced) after any bill/paid/override save, so paying a bill cancels its alarms.
+     - Native stores the plan and re-arms it after reboot / app update (BootReceiver) and on app start.
+     - Each alarm carries an "open" target; tapping the notification calls window.PayAviatorOpenAlert(open).
+     - Lock screen shows a generic public version unless "Show amounts on lock screen" is on.
+     - Alerts bell (Home header) + Alerts center with 30-day local history.
+     - FCM bank reconnect (Lucian's /api/devices/fcm contract): token registration is native (PushService/MainActivity);
+       foreground pushes arrive at window.PayAviatorPush.onMessage, taps at PayAviatorOpenAlert('reconnect:<item_id>'). -->
+<style id="pa412-notif-css">
+.pa412-bell{position:absolute!important;top:20px!important;right:62px!important;z-index:40!important;width:38px!important;height:38px!important;min-width:38px!important;border-radius:50%!important;background:var(--pa4-raised,#0b2447)!important;color:var(--pa4-text,#fff)!important;border:1px solid var(--pa4-line2,#16e4ea)!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;font-size:17px!important;cursor:pointer}
+.pa412-bell svg{width:19px;height:19px}
+.pa412-bell .pa412-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--pa4-accent,#00f5ff);color:#04203f;font:800 11px/18px system-ui,sans-serif;text-align:center;box-sizing:border-box}
+.pa412-bell .pa412-badge[hidden]{display:none}
+#pa412Alerts{position:fixed;inset:0;z-index:2147483600;display:none;flex-direction:column;background:linear-gradient(180deg,#1590d8 0%,#0c79bb 100%)!important;color:#fff;font-family:var(--pa4-font,system-ui,sans-serif);overflow:auto}
+#pa412Alerts.show{display:flex}
+#pa412Alerts .pa412-head{background:var(--pa4-card,#0b234b);padding:22px 20px 18px;position:relative}
+#pa412Alerts .pa412-head h2{margin:0;font-size:30px;font-weight:800}
+#pa412Alerts .pa412-head p{margin:6px 0 0;color:rgba(255,255,255,.8);font-size:14px}
+#pa412Alerts .pa412-gear{position:absolute;top:20px;right:16px;width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border-radius:50%!important;background:var(--pa4-raised,#14376b);color:#fff;border:1px solid var(--pa4-line2,#16e4ea);font-size:17px}
+#pa412Alerts .pa412-body{padding:8px 16px 110px}
+#pa412Alerts .pa412-back{background:none!important;border:0!important;box-shadow:none!important;min-height:0!important;color:var(--pa4-accent,#00f5ff);font-weight:700;font-size:16px;padding:6px 4px}
+#pa412Alerts .pa412-sec{display:flex;justify-content:space-between;align-items:center;margin:16px 6px 8px;font-weight:800;letter-spacing:.08em;font-size:13px}
+#pa412Alerts .pa412-sec button{background:none!important;border:0!important;box-shadow:none!important;min-height:0!important;padding:4px!important;color:var(--pa4-accent,#00f5ff);font-weight:800;font-size:14px}
+#pa412Alerts .pa412-card{background:var(--pa4-card,#0b234b);border-radius:20px;border:1px solid rgba(255,255,255,.12);overflow:hidden}
+#pa412Alerts .pa412-item{display:flex;gap:12px;align-items:flex-start;padding:14px 14px 14px 22px;border-bottom:1px solid rgba(255,255,255,.1);position:relative;cursor:pointer;touch-action:pan-y;transition:transform .15s}
+#pa412Alerts .pa412-item:last-child{border-bottom:0}
+#pa412Alerts .pa412-item.unread::before{content:"";position:absolute;left:8px;top:22px;width:8px;height:8px;border-radius:50%;background:var(--pa4-accent,#00f5ff)}
+#pa412Alerts .pa412-ic{flex:0 0 40px;height:40px;border-radius:12px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:20px}
+#pa412Alerts .pa412-txt{flex:1;min-width:0}
+#pa412Alerts .pa412-t{font-weight:800;font-size:16px}
+#pa412Alerts .pa412-s{color:rgba(255,255,255,.78);font-size:14px;margin-top:3px}
+#pa412Alerts .pa412-when{color:rgba(255,255,255,.75);font-size:12.5px;white-space:nowrap}
+#pa412Alerts .pa412-foot{text-align:center;color:rgba(255,255,255,.85);font-size:13px;margin-top:14px}
+#pa412Alerts .pa412-empty{text-align:center;padding:48px 20px}
+#pa412Alerts .pa412-empty .big{font-size:44px}
+#pa412Alerts .pa412-empty h3{margin:10px 0 6px}
+#pa412Alerts .pa412-empty p{margin:0;color:rgba(255,255,255,.8)}
+</style>
+<script id="pa412-notif">
+(function(){
+  'use strict';
+  var KEY='payAviator_alerts_v1', MAX_DAYS=30, HORIZON=90, MAX_ALARMS=450;
+  var BELL='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
+  function $(id){return document.getElementById(id)}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function S(){try{return (typeof appSettings!=='undefined'&&appSettings)||{}}catch(_){return {}}}
+  function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+  function amt(n){try{return money(n)}catch(_){return '$'+(Number(n)||0).toFixed(2)}}
+  function whenWord(days){return days===0?'today':days===1?'tomorrow':'in '+days+' days'}
+
+  /* ---------- schedule plan (pure; exposed for tests) ---------- */
+  function buildPlan(now){
+    now=now||new Date();
+    var s=S(), list=[], nowMs=now.getTime();
+    var billsOn=!!s.notificationsEnabled, remOn=s.reminderNotificationsEnabled!==false;
+    var defSound=s.notificationSound||'default', defVib=s.notificationVibrate!==false;
+    var bl=[];try{bl=Array.isArray(bills)?bills:[]}catch(_){}
+    if(billsOn){
+      var start=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+      bl.forEach(function(b){
+        if(!b||!b.id||!b.due)return;
+        var days=Math.max(0,Math.min(31,Number(b.notify?(b.notifyDaysBefore!=null?b.notifyDaysBefore:s.notificationDays):s.notificationDays)||0));
+        var time=String((b.notify&&b.notifyTime)||s.notificationTime||'09:00');
+        var hm=time.split(':'),h=Number(hm[0])||0,m=Number(hm[1])||0;
+        for(var i=0;i<=HORIZON+days;i++){
+          var d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);
+          try{if(!isRecurringOnDate(b,d))continue}catch(_){continue}
+          var di=iso(d);
+          try{if(typeof billOccurrenceDeleted==='function'&&billOccurrenceDeleted(b,di))continue}catch(_){}
+          try{if(billStatus(b,di)==='paid')continue}catch(_){}
+          var f=new Date(d.getFullYear(),d.getMonth(),d.getDate()-days,h,m,0,0);
+          if(f.getTime()<=nowMs)continue;
+          var name=String(b.name||'Bill');
+          list.push({key:'bill|'+b.id+'|'+di,type:'bill',billId:String(b.id),due:di,fireAt:f.getTime(),
+            title:name+' is due '+whenWord(days),text:amt(b.amount)+' · Tap to view or mark paid',
+            publicTitle:'A bill is due '+whenWord(days),publicText:'Unlock to see details.',
+            sound:(b.notify&&b.notifySound)||defSound,vibrate:b.notify?b.notifyVibrate!==false:defVib,
+            open:'bill:'+b.id+':'+di});
+        }
+      });
+    }
+    if(remOn){
+      var rl=[];try{rl=Array.isArray(reminders)?reminders:[]}catch(_){}
+      rl.forEach(function(r){
+        if(!r||!r.notify||!r.date)return;
+        var hm=String(r.time||'09:00').split(':');var p=String(r.date).split('-');
+        var f=new Date(Number(p[0]),Number(p[1])-1,Number(p[2]),Number(hm[0])||0,Number(hm[1])||0,0,0);
+        if(!(f.getTime()>nowMs))return;
+        list.push({key:'reminder|'+r.id+'|'+r.date,type:'reminder',fireAt:f.getTime(),
+          title:String(r.name||'Reminder'),text:String(r.notes||'Reminder'),publicTitle:'PayAviator reminder',publicText:'Unlock to see details.',
+          sound:r.sound||defSound,vibrate:r.vibrate!==false,open:'calendar:'+r.date});
+      });
+    }
+    list.sort(function(a,b){return a.fireAt-b.fireAt});
+    if(list.length>MAX_ALARMS)list.length=MAX_ALARMS;
+    return {version:2,enabled:billsOn,reminderEnabled:remOn,showAmountsOnLockScreen:!!s.showAmountsOnLockScreen,
+      sound:defSound,vibrate:defVib,builtAt:nowMs,alarms:list};
+  }
+  var timer=null;
+  function scheduleNow(){
+    timer=null;
+    var plan=buildPlan();window.__pa412LastPlan=plan;
+    try{if(window.AndroidBridge&&typeof window.AndroidBridge.scheduleNotifications==='function')window.AndroidBridge.scheduleNotifications(JSON.stringify(plan))}catch(_){}
+  }
+  function scheduleSoon(){if(timer)clearTimeout(timer);timer=setTimeout(scheduleNow,400)}
+  window.PayAviatorNotif={buildPlan:buildPlan,scheduleNow:scheduleNow};
+  window.notificationPayload=function(){return buildPlan()};
+  window.scheduleNativeNotifications=scheduleSoon;
+  // Any paid / override / bill save rebuilds the plan, so paying, editing or deleting a bill cancels its alarms.
+  ['persistBillOverrides','persistBills','setBillPaidAmount','setBillPaidOnDate','togglePaid'].forEach(function(n){
+    var f=window[n];if(typeof f!=='function'||f._pa412)return;
+    var w=function(){var r=f.apply(this,arguments);try{scheduleSoon()}catch(_){}return r};w._pa412=1;window[n]=w;
+  });
+
+  /* ---------- alert history ---------- */
+  function load(){try{var v=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(v)?v:[]}catch(_){return []}}
+  function store(v){var cut=Date.now()-MAX_DAYS*86400000;v=v.filter(function(a){return a&&a.ts>=cut}).slice(0,200);localStorage.setItem(KEY,JSON.stringify(v));badge();return v}
+  function add(a){
+    var v=load();a.id=a.id||(a.type+'|'+(a.key||'')+'|'+a.ts);
+    if(v.some(function(x){return x.id===a.id}))return;
+    v.unshift({id:a.id,type:a.type||'info',title:String(a.title||'PayAviator'),text:String(a.text||''),ts:a.ts||Date.now(),read:!!a.read,open:a.open||''});
+    v.sort(function(x,y){return y.ts-x.ts});store(v);if(isOpen())draw();
+  }
+  function mergeNative(){
+    try{
+      if(!window.AndroidBridge||typeof window.AndroidBridge.takeFiredAlerts!=='function')return;
+      var arr=JSON.parse(window.AndroidBridge.takeFiredAlerts()||'[]');
+      (arr||[]).forEach(function(a){add({id:'n|'+a.key+'|'+a.ts,type:a.type,key:a.key,title:a.title,text:a.text,ts:a.ts,open:a.open})});
+    }catch(_){}
+  }
+  window.PayAviatorAlerts={add:add,list:load,open:function(){openCenter()},mergeNative:mergeNative};
+
+  // In-app (foreground) bill and reminder toasts also land in the Alerts center.
+  var fg=window.showForegroundNotification;
+  if(typeof fg==='function'&&!fg._pa412){
+    var wf=function(title,text){try{add({type:'bill',title:title,text:text,ts:Date.now(),key:String(title)+'|'+iso(new Date()),open:'bills'})}catch(_){}return fg.apply(this,arguments)};
+    wf._pa412=1;window.showForegroundNotification=wf;
+  }
+  // Bank reconnect notices (same source as the reconnect banner), once per bank until fixed.
+  function wireReconnect(){
+    var R=window.PayAviatorReconnect;if(!R||R._pa412)return;R._pa412=1;var orig=R.setBanks;
+    R.setBanks=function(list){var r=orig.apply(this,arguments);try{(R.getBanks()||[]).forEach(function(b){if(b.needsUpdate&&b.id!=='preview-bank')add({id:'reconnect|'+b.id+'|'+(b.reason||''),type:'reconnect',title:(b.name||'Your bank')+' needs a quick reconnect',text:'Sign in again so your balances stay up to date.',ts:Date.now(),open:'reconnect:'+b.id})})}catch(_){}return r};
+  }
+
+  /* ---------- deep links ---------- */
+  function goView(v){var n=document.querySelector('.mb119-nav[data-view="'+v+'"]');if(n)n.click()}
+  window.PayAviatorOpenAlert=function(open){
+    open=String(open||'');closeCenter();
+    var p=open.split(':');
+    try{
+      if(p[0]==='bill'){
+        goView('bills');
+        var b=null;try{b=(bills||[]).find(function(x){return String(x.id)===p[1]})}catch(_){}
+        if(b&&typeof openForm==='function')setTimeout(function(){openForm(b,p[2]||null)},250);
+      }else if(p[0]==='calendar'){goView('calendar')}
+      else if(p[0]==='reconnect'){
+        var rid=p.slice(1).join(':');
+        // Lucian's FCM contract: start Plaid update mode for this item (update-link-token / update-complete).
+        if(rid&&rid!=='demo'&&typeof window.PayAviatorReconnectPlaidItem==='function'){goView('home');setTimeout(function(){try{window.PayAviatorReconnectPlaidItem(rid,null)}catch(_){}},400)}
+        else{goView('settings');setTimeout(function(){var e=$('pp920AccountsBody');if(e)e.scrollIntoView({block:'center'})},300)}
+      }
+      else if(p[0]==='bills'){goView('bills')}
+      else goView('home');
+    }catch(_){}
+    return true;
+  };
+
+  /* ---------- Phase 2 hook (FCM, not wired) ---------- */
+  window.PayAviatorPush=window.PayAviatorPush||{
+    // Token registration (POST/DELETE /api/devices/fcm) is done natively; the token never enters the page.
+    // Foreground FCM receipt (native PushService -> here): log it and start the reconnect for data.item_id.
+    onMessage:function(m){try{m=typeof m==='string'?JSON.parse(m):m;if(!m||(m.type!=='bank_reconnect'&&m.type!=='reconnect'))return false;
+      var id=String(m.item_id||'');add({id:'push|reconnect|'+id+'|'+(m.reason||''),type:'reconnect',title:'Reconnect your bank',text:'Sign in again so your balances stay up to date.',ts:Date.now(),open:'reconnect:'+id});
+      if(id)window.PayAviatorOpenAlert('reconnect:'+id);return true}catch(_){return false}}
+  };
+
+  /* ---------- bell + center UI ---------- */
+  function unread(){return load().filter(function(a){return !a.read}).length}
+  function badge(){var b=$('pa412BellBadge');if(!b)return;var n=unread();b.hidden=!n;b.textContent=n>9?'9+':String(n);var bt=$('pa412Bell');if(bt)bt.setAttribute('aria-label',n?('Alerts, '+n+' unread'):'Alerts')}
+  function ensureBell(){
+    var home=$('mb119Home');if(!home||$('pa412Bell'))return;
+    var b=document.createElement('button');b.type='button';b.id='pa412Bell';b.className='pa412-bell';
+    b.innerHTML=BELL+'<span class="pa412-badge" id="pa412BellBadge" hidden></span>';
+    b.onclick=function(e){e.preventDefault();e.stopPropagation();openCenter()};
+    home.classList.add('pp-help-view');home.appendChild(b);badge();
+  }
+  function ensureCenter(){
+    if($('pa412Alerts'))return $('pa412Alerts');
+    var d=document.createElement('div');d.id='pa412Alerts';d.setAttribute('role','dialog');d.setAttribute('aria-label','Alerts');
+    d.innerHTML='<div class="pa412-head"><h2>Alerts</h2><p>Recent reminders and account notices.</p><button type="button" class="pa412-gear" id="pa412Gear" aria-label="Notification settings">⚙</button></div><div class="pa412-body" id="pa412Body"></div>';
+    document.body.appendChild(d);
+    $('pa412Gear').onclick=function(){closeCenter();goView('settings');setTimeout(function(){var e=$('notificationsEnabled');if(e)e.scrollIntoView({block:'center'})},300)};
+    return d;
+  }
+  function icon(t){return {bill:'🧾',reminder:'⏰',reconnect:'🏦',payday:'💵',low:'⛽',weekly:'📅'}[t]||'🔔'}
+  function fmt(ts,today){var d=new Date(ts);return today?d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):d.toLocaleDateString([], {month:'short',day:'numeric'})}
+  function draw(){
+    var body=$('pa412Body');if(!body)return;var v=load(),t0=new Date();t0.setHours(0,0,0,0);
+    var today=v.filter(function(a){return a.ts>=t0.getTime()}),earlier=v.filter(function(a){return a.ts<t0.getTime()});
+    function rows(arr,isToday){return '<div class="pa412-card">'+arr.map(function(a){return '<div class="pa412-item'+(a.read?'':' unread')+'" data-id="'+esc(a.id)+'"><div class="pa412-ic">'+icon(a.type)+'</div><div class="pa412-txt"><div class="pa412-t">'+esc(a.title)+'</div><div class="pa412-s">'+esc(a.text)+'</div></div><div class="pa412-when">'+fmt(a.ts,isToday)+'</div></div>'}).join('')+'</div>'}
+    var h='<button type="button" class="pa412-back" id="pa412Back">‹ Home</button>';
+    if(!v.length){h+='<div class="pa412-empty"><div class="big">🔔</div><h3>You\'re all caught up</h3><p>Bill reminders, paydays and bank notices will show up here.</p></div>'}
+    else{
+      if(today.length)h+='<div class="pa412-sec"><span>TODAY</span><button type="button" id="pa412ReadAll">Mark all read</button></div>'+rows(today,true);
+      if(earlier.length)h+='<div class="pa412-sec"><span>EARLIER</span>'+(today.length?'':'<button type="button" id="pa412ReadAll">Mark all read</button>')+'</div>'+rows(earlier,false);
+      h+='<div class="pa412-sec" style="justify-content:flex-end"><button type="button" id="pa412ClearAll">Clear all</button></div><div class="pa412-foot">Swipe an alert left to clear it · kept for 30 days</div>';
+    }
+    body.innerHTML=h;
+    $('pa412Back').onclick=closeCenter;
+    var ra=$('pa412ReadAll');if(ra)ra.onclick=function(){store(load().map(function(a){a.read=true;return a}));draw()};
+    var ca=$('pa412ClearAll');if(ca)ca.onclick=function(){store([]);draw()};
+    body.querySelectorAll('.pa412-item').forEach(function(el){
+      var sx=null,dx=0;
+      el.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;dx=0},{passive:true});
+      el.addEventListener('touchmove',function(e){if(sx==null)return;dx=e.touches[0].clientX-sx;if(dx<0)el.style.transform='translateX('+dx+'px)'},{passive:true});
+      el.addEventListener('touchend',function(){if(dx<-80){store(load().filter(function(a){return a.id!==el.dataset.id}));draw()}else el.style.transform='';sx=null});
+      el.onclick=function(){if(dx<-10)return;var id=el.dataset.id,a=null;store(load().map(function(x){if(x.id===id){x.read=true;a=x}return x}));if(a)window.PayAviatorOpenAlert(a.open||'home')};
+    });
+  }
+  function isOpen(){var d=$('pa412Alerts');return !!d&&d.classList.contains('show')}
+  function openCenter(){mergeNative();ensureCenter().classList.add('show');draw()}
+  function closeCenter(){var d=$('pa412Alerts');if(d)d.classList.remove('show');badge()}
+  window.PayAviatorAlertsBack=function(){if(isOpen()){closeCenter();return true}return false};
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&isOpen())closeCenter()});
+
+  /* ---------- privacy setting row ---------- */
+  function ensurePrivacyRow(){
+    var vib=$('notificationVibrate');if(!vib||$('pa412ShowAmounts'))return;
+    var row=vib.closest('.settings-row');if(!row)return;
+    var r=document.createElement('div');r.className='settings-row';
+    r.innerHTML='<label for="pa412ShowAmounts">Show amounts on lock screen</label><input id="pa412ShowAmounts" class="settings-switch" type="checkbox">';
+    row.parentNode.insertBefore(r,row);
+    var c=$('pa412ShowAmounts');c.checked=!!S().showAmountsOnLockScreen;
+    c.addEventListener('change',function(){try{appSettings.showAmountsOnLockScreen=c.checked;localStorage.setItem(SETTINGS_KEY,JSON.stringify(appSettings))}catch(_){}scheduleSoon()});
+  }
+
+  function boot(){
+    ensureBell();ensurePrivacyRow();wireReconnect();mergeNative();badge();
+    // App start always re-arms the native plan (covers reboots on phones that block BOOT_COMPLETED).
+    setTimeout(scheduleNow,1500);
+    try{var o=window.AndroidBridge&&typeof window.AndroidBridge.takeLaunchAlert==='function'&&window.AndroidBridge.takeLaunchAlert();if(o)setTimeout(function(){window.PayAviatorOpenAlert(o)},900)}catch(_){}
+  }
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){mergeNative();badge()}});
+  if(document.readyState==='complete')boot();else window.addEventListener('load',function(){setTimeout(boot,60)});
 })();
 </script>

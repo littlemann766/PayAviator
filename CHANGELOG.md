@@ -1,3 +1,17 @@
+## 4.1.2 — Notifications rework (phase 1), compact Payoff Planner
+- Version 4.1.2 everywhere; service-worker cache payaviator-4.1.2; Android versionCode floor 410200.
+- Notifications (Beth's DESIGN.md, phase 1, local only, no server or paid service):
+  - Reminders survive a phone restart: alarms are stored as one plan and re-armed by a new BootReceiver (BOOT_COMPLETED, MY_PACKAGE_REPLACED) and on every app start (RECEIVE_BOOT_COMPLETED permission).
+  - Paid bills stop reminding: the web app builds the plan from real occurrences (skips paid and deleted ones, honors per-bill days/time) and rebuilds it after any pay, edit, delete or settings change; the receiver also re-checks that an alarm is still in the current plan before showing it.
+  - Lock screen privacy: notifications are VISIBILITY_PRIVATE with a generic public version ("A bill is due tomorrow" / "Unlock to see details.") unless the new Settings row "Show amounts on lock screen" (off by default) is on.
+  - Tapping a notification opens the related screen (bill sheet, Calendar, Connected Accounts) via window.PayAviatorOpenAlert.
+  - Alerts bell with unread badge in the Home header (beside ?) and an Alerts center: Today / Earlier, unread dots, tap to open, swipe left to clear, Mark all read, Clear all, 30-day on-device history, empty state. Fired notifications, in-app reminder toasts and bank reconnect notices land there.
+  - FCM bank reconnect pushes (Lucian's fcm-reconnect-push contract): firebase-messaging + PushService; token registered with POST /api/devices/fcm after sign-in, on new token and on app start, removed with DELETE before sign-out (fails quietly until the server is deployed); "bank_reconnect" high-priority channel; tap or foreground receipt starts Plaid update mode for data.item_id.
+- Beth's compact Payoff Planner (pa412-payoff-compact-css): smaller gauge and tighter tiles; colors unchanged.
+- Beth's setup (setup-411) and tips (tips-411) updates.
+- Email verification links had an empty apiKey ("The selected page mode is invalid"): verification is now sent through Identity Toolkit accounts:sendOobCode with the public web API key (VerifyEmailRequest), SDK sendEmailVerification() as fallback.
+- tools/test-available-now.py runs in Detailed Home (Simple Home hides those tiles by design); new tools/test-notif-412.py.
+
 ## 4.1.1 — Continue with Google
 - Version 4.1.1 everywhere; service-worker cache payaviator-4.1.1; Android versionCode floor 410100.
 - Beth's welcome, sign-in and create-account screens get a "Continue with Google" button (Google's standard light button: white, G logo, dark text) wired to the existing native Firebase Google sign-in (authSignInWithGoogle, Credential Manager). Hidden when the build has no Google client id or Firebase is unavailable.

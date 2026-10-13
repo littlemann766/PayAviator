@@ -157,7 +157,7 @@ public final class FirebaseSignIn implements AuthedRequest.TokenSource {
         auth.createUserWithEmailAndPassword(e, password).addOnCompleteListener(activity, t -> {
             if (t.isSuccessful()) {
                 FirebaseUser u = currentUser();
-                if (u != null) u.sendEmailVerification();
+                if (u != null) sendVerificationWithWebKey(u, null);
                 cb.done(true, "", "");
             } else cb.done(false, codeFor(t.getException()), messageFor(t.getException()));
         });
@@ -171,7 +171,28 @@ public final class FirebaseSignIn implements AuthedRequest.TokenSource {
         boolean google = false;
         for (UserInfo info : u.getProviderData()) if (GoogleAuthProvider.PROVIDER_ID.equals(info.getProviderId())) google = true;
         if (isVerified(u.isEmailVerified(), google ? "google" : "password")) { cb.done(true, "", ""); return; }
-        complete(u.sendEmailVerification(), cb);
+        sendVerificationWithWebKey(u, cb);
+    }
+
+    /**
+     * 4.1.2: send the verification email with the web API key so the link's apiKey is not empty
+     * (see VerifyEmailRequest). Falls back to the SDK's sendEmailVerification() if the REST call fails.
+     */
+    private void sendVerificationWithWebKey(final FirebaseUser u, final Callback cb) {
+        u.getIdToken(false).addOnCompleteListener(t -> {
+            final String token = t.isSuccessful() && t.getResult() != null ? t.getResult().getToken() : null;
+            new Thread(() -> {
+                int status = 0;
+                try { if (token != null) status = VerifyEmailRequest.send(token); } catch (Exception e) { status = 0; }
+                final int st = status;
+                activity.runOnUiThread(() -> {
+                    if (st == 200) { if (cb != null) cb.done(true, "", ""); return; }
+                    Log.w("PayAviatorAuth", "sendOobCode status " + st + "; falling back to SDK");
+                    Task<Void> sdk = u.sendEmailVerification();
+                    if (cb != null) complete(sdk, cb);
+                });
+            }, "PayAviatorVerifyEmail").start();
+        });
     }
 
     /**
