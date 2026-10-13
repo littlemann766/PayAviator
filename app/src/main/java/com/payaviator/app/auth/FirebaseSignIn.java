@@ -86,6 +86,11 @@ public final class FirebaseSignIn implements AuthedRequest.TokenSource {
         if (auth != null) auth.removeAuthStateListener(listener);
     }
 
+    /** A Google-provider account counts as a verified email. */
+    public static boolean isVerified(boolean firebaseVerified, String provider) {
+        return firebaseVerified || "google".equals(provider);
+    }
+
     /** Sign-in state for the WebView. Never includes tokens. */
     public JSONObject stateJson() {
         JSONObject o = new JSONObject();
@@ -98,11 +103,12 @@ public final class FirebaseSignIn implements AuthedRequest.TokenSource {
                 o.put("uid", u.getUid());
                 o.put("email", u.getEmail() == null ? "" : u.getEmail());
                 o.put("name", u.getDisplayName() == null ? "" : u.getDisplayName());
-                o.put("emailVerified", u.isEmailVerified());
                 String provider = "password";
                 for (UserInfo info : u.getProviderData()) {
                     if (GoogleAuthProvider.PROVIDER_ID.equals(info.getProviderId())) provider = "google";
                 }
+                // 4.1.1: Google already verified the address, so a Google account counts as verified email.
+                o.put("emailVerified", isVerified(u.isEmailVerified(), provider));
                 o.put("provider", provider);
             }
         } catch (Exception ignored) { }
@@ -162,7 +168,9 @@ public final class FirebaseSignIn implements AuthedRequest.TokenSource {
         if (!checkReady(cb)) return;
         FirebaseUser u = currentUser();
         if (u == null) { cb.done(false, "SIGN_IN_REQUIRED", "Sign in first."); return; }
-        if (u.isEmailVerified()) { cb.done(true, "", ""); return; }
+        boolean google = false;
+        for (UserInfo info : u.getProviderData()) if (GoogleAuthProvider.PROVIDER_ID.equals(info.getProviderId())) google = true;
+        if (isVerified(u.isEmailVerified(), google ? "google" : "password")) { cb.done(true, "", ""); return; }
         complete(u.sendEmailVerification(), cb);
     }
 

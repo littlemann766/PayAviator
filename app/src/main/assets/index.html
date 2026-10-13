@@ -128,7 +128,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='4.1.0';
+  const BUNDLED_VERSION='4.1.1';
   const code=n=>{const p=String(n||'').replace(/^Version:\s*/i,'').trim().split('.').map(Number);return p.length===3&&p.every(Number.isFinite)?p[0]*10000+p[1]*100+p[2]:0};
   const S={name:BUNDLED_VERSION,code:code(BUNDLED_VERSION)};
   function paint(root=document){
@@ -11564,12 +11564,12 @@ function openAvailableNowSpendingV88(){
       <h2>Let's get you set up</h2>
       <p>Answer a few quick questions so PayAviator can calculate your income, bills, spending, and what you have available. You can change everything later.</p>
       <div class="mb212-callout">
-        <strong>Your information stays on this device.</strong>
-        <span>Your core budget data stays on this device. Internet access is only used for features such as connected bank accounts. Backups are only created when you choose to make one.</span>
+        <strong>Your budget is saved on this phone.</strong>
+        <span>Signing in keeps your banks synced, and backups are only made when you choose.</span>
       </div>
       <div class="mb20426-home-choice">
         <strong>How much detail do you want on your Home screen?</strong>
-        <p>Choose the style that feels more comfortable. You can change this later in Settings → App Colors.</p>
+        <p>Choose the style that feels more comfortable. You can change this later in Settings under App Colors (Home Screen Appearance).</p>
         <div class="mb20426-choice-buttons">
           <button id="mb20426ChooseEasy" type="button">Keep it simple</button>
           <button id="mb20426ChooseAdvanced" type="button">Show me more detail</button>
@@ -11925,8 +11925,21 @@ function openAvailableNowSpendingV88(){
     }
   }
 
+  /* 4.1.1: first launch shows Beth's welcome (Google / email / phone / guest) first. The setup wizard waits
+     until the person signs in, creates an account or picks guest (PayAviatorAccountGate calls it again). */
+  function welcomeFirst(){
+    try{
+      const scr=window.PayAviatorAuthScreens;
+      if(scr&&scr.isOpen())return true;
+      const a=window.PayAviatorAuth;
+      return !!(a&&a.isAvailable()&&!a.isSignedIn()&&localStorage.getItem('payaviator_onboarding_choice_v1')==null);
+    }catch(e){return false}
+  }
+  window.PayAviatorSetupWizard={maybeShow:()=>maybeShowOnboarding(),welcomeFirst};
   function maybeShowOnboarding(){
     if(localStorage.getItem(DONE_KEY)==='1')return;
+    if(q('mb212Onboarding')?.open)return;
+    if(welcomeFirst())return;
 
     // Existing users upgrading to 20.5.2 should not be forced through a first-run wizard.
     if(hasMeaningfulExistingData()){
@@ -13903,7 +13916,7 @@ document.addEventListener('scroll',e=>{const t=e.target;if(t&&t.classList&&t.cla
   const CUSHION_KEY='payaviator_payday_cushion_v2045';
 
   function getCushion(){
-    let s={type:'dollar',amount:100,percent:20};
+    let s={type:'dollar',amount:0,percent:0};   // 4.1.1: no preset cushion
     try{s={...s,...JSON.parse(localStorage.getItem(CUSHION_KEY)||'{}')}}catch(e){}
     return s;
   }
@@ -14142,9 +14155,10 @@ document.addEventListener('scroll',e=>{const t=e.target;if(t&&t.classList&&t.cla
 
   function settings(){
     let s={
-      cushionMode:'percent',
-      cushionPercent:20,
-      cushionDollar:100,
+      /* 4.1.1: no preset cushion. Earlier builds defaulted to 20% of the latest paycheck ($100 dollar mode). */
+      cushionMode:'dollar',
+      cushionPercent:0,
+      cushionDollar:0,
       useSavings:false,
       redMax:50,
       orangeMax:100,
@@ -14161,6 +14175,16 @@ document.addEventListener('scroll',e=>{const t=e.target;if(t&&t.classList&&t.cla
     }catch(e){}
 
     try{s={...s,...JSON.parse(localStorage.getItem(STORE)||'{}')}}catch(e){}
+
+    /* 4.1.1 upgrade: a cushion nobody chose (the old 20%-of-paycheck preset, saved along with other settings,
+       never through Save Cushion) goes to $0. A cushion the user set (Save Cushion, or the older v20418 editor) is kept. */
+    if(!s.cushionUserSet && !s.cushionReset411){
+      let legacy=false;try{const o=JSON.parse(localStorage.getItem('payaviator_money_settings_v20418')||'{}')||{};legacy=o.mode==='dollar'||o.mode==='percent'||Number.isFinite(Number(o.percent))||Number.isFinite(Number(o.dollar))}catch(e){}
+      const preset=s.cushionMode!=='dollar'&&Number(s.cushionPercent)===20;
+      if(!legacy&&(preset||(s.cushionMode==='dollar'&&Number(s.cushionDollar)===100))){s.cushionMode='dollar';s.cushionPercent=0;s.cushionDollar=0}
+      s.cushionReset411=true;
+      try{if(localStorage.getItem(STORE)!=null){const raw=JSON.parse(localStorage.getItem(STORE)||'{}')||{};Object.assign(raw,{cushionMode:s.cushionMode,cushionPercent:s.cushionPercent,cushionDollar:s.cushionDollar,cushionReset411:true});localStorage.setItem(STORE,JSON.stringify(raw))}}catch(e){}
+    }
 
     s.cushionMode=s.cushionMode==='dollar'?'dollar':'percent';
     s.cushionPercent=Math.max(0,Math.min(100,Number(s.cushionPercent)||0));
@@ -14582,6 +14606,7 @@ document.addEventListener('scroll',e=>{const t=e.target;if(t&&t.classList&&t.cla
         cushionMode:mode,
         cushionPercent:Math.max(0,Math.min(100,Number($('mb20419Percent').value)||0)),
         cushionDollar:Math.max(0,Number($('mb20419Dollar').value)||0),
+        cushionUserSet:true,
         redMax:red,
         orangeMax:orange,
         yellowMax:yellow,
@@ -17321,7 +17346,7 @@ body.pp-help-off .pp-help-btn{display:none!important}
   const general=[
     ['Know what Safe to Spend means','Safe to Spend is Available Now minus your Cushion. It is designed to show everyday spending room without treating protected money as free cash.'],
     ['Available Now follows real money','Available Now reflects money currently available after tracked activity. Connected-account balances can help keep this view current.'],
-    ['Your Cushion is intentional breathing room','Use Edit Cushion to choose how much money PayAviator protects before calculating Safe to Spend.'],
+    ['Your Cushion is intentional breathing room','Tap the Cushion tile under the gauge to choose how much money PayAviator protects before calculating Safe to Spend.'],
     ['Savings stays protected','Money you mark as Savings is kept separate from ordinary spending so you can see what is available without losing sight of what you set aside.'],
     ['Use the gauge as a quick check','The PayAviator Gauge turns Safe to Spend into a visual signal. Swipe between gauges when more than one money view is available.'],
     ['Cash and credit tell different stories','The Cash gauge shows spendable cash. The Credit gauge shows connected card balances and utilization information when those details are available.'],
@@ -24916,6 +24941,7 @@ function outer(){
   busy=true;try{return run.apply(this,arguments)}finally{busy=false}
 }
 function run(){
+  try{const A=window.PayAviatorAuthScreens;if(A&&A.isOpen()&&!document.querySelector('dialog:modal')){A.back();sync();return true}}catch(_){}
   const list=sheets();
   if(list.length){closeEl(list[list.length-1]);sync();return true}
   // Nothing visible: let older handlers do page navigation, but drop stale "open" classes on hidden pop-ups first.
@@ -25743,6 +25769,17 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
 #ppOnb .onb-foot a{color:var(--onb-cyan)!important;font-weight:700!important}
 #ppOnb .onb-actions{position:sticky!important;bottom:0!important;z-index:3!important;display:grid!important;gap:8px!important;margin:18px -18px 0!important;padding:12px 18px calc(12px + env(safe-area-inset-bottom))!important;background:linear-gradient(180deg,rgba(11,35,75,.85),var(--onb-navy) 30%)!important;-webkit-backdrop-filter:blur(6px)!important;backdrop-filter:blur(6px)!important;border-top:1px solid rgba(255,255,255,.08)!important}
 @media (max-height:700px){#ppOnb .onb-hero-logo{width:84px!important;height:84px!important;margin-bottom:10px!important}#ppOnb .onb-ill{width:72px!important;height:72px!important;margin:0 auto 8px!important}#ppOnb .onb-ill svg{width:38px!important;height:38px!important}#ppOnb h2{font-size:22px!important}#ppOnb .onb-sub{margin-bottom:12px!important}}
+/* 4.1.1 Continue with Google: Google's standard light button (white, G logo, dark text) */
+#ppOnb .onb-google{width:100%!important;min-height:50px!important;border-radius:26px!important;border:1px solid #dadce0!important;background:#fff!important;color:#1f1f1f!important;font-family:Roboto,system-ui,-apple-system,"Segoe UI",sans-serif!important;font-weight:600!important;font-size:15.5px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:12px!important;padding:0 16px!important;cursor:pointer!important;box-shadow:0 1px 2px rgba(0,0,0,.18)!important;-webkit-appearance:none!important;appearance:none!important}
+#ppOnb .onb-google svg{width:20px!important;height:20px!important;flex:0 0 20px!important}
+#ppOnb .onb-google:active{background:#f1f3f4!important}
+#ppOnb .onb-google:focus-visible{outline:3px solid rgba(0,245,255,.6)!important;outline-offset:2px!important}
+#ppOnb .onb-google[disabled]{opacity:.6!important}
+#ppOnb .onb-or{display:flex!important;align-items:center!important;gap:10px!important;margin:12px 0!important;font-size:13px!important;color:var(--onb-muted)!important}
+#ppOnb .onb-or::before,#ppOnb .onb-or::after{content:""!important;flex:1!important;height:1px!important;background:var(--onb-line)!important}
+#ppOnb.onb-nogoogle [data-onb-act="google"]{display:none!important}
+#ppOnb .onb-alt{display:grid!important;gap:8px!important}
+#ppOnb .onb-actions .onb-google{min-height:52px!important}
 /* 4) Biometrics offer v3: centered card, full fingerprint with pulsing rings, clean toggle row */
 #ppOnb.onb-center{justify-content:center!important;padding:24px 14px!important}
 #ppOnb.onb-center .onb-card{margin:auto 0!important;border-bottom:1px solid var(--onb-line)!important;border-radius:28px!important;padding-top:30px!important}
@@ -25772,9 +25809,11 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
     <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18"/></svg></span><span><b>Link your bank, free</b>Your first bank syncs on us.</span></li>
     <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span><span><b>Private by design</b>Read-only access. Guest mode stays on your phone.</span></li>
    </ul>
+   <div class="onb-msg" data-onb-msg role="status" aria-live="polite"></div>
    <div class="onb-actions">
-    <button type="button" class="onb-primary" data-onb-go="create">Create account</button>
-    <button type="button" class="onb-secondary" data-onb-go="signin">Sign in</button>
+    <button type="button" class="onb-google" data-onb-act="google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg><span>Continue with Google</span></button>
+    <button type="button" class="onb-google onb-email" data-onb-go="signin"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#1f1f1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><span>Continue with email</span></button>
+    <button type="button" class="onb-google onb-phone" data-onb-act="phone"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#1f1f1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><span>Continue with phone</span></button>
     <button type="button" class="onb-link" data-onb-act="guest">Continue as guest</button>
    </div>
   </section>
@@ -25790,6 +25829,9 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
     <label class="onb-field"><span>Password</span><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input id="ppOnbNewPw" type="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8"><button type="button" class="onb-eye" data-onb-eye="ppOnbNewPw" aria-label="Show password">Show</button></label>
     <label class="onb-field"><span>Confirm password</span><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M10 15l1.5 1.5L14 14"/></svg><input id="ppOnbNewPw2" type="password" placeholder="Type it again" autocomplete="new-password" minlength="8"><button type="button" class="onb-eye" data-onb-eye="ppOnbNewPw2" aria-label="Show password">Show</button></label>
    </form>
+   <div class="onb-or">or</div>
+   <div class="onb-alt"><button type="button" class="onb-google" data-onb-act="google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg><span>Continue with Google</span></button>
+   <button type="button" class="onb-google onb-phone" data-onb-act="phone"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#1f1f1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><span>Continue with phone</span></button></div>
    <div class="onb-note"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><span><b>Check your inbox.</b> We'll email a link to verify your address. Verify it before you link a bank.</span></div>
    <div class="onb-msg" data-onb-msg role="alert" aria-live="polite"></div>
    <div class="onb-foot">By creating an account you agree to our <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</div>
@@ -25808,6 +25850,9 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
     <label class="onb-field"><span>Email</span><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><input id="ppOnbEmail" type="email" placeholder="you@example.com" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false"></label>
     <label class="onb-field"><span>Password</span><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input id="ppOnbPw" type="password" placeholder="Your password" autocomplete="current-password"><button type="button" class="onb-eye" data-onb-eye="ppOnbPw" aria-label="Show password">Show</button></label>
    </form>
+   <div class="onb-or">or</div>
+   <div class="onb-alt"><button type="button" class="onb-google" data-onb-act="google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg><span>Continue with Google</span></button>
+   <button type="button" class="onb-google onb-phone" data-onb-act="phone"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#1f1f1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><span>Continue with phone</span></button></div>
    <div class="onb-row">
     <label class="onb-switch"><input type="checkbox" id="ppOnbSave"><span class="onb-track"></span>Save email</label>
     <button type="button" class="onb-bio" data-onb-act="bioSignIn"><svg viewBox="0 0 24 24"><path d="M12 11v3"/><path d="M8.5 8.5a5 5 0 0 1 8.5 3.5v1"/><path d="M7 12v1a5 5 0 0 0 3 4.6"/><path d="M5 9a8 8 0 0 1 14 3v2"/><path d="M15 14.5c0 2-.6 3.8-1.6 5"/></svg>Biometrics</button>
@@ -25816,6 +25861,8 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
    <div class="onb-actions">
     <button type="submit" form="ppOnbSignForm" class="onb-primary">Sign in</button>
     <button type="button" class="onb-link" data-onb-act="forgot">Forgot password?</button>
+    <button type="button" class="onb-link" data-onb-go="create">New here? Create account</button>
+    <button type="button" class="onb-link onb-help" data-pa411-support>Need help?</button>
    </div>
   </section>
   <!-- 4) Biometrics offer -->
@@ -25874,7 +25921,7 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
 <script id="payaviator-onb-js">
 (function(){
 'use strict';
-/* PRICE placeholders: the boss hasn't picked yet ($2.99/mo, $3.99/mo or $29.99/yr). Set with setPrice(amount,'mo'|'yr'). */
+/* PRICE placeholders: the boss hasn't picked yet ($3.99/mo or $29.99/yr; the wired values below win). Set with setPrice(amount,'mo'|'yr'). */
 const PRICES={mo:'$X.XX',yr:'$XX.XX'};
 let plan='mo';
 const SHOW_ON_LAUNCH=false;            /* design-only build: Lucky turns this on when wiring the real flow */
@@ -25884,6 +25931,7 @@ const mock=(name)=>(...a)=>{console.info('[PayAviatorAuthScreens mock]',name);re
 const hooks={
   createAccount:mock('createAccount'),            // (email,password) → Firebase createUserWithEmailAndPassword + sendEmailVerification
   signIn:mock('signIn'),                          // (email,password,{saveEmail}) → Firebase signInWithEmailAndPassword
+  googleSignIn:mock('googleSignIn'),              // () → native Credential Manager + Firebase GoogleAuthProvider
   biometricSignIn:mock('biometricSignIn'),        // () → Android BiometricPrompt, then restore session
   forgotPassword:mock('forgotPassword'),          // (email) → Firebase sendPasswordResetEmail
   enableBiometrics:mock('enableBiometrics'),      // ({saveEmail}) → enroll BiometricPrompt key
@@ -25900,18 +25948,21 @@ function renderPrice(){
   root.querySelectorAll('[data-onb-amt]').forEach(e=>e.textContent=PRICES[e.dataset.onbAmt]);
   root.querySelectorAll('[data-onb-plan]').forEach(b=>b.setAttribute('aria-checked',String(b.dataset.onbPlan===plan)));
   const m=parseFloat(PRICES.mo.replace(/[^\d.]/g,'')),y=parseFloat(PRICES.yr.replace(/[^\d.]/g,''));
-  root.querySelector('[data-onb-save]').textContent=(m>0&&y>0&&y<m*12)?`per year · save ${Math.round((1-y/(m*12))*100)}%`:'per year';
+  const pct=(m>0&&y>0&&y<m*12)?Math.floor((1-y/(m*12))*100):0;   /* $29.99 vs $3.99 x 12 = 37% */
+  root.querySelector('[data-onb-save]').textContent='per year';
+  const flag=root.querySelector('[data-onb-plan="yr"] .onb-flag');if(flag)flag.textContent=pct>0?`Save ${pct}%`:'Best value';
   $('ppOnbPrice').textContent=`Selected: ${PRICES[plan]} / ${per(plan)}`;
   $('ppOnbPriceFine').textContent=`Free for 7 days, then ${PRICES[plan]} per ${per(plan)}. Renews automatically until you cancel in Google Play.`}
 function show(name){
   if(!root.querySelector(`section[data-onb="${name}"]`))return false;
+  if(name==='welcome')fromWelcome=true;else if(!isOpen())fromWelcome=false;
   cur=name;root.classList.add('onb-center');root.querySelectorAll('section[data-onb]').forEach(s=>s.hidden=s.dataset.onb!==name);
   if(name==='upgrade')renderPrice();
   if(name==='signin'){const e=localStorage.getItem(SAVED_EMAIL_KEY);$('ppOnbSave').checked=!!e;if(e&&!$('ppOnbEmail').value)$('ppOnbEmail').value=e}
   msg('');root.classList.add('show');document.body.classList.add('ppOnb-open');root.scrollTop=0;
   try{window.PayAviatorSheetBack&&window.PayAviatorSheetBack.install()}catch(_){}
   return true}
-function close(){const was=cur;root.classList.remove('show');document.body.classList.remove('ppOnb-open');cur=null;try{window.PayAviatorSheetBack&&window.PayAviatorSheetBack.remove()}catch(_){}if(was)hooks.onClose(was)}
+function close(){const was=cur;cur=null;fromWelcome=false;root.classList.remove('show');document.body.classList.remove('ppOnb-open');try{window.PayAviatorSheetBack&&window.PayAviatorSheetBack.remove()}catch(_){}if(was)hooks.onClose(was)}
 const isOpen=()=>root.classList.contains('show');
 const validEmail=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 root.addEventListener('click',e=>{
@@ -25922,6 +25973,8 @@ root.addEventListener('click',e=>{
   const a=e.target.closest('[data-onb-act]');if(!a)return;e.preventDefault();
   switch(a.dataset.onbAct){
     case 'close':close();break;
+    case 'phone':msg('Phone sign-in is coming soon. Use Google or email for now.',true);break;
+    case 'google':{const bs=root.querySelectorAll('.onb-google');bs.forEach(b=>b.disabled=true);msg('');hooks.googleSignIn().then(r=>{bs.forEach(b=>b.disabled=false);if(!r.ok)return r.error&&msg(r.error);localStorage.setItem(CHOICE_KEY,'account');close()});break}
     case 'guest':localStorage.setItem(CHOICE_KEY,'guest');hooks.continueAsGuest().then(close);break;
     case 'forgot':{const v=$('ppOnbEmail').value.trim();if(!validEmail(v)){msg('Enter your email above, then tap Forgot password.');break}hooks.forgotPassword(v).then(()=>msg('If an account exists for that email, a reset link is on its way.',true));break}
     case 'bioSignIn':hooks.biometricSignIn().then(r=>r.ok?msg('Signed in with biometrics (preview).',true):msg(r.error||'Biometrics did not work. Use your password.'));break;
@@ -25943,11 +25996,25 @@ $('ppOnbSignForm').addEventListener('submit',e=>{e.preventDefault();
   hooks.signIn(em,p,{saveEmail:save}).then(r=>{if(!r.ok)return msg(r.error||'Sign-in failed. Please try again.');
     if(save)localStorage.setItem(SAVED_EMAIL_KEY,em);else localStorage.removeItem(SAVED_EMAIL_KEY);
     localStorage.setItem(CHOICE_KEY,'account');$('ppOnbPw').value='';close()})});
-try{window.PayAviatorSheetBack&&window.PayAviatorSheetBack.register('onboarding',isOpen,()=>{if(['create','signin'].includes(cur)&&localStorage.getItem(CHOICE_KEY)==null)show('welcome');else close()},0)}catch(_){}
+/* 4.1.1 Back: sign-in / create return to the welcome choices when the flow started there; Back on the first-launch
+   welcome (no choice yet) stays put; everything else closes cleanly (body class + nav bar restored). */
+let fromWelcome=false;
+function back(){
+  if(!isOpen())return false;
+  if(['create','signin'].includes(cur)&&(fromWelcome||localStorage.getItem(CHOICE_KEY)==null)){show('welcome');return true}
+  if(cur==='welcome'&&localStorage.getItem(CHOICE_KEY)==null)return true;
+  if(cur==='bio'){hooks.skipBiometrics().then(close);return true}
+  close();return true;
+}
+/* Safety net: if anything hides the overlay without close(), finish the close so Home keeps its nav bar. */
+new MutationObserver(()=>{if(cur&&!root.classList.contains('show'))close()}).observe(root,{attributes:true,attributeFilter:['class','hidden','style']});
+try{window.PayAviatorSheetBack&&window.PayAviatorSheetBack.register('onboarding',isOpen,back,0)}catch(_){}
 window.PayAviatorAuthScreens={
   hooks,
   setHooks(o){Object.keys(o||{}).forEach(k=>{if(k in hooks&&typeof o[k]==='function')hooks[k]=o[k]})},
   show, close, isOpen, current:()=>cur,
+  back,
+  setGoogleAvailable(v){root.classList.toggle('onb-nogoogle',v===false)},
   showWelcome:()=>show('welcome'),
   showGuestLinkPrompt:()=>show('guest'),      // call when a guest taps Connect bank
   showUpgrade:()=>show('upgrade'),            // call on Lucian's SUBSCRIPTION_REQUIRED error
@@ -26050,6 +26117,7 @@ window.PayAviatorBillingPurchaseResult=async function(p){
 const hooks={
   createAccount:async(email,pw)=>res(await nativeCall('authCreateAccount',email,pw)),   // native also sends the verification email
   signIn:async(email,pw)=>res(await nativeCall('authSignInWithEmail',email,pw)),
+  googleSignIn:async()=>res(await nativeCall('authSignInWithGoogle')),   // same native Firebase Google sign-in the old sheet used
   forgotPassword:async(email)=>{await nativeCall('authSendPasswordReset',email);return{ok:true,error:''}},
   /* No native BiometricPrompt yet: say so instead of pretending. */
   biometricSignIn:async()=>({ok:false,error:'Fingerprint and face sign-in are coming in a later update. Use your password for now.'}),
@@ -26065,10 +26133,12 @@ const hooks={
     return{ok:false,error:r.status===503?NOT_YET:(r.error||'We couldn\'t confirm the purchase. Try again.')};
   },
   restorePurchase:async()=>{const r=await restore();if(r.ok)return{ok:true,error:''};return{ok:false,error:r.unavailable?NOT_YET:'No purchase found for this Google account.'}},
-  onClose:async()=>({ok:true})
+  onClose:async()=>{setTimeout(()=>{try{window.PayAviatorSetupWizard&&window.PayAviatorSetupWizard.maybeShow()}catch(_){}},300);const w=signinWaiters.splice(0);const ok=!!(auth()&&auth().isSignedIn());w.forEach(f=>f(ok));return{ok:true}}
 };
-/* Confirmed pricing (app + web): $2.99/month or $29.99/year. Loaded into Beth's cards but hidden while PRICE_CONFIRMED=false. */
-function wireScreens(){const s=screens();if(s&&!s._pa410){s._pa410=1;s.setHooks(hooks);try{s.setPrice('$29.99','yr');s.setPrice('$2.99','mo')}catch(_){}}}
+const signinWaiters=[];
+/* Confirmed pricing (app + web): $3.99/month or $29.99/year (4.1.1). Loaded into Beth's cards but hidden while PRICE_CONFIRMED=false. */
+function syncGoogle(){const s=screens(),a=auth();if(s&&s.setGoogleAvailable&&a){const st=a.getState();s.setGoogleAvailable(!(st.googleAvailable===false||st.available===false))}}
+function wireScreens(){const s=screens();if(s&&!s._pa410){s._pa410=1;s.setHooks(hooks);try{syncGoogle();auth()&&auth().onChange(syncGoogle)}catch(_){}try{s.setPrice('$29.99','yr');s.setPrice('$3.99','mo')}catch(_){}}}
 /* ---- upgrade (402) ---- */
 function setReason(reason){
   const sec=document.querySelector('#ppOnb section[data-onb="upgrade"]');if(!sec)return;
@@ -26115,7 +26185,7 @@ async function verifyAction(kind){
 /* ---- gate errors from new-bank calls (create-link-token, exchange, hosted-status) ---- */
 function handle(err,body){
   const code=String(err&&err.code||'').toUpperCase();
-  if(code==='EMAIL_NOT_VERIFIED'){err.message='Verify your email to link a bank.';setTimeout(openVerify,0);return true}
+  if(code==='EMAIL_NOT_VERIFIED'){const st=auth()&&auth().getState();if(st&&st.provider==='google'){err.message='Please try again in a moment.';nativeCall('authReloadUser');return true}err.message='Verify your email to link a bank.';setTimeout(openVerify,0);return true}
   if(code==='SUBSCRIPTION_REQUIRED'){const r=String((body&&body.reason)||'');err.reason=r;err.message=(REASONS[r]||REASONS['']).split('.')[0]+'.';setTimeout(()=>openUpgrade(r),0);return true}
   if(code==='DEVICE_ID_REQUIRED'||code==='DEVICE_ID_INVALID'){err.message='Please update PayAviator from Google Play to link a bank.';return true}
   if(code==='INTEGRITY_FAILED'){err.reason='integrity_failed';err.message=REASONS.integrity_failed;setTimeout(()=>openUpgrade('integrity_failed'),0);return true}
@@ -26124,13 +26194,14 @@ function handle(err,body){
   return false;
 }
 /* Guest taps Connect bank -> Beth's guest prompt (sign up with email). Resolves false; after sign-in they tap Connect again. */
-let connectTap=0;   /* only Connect bank taps get the guest prompt; Settings > Sign in keeps the sign-in sheet */
-document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#pp920ConnectBank,[data-pp920-connect],[data-pp-connect-bank]'))connectTap=Date.now()},true);
+let connectTap=0,settingsTap=0;   /* Connect bank taps get the guest prompt; Settings > Sign in opens Beth's sign-in screen */
+document.addEventListener('click',e=>{if(!e.target.closest)return;if(e.target.closest('#pp920ConnectBank,[data-pp920-connect],[data-pp-connect-bank]'))connectTap=Date.now();if(e.target.closest('[data-ppauth-signin]'))settingsTap=Date.now()},true);
 function guestGate(){
   const a=auth();if(!a||a._pa410)return;a._pa410=1;
   const orig=a.ensureSignedIn.bind(a);
   a.ensureSignedIn=function(opts){
     if(!a.isSignedIn()&&!(opts&&(opts.mode||opts.notice))&&a.isAvailable()&&screens()&&Date.now()-connectTap<2000){connectTap=0;screens().showGuestLinkPrompt();return Promise.resolve(false)}
+    if(!a.isSignedIn()&&!(opts&&(opts.mode||opts.notice))&&a.isAvailable()&&screens()&&Date.now()-settingsTap<2000){settingsTap=0;return new Promise(r=>{signinWaiters.push(r);screens().show('signin')})}
     return orig(opts);
   };
 }
@@ -26145,10 +26216,113 @@ document.addEventListener('click',e=>{
   const v=e.target.closest&&e.target.closest('[data-pa410-verify]');if(v){e.preventDefault();verifyAction(v.dataset.pa410Verify);return}
   const c=e.target.closest&&e.target.closest('[data-pa410-close]');if(c){e.preventDefault();hide(c.dataset.pa410Close)}
 });
-document.addEventListener('payaviator:authchange',e=>{const r=e.detail&&e.detail.reason;if(r==='signed_in'){if(localStorage.getItem(CHOICE_KEY)==null)localStorage.setItem(CHOICE_KEY,'account');restore()}});
+document.addEventListener('payaviator:authchange',e=>{const r=e.detail&&e.detail.reason;if(r==='signed_in'){signinWaiters.splice(0).forEach(f=>f(true));if(localStorage.getItem(CHOICE_KEY)==null)localStorage.setItem(CHOICE_KEY,'account');restore()}});
 function start(){wireScreens();guestGate();setTimeout(maybeWelcome,600);restore()}
 wireScreens();
 if(document.readyState==='complete')start();else window.addEventListener('load',start,{once:true});
+})();
+</script>
+
+<style id="pa-411-support-css">
+.pa397-about > a.pa411-support::before{-webkit-mask:var(--pa411-i-mail) center/contain no-repeat!important;mask:var(--pa411-i-mail) center/contain no-repeat!important}
+.pa397-about > a.pa411-support::after{-webkit-mask:var(--pa411-i-chev) center/contain no-repeat!important;mask:var(--pa411-i-chev) center/contain no-repeat!important}
+.pa397-about > a + a{border-top:1px solid var(--pa4-line,rgba(255,255,255,.12))!important}
+#ppOnb .onb-help{font-size:13px!important;opacity:.85!important;min-height:36px!important}
+.pa411-toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2147483000;max-width:min(92vw,420px);padding:12px 16px;border-radius:14px;background:var(--pa4-card,#0b234b);color:#fff;border:1px solid rgba(0,245,255,.45);font-size:14px;line-height:1.4;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+:root{--pa411-i-mail:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='3'/%3E%3Cpath d='M4 7l8 6 8-6'/%3E%3C/svg%3E");--pa411-i-chev:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E")}
+</style>
+<script id="pa-411-support-js">
+/* 4.1.1 Contact support: Settings row + "Need help?" on Beth's sign-in screen. Opens the phone's email app
+   (native mailto intent via AndroidBridge.openSupportEmail). Body = app version + Android version only. */
+(function(){
+'use strict';
+const TO='support@payaviator.app',SUBJECT='PayAviator support';
+function appVersion(){try{if(window.AndroidBridge&&typeof AndroidBridge.getAppVersionName==='function')return String(AndroidBridge.getAppVersionName()||'')}catch(_){}try{return String(BUNDLED_VERSION)}catch(_){return ''}}
+function androidVersion(){const m=/Android\s([\d.]+)/.exec(navigator.userAgent||'');return m?m[1]:''}
+function body(){return 'App version: '+appVersion()+'\nAndroid version: '+androidVersion()+'\n\n'}
+function mailto(){return 'mailto:'+TO+'?subject='+encodeURIComponent(SUBJECT)+'&body='+encodeURIComponent(body())}
+function note(t){const old=document.querySelector('.pa411-toast');if(old)old.remove();const d=document.createElement('div');d.className='pa411-toast';d.setAttribute('role','status');d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),5000)}
+function open(){
+  const b=window.AndroidBridge;
+  if(b&&typeof b.openSupportEmail==='function'){let ok=false;try{ok=!!b.openSupportEmail()}catch(_){}if(!ok)note('No email app found. Email us at '+TO+'.');return ok}
+  location.href=mailto();return true;
+}
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('[data-pa411-support]');if(!a)return;e.preventDefault();e.stopPropagation();open()},true);
+function addRow(){
+  const box=document.querySelector('#mb119Settings .pa397-about');if(!box||box.querySelector('[data-pa411-support]'))return !!box;
+  const a=document.createElement('a');a.className='pa411-support';a.href='mailto:'+TO;a.setAttribute('data-pa411-support','');
+  a.innerHTML='Contact support<small>Email '+TO+'</small>';box.appendChild(a);return true;
+}
+if(!addRow()){let n=0;const t=setInterval(()=>{if(addRow()||++n>40)clearInterval(t)},250)}
+window.PayAviatorSupport={open,mailto,body,to:TO,subject:SUBJECT};
+})();
+</script>
+
+<style id="pa-411-gauge-reason-css">
+#ppGaugeReason{margin:6px auto 4px;max-width:92%;text-align:center;font-size:13px;line-height:1.35;color:var(--pa4-muted,rgba(255,255,255,.78))}
+#ppGaugeReason[hidden]{display:none!important}
+</style>
+<script id="pa-411-gauge-reason-js">
+/* 4.1.1: explain a $0 Safe to Spend instead of a bare $0. One element, #ppGaugeReason, directly under the
+   Safe to Spend box. window.PayAviatorGauge.reasonText() -> {text, kind}, kind 'ok'|'cushion'|'bills'|'none'
+   (Beth's Simple-mode status line builds on this). Reads state only; never writes storage. */
+(function(){
+'use strict';
+const fmt=n=>{try{return money(Number(n)||0)}catch(_){return '$'+(Number(n)||0).toFixed(2)}};
+const num=v=>{v=Number(v);return Number.isFinite(v)?v:0};
+function billsBeforePayday(){try{const x=typeof window.calc==='function'?window.calc():null;return x?Math.max(0,num(x.protectedTotal)):0}catch(_){return 0}}
+function reasonText(){
+  let s=null;try{s=window.PayAviatorGauge967&&window.PayAviatorGauge967.state()}catch(_){}
+  if(!s)return{text:'',kind:'none'};
+  const safe=num(s.safe),avail=num(s.available),cush=Math.max(0,num(s.cushion));
+  if(safe>0)return{text:'',kind:'ok'};
+  if(avail<=0)return{text:'Nothing is available to spend right now.',kind:'none'};
+  if(cush>0&&cush>=avail)return{text:'Your '+fmt(cush)+' cushion is set aside, so nothing extra to spend yet.',kind:'cushion'};
+  const bills=billsBeforePayday();
+  if(bills>0)return{text:'Bills due before payday use up what is available right now.',kind:'bills'};
+  return{text:'Nothing extra to spend yet.',kind:'none'};
+}
+let busy=false;
+function place(){
+  if(busy)return;busy=true;
+  try{
+    const metrics=document.getElementById('pp2059GaugeMetrics');
+    let el=document.getElementById('ppGaugeReason');
+    if(!metrics){busy=false;return}
+    const host=metrics.parentElement;
+    const first=!host.querySelector('[data-pp967-page].active,[data-pp967-page][aria-current="true"]')||host.querySelector('[data-pp967-page="0"].active,[data-pp967-page="0"][aria-current="true"]');
+    const r=reasonText();
+    if(!el){el=document.createElement('div');el.id='ppGaugeReason';el.setAttribute('role','note');el.setAttribute('aria-live','polite')}
+    if(el.nextElementSibling!==metrics)metrics.before(el);
+    const show=!!r.text&&!!first;
+    if(el.textContent!==r.text)el.textContent=r.text;
+    if(el.dataset.kind!==r.kind)el.dataset.kind=r.kind;
+    if(el.hidden===show)el.hidden=!show;
+  }catch(_){}
+  busy=false;
+}
+let raf=0;const queue=()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;place()})};
+const inGauge=t=>{const e=t&&t.nodeType===1?t:t&&t.parentElement;return !!(e&&e.id!=='ppGaugeReason'&&!(e.closest&&e.closest('#ppGaugeReason'))&&(e.id==='pp2059GaugeMetrics'||(e.querySelector&&e.querySelector('#pp2059GaugeMetrics'))||(e.closest&&e.closest('#pp2059GaugeMetrics'))))};
+new MutationObserver(m=>{if(m.some(x=>inGauge(x.target)))queue()}).observe(document.body,{subtree:true,childList:true});
+['payaviator:gaugechange','payaviator:accounts-updated'].forEach(ev=>{document.addEventListener(ev,queue);window.addEventListener(ev,queue)});
+window.PayAviatorGauge=Object.assign(window.PayAviatorGauge||{},{reasonText,refreshReason:place});
+queue();
+})();
+</script>
+
+<style id="pa-411-home-actions-css">
+/* 4.1.1 (boss): Cushion tile opens the cushion editor; the separate Edit Cushion button is gone; Add Spending fills the row. */
+html body #mb20419Actions #mb20419EditCushion{display:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb20419Actions{display:grid!important;grid-template-columns:1fr!important;gap:0!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb20419Actions #mb20419AddSpending{width:100%!important;max-width:none!important;margin:0!important;grid-column:1/-1!important;justify-self:stretch!important}
+#pp967Cushion{font:inherit;color:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;touch-action:manipulation}
+</style>
+<script id="pa-411-home-actions-js">
+(function(){
+'use strict';
+function openCushion(){try{if(typeof window.openCushion2045==='function'){window.openCushion2045();return true}}catch(_){}try{document.getElementById('mb20419EditCushion')?.click();return true}catch(_){}return false}
+document.addEventListener('click',e=>{const c=e.target.closest&&e.target.closest('#pp967Cushion');if(!c)return;e.preventDefault();e.stopPropagation();openCushion()},true);
+window.PayAviatorOpenCushion=openCushion;
 })();
 </script>
 
@@ -26532,7 +26706,7 @@ function pp973Scale(pageIndex,p){
   const max=niceMax(value);
   return {max,marks:[0,max*.10,max*.25,max*.50,max],custom:false};
 }
-function render(){const host=getGaugeHost();if(!host||busy)return;busy=true;try{const preservedMini=$('pp959MiniCash');const s=state(),pp=pages(s);if(page>=pp.length)page=0;const p=pp[page],sig=JSON.stringify({page,name:p.name,value:p.value,available:p.available,savings:s.savings,cushion:s.cushion,cash:s.cash,accounts:s.included.map(a=>[key(a),bal(a),bal(a,'current')]),advanced:localStorage.getItem(ADV_KEY)});if(sig===lastGaugeSignature&&host.querySelector('#pp954Gauge.pp967-gauge'))return;lastGaugeSignature=sig;const gs=pp973Scale(page,p),max=gs.max,marks=gs.marks,ratio=Math.max(0,Math.min(1,p.value/max)),start=130,end=410,span=end-start,ang=start+span*ratio,[nx,ny]=pt(200,200,116,ang),a1=start+span*(marks[1]/max),a2=start+span*(marks[2]/max),a3=start+span*(marks[3]/max);const label=(v,i)=>{const a=start+span*(v/max),q=pt(200,200,166,a);return `<text class="pp9162-scale-label" x="${q[0]}" y="${q[1]+7}" text-anchor="middle" font-size="21" font-weight="900" fill="#fff" stroke="#07182f" stroke-width="3" paint-order="stroke fill">${i===0?'$0':(v>=1000?'$'+(v/1000).toFixed(v%1000?1:0)+'k':'$'+Math.round(v))}</text>`};host.innerHTML=`<div id="pp954Gauge" class="pp959-gauge pp967-gauge"><i id="pp955Gauge" hidden></i><i id="pp958Gauge" hidden></i><div class="pp967-head"><div class="pp967-title">PayAviator Gauge</div><div class="pp967-bank">${p.name}</div></div>${pp.length>1?`<div class="pp967-pager"><div class="pp967-dots">${pp.map((x,i)=>`<button type="button" class="pp967-dot ${i===page?'active':''}" data-pp967-page="${i}" aria-label="View ${x.name} gauge"></button>`).join('')}</div><div class="pp967-swipe">Swipe left or right to view another gauge</div></div>`:''}<div class="pp967-dial"><svg viewBox="0 0 400 400" aria-label="${p.label} ${money(p.value)}"><circle cx="200" cy="200" r="174" fill="#0a315f" stroke="#71808e" stroke-width="10"/><circle cx="200" cy="200" r="158" fill="none" stroke="#d8e0e7" stroke-width="34"/><path d="${arc(200,200,158,start,a1)}" fill="none" stroke="#e23a3a" stroke-width="27"/><path d="${arc(200,200,158,a1,a2)}" fill="none" stroke="#f27827" stroke-width="27"/><path d="${arc(200,200,158,a2,a3)}" fill="none" stroke="#e9ce31" stroke-width="27"/><path d="${arc(200,200,158,a3,end)}" fill="none" stroke="#2cad48" stroke-width="27"/><g stroke="#0b2847" stroke-width="3">${Array.from({length:29},(_,i)=>{const d=start+span*i/28,A=pt(200,200,i%7===0?142:147,d),B=pt(200,200,169,d);return`<line x1="${A[0]}" y1="${A[1]}" x2="${B[0]}" y2="${B[1]}"/>`}).join('')}</g><line x1="200" y1="200" x2="${nx}" y2="${ny}" stroke="#fff" stroke-width="10" stroke-linecap="round"/><circle cx="200" cy="200" r="25" fill="#c7d0d9" stroke="#091a30" stroke-width="8"/><circle cx="200" cy="200" r="10" fill="#07182f"/>${marks.map(label).join('')}</svg><div class="pp967-readout"><div class="amt">${money(p.value)}</div><div class="lbl">${p.label}</div></div></div><div id="pp2059GaugeMetrics" class="pp967-metrics"><div class="pp967-metric" data-pp906-bound="1" role="button" tabindex="0" aria-label="View Available Now breakdown"><span>${page===0?((window.PayAviatorAvailableNow?.().estimate)?'Available now (est.)':'Available now'):'This gauge'}</span><strong>${short(p.available)}</strong></div><button class="pp967-metric action" id="pp967Savings" type="button"><span>Savings</span><strong>${short(s.savings)} <i class="chev">›</i></strong><small class="pp996-savings-mode">${s.includeSavings?'Included':'Protected'}</small></button><div class="pp967-metric"><span>Cushion</span><strong>${short(s.cushion)}</strong></div></div>${tech(p,s)}${renderMini(s)}</div>`;const freshMini=$('pp959MiniCash');
+function render(){const host=getGaugeHost();if(!host||busy)return;busy=true;try{const preservedMini=$('pp959MiniCash');const s=state(),pp=pages(s);if(page>=pp.length)page=0;const p=pp[page],sig=JSON.stringify({page,name:p.name,value:p.value,available:p.available,savings:s.savings,cushion:s.cushion,cash:s.cash,accounts:s.included.map(a=>[key(a),bal(a),bal(a,'current')]),advanced:localStorage.getItem(ADV_KEY)});if(sig===lastGaugeSignature&&host.querySelector('#pp954Gauge.pp967-gauge'))return;lastGaugeSignature=sig;const gs=pp973Scale(page,p),max=gs.max,marks=gs.marks,ratio=Math.max(0,Math.min(1,p.value/max)),start=130,end=410,span=end-start,ang=start+span*ratio,[nx,ny]=pt(200,200,116,ang),a1=start+span*(marks[1]/max),a2=start+span*(marks[2]/max),a3=start+span*(marks[3]/max);const label=(v,i)=>{const a=start+span*(v/max),q=pt(200,200,166,a);return `<text class="pp9162-scale-label" x="${q[0]}" y="${q[1]+7}" text-anchor="middle" font-size="21" font-weight="900" fill="#fff" stroke="#07182f" stroke-width="3" paint-order="stroke fill">${i===0?'$0':(v>=1000?'$'+(v/1000).toFixed(v%1000?1:0)+'k':'$'+Math.round(v))}</text>`};host.innerHTML=`<div id="pp954Gauge" class="pp959-gauge pp967-gauge"><i id="pp955Gauge" hidden></i><i id="pp958Gauge" hidden></i><div class="pp967-head"><div class="pp967-title">PayAviator Gauge</div><div class="pp967-bank">${p.name}</div></div>${pp.length>1?`<div class="pp967-pager"><div class="pp967-dots">${pp.map((x,i)=>`<button type="button" class="pp967-dot ${i===page?'active':''}" data-pp967-page="${i}" aria-label="View ${x.name} gauge"></button>`).join('')}</div><div class="pp967-swipe">Swipe left or right to view another gauge</div></div>`:''}<div class="pp967-dial"><svg viewBox="0 0 400 400" aria-label="${p.label} ${money(p.value)}"><circle cx="200" cy="200" r="174" fill="#0a315f" stroke="#71808e" stroke-width="10"/><circle cx="200" cy="200" r="158" fill="none" stroke="#d8e0e7" stroke-width="34"/><path d="${arc(200,200,158,start,a1)}" fill="none" stroke="#e23a3a" stroke-width="27"/><path d="${arc(200,200,158,a1,a2)}" fill="none" stroke="#f27827" stroke-width="27"/><path d="${arc(200,200,158,a2,a3)}" fill="none" stroke="#e9ce31" stroke-width="27"/><path d="${arc(200,200,158,a3,end)}" fill="none" stroke="#2cad48" stroke-width="27"/><g stroke="#0b2847" stroke-width="3">${Array.from({length:29},(_,i)=>{const d=start+span*i/28,A=pt(200,200,i%7===0?142:147,d),B=pt(200,200,169,d);return`<line x1="${A[0]}" y1="${A[1]}" x2="${B[0]}" y2="${B[1]}"/>`}).join('')}</g><line x1="200" y1="200" x2="${nx}" y2="${ny}" stroke="#fff" stroke-width="10" stroke-linecap="round"/><circle cx="200" cy="200" r="25" fill="#c7d0d9" stroke="#091a30" stroke-width="8"/><circle cx="200" cy="200" r="10" fill="#07182f"/>${marks.map(label).join('')}</svg><div class="pp967-readout"><div class="amt">${money(p.value)}</div><div class="lbl">${p.label}</div></div></div><div id="pp2059GaugeMetrics" class="pp967-metrics"><div class="pp967-metric" data-pp906-bound="1" role="button" tabindex="0" aria-label="View Available Now breakdown"><span>${page===0?((window.PayAviatorAvailableNow?.().estimate)?'Available now (est.)':'Available now'):'This gauge'}</span><strong>${short(p.available)}</strong></div><button class="pp967-metric action" id="pp967Savings" type="button"><span>Savings</span><strong>${short(s.savings)} <i class="chev">›</i></strong><small class="pp996-savings-mode">${s.includeSavings?'Included':'Protected'}</small></button><button class="pp967-metric pp411-cushion" id="pp967Cushion" type="button" aria-label="Edit cushion"><span>Cushion</span><strong>${short(s.cushion)} <i class="chev">›</i></strong></button></div>${tech(p,s)}${renderMini(s)}</div>`;const freshMini=$('pp959MiniCash');
 if(preservedMini&&freshMini&&preservedMini!==freshMini)freshMini.replaceWith(preservedMini);
 wire(pp.length);
 requestAnimationFrame(()=>{

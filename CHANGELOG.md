@@ -1,3 +1,18 @@
+## 4.1.1 — Continue with Google
+- Version 4.1.1 everywhere; service-worker cache payaviator-4.1.1; Android versionCode floor 410100.
+- Beth's welcome, sign-in and create-account screens get a "Continue with Google" button (Google's standard light button: white, G logo, dark text) wired to the existing native Firebase Google sign-in (authSignInWithGoogle, Credential Manager). Hidden when the build has no Google client id or Firebase is unavailable.
+- "Continue with phone" button under Google on the same three screens (same style, phone icon); tapping shows an in-app "Phone sign-in is coming soon" message. No Firebase phone auth.
+- Contact support: new Settings > About row and a "Need help?" link on the sign-in screen open the email app (native ACTION_SENDTO mailto via AndroidBridge.openSupportEmail; <queries> for mailto) to support@payaviator.app, subject "PayAviator support", body with app version and Android version only. No email app: in-app note with the address.
+- First launch order fixed: Beth's welcome (sign-in choices) shows first; the "Setup 1 of 4" wizard runs only after sign-in, account creation or guest. Users who finished setup (or have data) never see it.
+- Setup 1 of 4 copy (Beth): "Your budget is saved on this phone." / "Signing in keeps your banks synced, and backups are only made when you choose."; detail hint now says "in Settings under App Colors (Home Screen Appearance)".
+- Android Back on Beth's auth screens: sign-in / create return to the welcome choices; Back on the first-launch welcome stays; other screens close fully (ppOnb-open removed, bottom nav restored). Fixes Home without the nav bar (the generic sheet-Back handler hid the overlay without closing it).
+- Gauge: a $0 Safe to Spend now explains itself in #ppGaugeReason under the Safe to Spend box (window.PayAviatorGauge.reasonText() -> {text, kind: ok|cushion|bills|none}), e.g. "Your $190.90 cushion is set aside, so nothing extra to spend yet."
+- Cushion defaults to $0 (was a preset: 20% of the latest paycheck, e.g. 20% x $954.50 = $190.90; Payday Health breakdown preset $100). On upgrade a preset cushion never set by the user is reset to $0 once; cushions set with Save Cushion (now flagged cushionUserSet) or other custom values are kept.
+- Home: Edit Cushion button removed; the Cushion tile (Available now / Savings / Cushion row) has a chevron and opens the in-app cushion editor; + Add Spending fills the action row.
+- Hidden upgrade-card prices now $3.99/month and $29.99/year (PRICE_CONFIRMED still false: "Subscriptions coming soon"). Yearly card flag shows "Save 37%" (computed: $29.99 vs $3.99 x 12), hidden with the prices.
+- Settings > Sign in now opens Beth's sign-in screen instead of the old sign-in sheet.
+- A Google account counts as a verified email (native stateJson emailVerified, no verification email sent); a 403 email_not_verified for a Google account refreshes the token instead of opening the Verify dialog.
+
 ## 4.1.0 — accounts, email verification, one free bank
 - Version 4.1.0 everywhere; service-worker cache payaviator-4.1.0; Android versionCode floor 410000.
 - Beth's auth screens (window.PayAviatorAuthScreens) are wired: welcome on first start (Android, signed out), Create account / Sign in / Forgot password through native Firebase, guest mode, guest Connect bank -> guest sign-up prompt. Biometric unlock says "coming in a later update" (no native BiometricPrompt yet). New email accounts get a verification email.

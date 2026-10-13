@@ -183,6 +183,10 @@ public class MainActivity extends Activity {
                 }
 
                 String scheme = uri.getScheme();
+                if ("mailto".equalsIgnoreCase(scheme)) {
+                    try { startActivity(new Intent(Intent.ACTION_SENDTO, uri)); } catch (Exception ignored) { }
+                    return true;
+                }
                 if ("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme)) {
                     try {
                         startActivity(new Intent(Intent.ACTION_VIEW, uri));
@@ -798,6 +802,30 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) { }
     }
 
+    static final String SUPPORT_EMAIL = "support@payaviator.app";
+
+    /** Subject 'PayAviator support'; body = app version + Android version only (no user id or account data). */
+    static String supportBody(String appVersion, String androidVersion) {
+        return "App version: " + (appVersion == null ? "" : appVersion) + "\nAndroid version: " + (androidVersion == null ? "" : androidVersion) + "\n\n";
+    }
+
+    private boolean startSupportEmail() {
+        String ver = "";
+        try { android.content.pm.PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0); ver = info.versionName == null ? "" : info.versionName; } catch (Exception ignored) { }
+        String body = supportBody(ver, Build.VERSION.RELEASE);
+        Uri uri = Uri.parse("mailto:" + SUPPORT_EMAIL + "?subject=" + Uri.encode("PayAviator support") + "&body=" + Uri.encode(body));
+        Intent i = new Intent(Intent.ACTION_SENDTO, uri);
+        i.putExtra(Intent.EXTRA_EMAIL, new String[]{SUPPORT_EMAIL});
+        i.putExtra(Intent.EXTRA_SUBJECT, "PayAviator support");
+        i.putExtra(Intent.EXTRA_TEXT, body);
+        try {
+            if (i.resolveActivity(getPackageManager()) == null) return false;   // no email app: the page shows the address in-app
+            final Intent f = i;
+            runOnUiThread(() -> { try { startActivity(f); } catch (Exception ignored) { } });
+            return true;
+        } catch (Exception e) { return false; }
+    }
+
     public class AndroidBridge {
 
         // Durable backup for the bill calendar. This is kept in Android private
@@ -819,6 +847,12 @@ public class MainActivity extends Activity {
                 return getSharedPreferences("payaviator_bill_calendar_v392", MODE_PRIVATE)
                         .getString("snapshot", "");
             } catch (Exception ignored) { return ""; }
+        }
+
+        /** 4.1.1 Contact support: opens the email app (mailto intent). Body has only app + Android version. */
+        @JavascriptInterface
+        public boolean openSupportEmail() {
+            return startSupportEmail();
         }
 
         @JavascriptInterface
