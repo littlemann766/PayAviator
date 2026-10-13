@@ -116,6 +116,15 @@ with sync_playwright() as p:
         v=[x for x in calls if x[1]=='/api/billing/google-play/verify']
         check('purchase -> POST verify with productId+purchaseToken',v and v[-1][0]=='POST' and json.loads(v[-1][2])=={'productId':'payaviator_premium','purchaseToken':'tok'} and r['ok'],v)
         check('status refreshed after verify -> premium',pg.evaluate("PayAviatorAccountGate.billing.plan")=='premium')
+        for plan in ['comp','premium']:
+            pg.evaluate("p=>{__mock.routes['/api/billing/status']={status:200,body:{plan:p,linkedBanks:3,limit:null,grandfathered:false,billingConfigured:true}}}",plan)
+            pg.evaluate("PayAviatorAccountGate.refreshStatus()"); pg.wait_for_timeout(300)
+            check(f'{plan}: full access, no bank limit',pg.evaluate("PayAviatorAccountGate.isPaid()") and pg.evaluate("PayAviatorAccountGate.bankLimit()") is None)
+            pg.evaluate("__mock.routes['/api/plaid/create-link-token']={status:402,body:{error:'subscription_required',code:'SUBSCRIPTION_REQUIRED'}}")
+            pg.evaluate("window.PayAviatorBankApi('/api/plaid/create-link-token',{method:'POST',body:'{}'}).catch(()=>0);0"); pg.wait_for_timeout(400)
+            check(f'{plan}: no upgrade screen / button',onb(pg)!='upgrade')
+        pg.evaluate("__mock.routes['/api/billing/status']={status:200,body:{plan:'free',limit:1,billingConfigured:true}};PayAviatorAccountGate.refreshStatus()"); pg.wait_for_timeout(300)
+        check('free: limit 1, not paid',pg.evaluate("PayAviatorAccountGate.bankLimit()")==1 and not pg.evaluate("PayAviatorAccountGate.isPaid()"))
         pg.evaluate("__mock.routes['/api/billing/google-play/verify']={status:503,body:{error:'billing_not_configured',code:'BILLING_NOT_CONFIGURED'}}")
         r=pg.evaluate("window.PayAviatorBillingPurchaseResult({productId:'payaviator_premium',purchaseToken:'tok'})")
         check('verify 503 handled without throwing',r['ok']==False and r['status']==503)

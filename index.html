@@ -22412,8 +22412,41 @@ setState(readNative());
   const PP920_ITEMS_KEY='payaviator_plaid_items_v1';
   function pp920SaveItemHealth(data){
     try{localStorage.setItem(PP920_ITEMS_KEY,JSON.stringify({items:Array.isArray(data?.items)?data.items:[],errors:Array.isArray(data?.errors)?data.errors:[],at:Date.now()}))}catch(_){ }
+    try{pp410FeedReconnect()}catch(_){ }
   }
   window.PayAviatorSavePlaidItemHealth=pp920SaveItemHealth;
+  /* 4.1.0: Beth's reconnect banner (window.PayAviatorReconnect) is fed from item health and replaces the old
+     "needs attention" card. Names come from institution_name, the same field the accounts list groups by.
+     One card per item; a login problem wins over "new accounts". */
+  function pp410ReconnectBanks(){
+    if(!window.PayAviatorAuth?.isSignedIn?.())return[];
+    const h=pp920ItemHealth(),by=new Map();
+    const accts=(()=>{try{return loadAccounts()}catch(_){return[]}})();
+    const nameFor=i=>i.institution_name||(accts.find(a=>a&&(a.itemId===i.item_id||a.item_id===i.item_id))||{}).institutionName||'Your bank';
+    const add=(i,login)=>{
+      if(!i||!i.item_id)return;
+      const reason=login?'login':'new_accounts', prev=by.get(i.item_id);
+      if(prev&&prev.reason==='login')return;
+      by.set(i.item_id,{id:String(i.item_id),name:nameFor(i),needsUpdate:true,reason});
+    };
+    h.items.forEach(i=>{if(!i)return;
+      if(i.needs_update&&(i.error_code||!i.new_accounts_available))add(i,true);
+      else if(i.new_accounts_available||i.needs_update)add(i,false)});
+    h.errors.forEach(e=>{if(e&&e.needs_update)add({item_id:e.item_id,institution_name:e.institution_name},true)});
+    return [...by.values()];
+  }
+  function pp410FeedReconnect(){
+    const R=window.PayAviatorReconnect;if(!R)return;
+    if(/[?&]reconnect=(login|new)\b/.test(location.search))return; // Beth's preview
+    R.setBanks(pp410ReconnectBanks());
+  }
+  function pp410WireReconnect(){
+    const R=window.PayAviatorReconnect;if(!R||R._pa410)return;R._pa410=1;
+    R.setHooks({onReconnect:(id)=>pp920ReconnectItem(id,null),onDismiss:()=>{}});
+    pp410FeedReconnect();
+  }
+  window.addEventListener('load',pp410WireReconnect);
+  document.addEventListener('payaviator:authchange',()=>{try{pp410WireReconnect();pp410FeedReconnect()}catch(_){ }});
   function pp920ItemHealth(){try{const v=JSON.parse(localStorage.getItem(PP920_ITEMS_KEY)||'{}');return{items:Array.isArray(v.items)?v.items:[],errors:Array.isArray(v.errors)?v.errors:[]}}catch(_){return{items:[],errors:[]}}}
   async function pp920SyncPlaidAccounts(){
     // The backend identifies the user from the Firebase token; never send a user id.
@@ -22673,6 +22706,7 @@ setState(readNative());
     return `<section class="ppauth-account"><div class="pp920-row"><div><div class="pp920-title">Signed in</div><div class="pp920-sub">${esc(who)}${st.provider==='google'?' • Google':''}</div></div></div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-signout>Sign out</button><button type="button" class="pp920-action ppauth-danger" data-ppauth-delete>Delete account</button></div></section>`;
   }
   function pp920NeedsSection(){
+    if(window.PayAviatorReconnect) return '';   // 4.1.0: the reconnect banner shows these (no duplicate cards)
     if(!window.PayAviatorAuth?.isSignedIn?.()) return '';
     const h=pp920ItemHealth();
     const rows=h.items.filter(i=>i&&i.needs_update);
@@ -25990,6 +26024,7 @@ const res=r=>({ok:!!r.ok,error:r.ok?'':(r.code==='CANCELLED'?'':(r.error||'Somet
 async function refreshStatus(){
   try{billing=await api('/api/billing/status')}catch(e){billing={plan:'free',billingConfigured:false,error:e.code||'ERROR',status:e.status||0}}
   try{document.dispatchEvent(new CustomEvent('payaviator:billingchange',{detail:billing}))}catch(_){}
+  try{applyPaid()}catch(_){}
   return billing;
 }
 async function verifyPurchase(p){
@@ -26051,8 +26086,16 @@ function applyNoSell(){
   if(!soon){soon=document.createElement('p');soon.className='pa410-soon';soon.textContent='Subscriptions coming soon';(btn&&btn.parentElement?btn.parentElement:sec).before(soon)}
   if(btn){btn.textContent='Subscriptions coming soon';btn.disabled=true;btn.setAttribute('aria-disabled','true')}
 }
+/* 'premium' and 'comp' (complimentary) are both full access: no bank limit, no upgrade button. */
+const isPaid=b=>!!b&&(b.plan==='premium'||b.plan==='comp');
+function applyPaid(){
+  const sec=document.querySelector('#ppOnb section[data-onb="upgrade"]');if(!sec||!isPaid(billing))return;
+  const btn=sec.querySelector('[data-onb-act="subscribe"]');if(btn)btn.hidden=true;
+  const soon=sec.querySelector('.pa410-soon');if(soon)soon.textContent='Your plan includes unlimited banks.';
+}
 function openUpgrade(reason){
   const s=screens();if(!s)return;
+  if(isPaid(billing)){refreshStatus();return}   // full-access plan: never show an upgrade
   s.showUpgrade();setReason(reason);applyNoSell();
   refreshStatus();
 }
@@ -26096,7 +26139,7 @@ function maybeWelcome(){
   if(localStorage.getItem(CHOICE_KEY)!=null)return;
   s.show('welcome');
 }
-window.PayAviatorAccountGate={handle,openUpgrade,openVerify,refreshStatus,verifyPurchase,restore,maybeWelcome,hooks,get billing(){return billing},reasons:REASONS};
+window.PayAviatorAccountGate={isPaid:()=>isPaid(billing),bankLimit:()=>isPaid(billing)?null:(billing&&billing.limit!=null?billing.limit:1),handle,openUpgrade,openVerify,refreshStatus,verifyPurchase,restore,maybeWelcome,hooks,get billing(){return billing},reasons:REASONS};
 document.addEventListener('click',e=>{
   const v=e.target.closest&&e.target.closest('[data-pa410-verify]');if(v){e.preventDefault();verifyAction(v.dataset.pa410Verify);return}
   const c=e.target.closest&&e.target.closest('[data-pa410-close]');if(c){e.preventDefault();hide(c.dataset.pa410Close)}
