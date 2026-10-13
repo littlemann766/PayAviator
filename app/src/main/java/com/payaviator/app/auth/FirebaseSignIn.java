@@ -147,7 +147,44 @@ public final class FirebaseSignIn implements AuthedRequest.TokenSource {
             cb.done(false, "MISSING_FIELDS", "Enter your email and a password.");
             return;
         }
-        complete(auth.createUserWithEmailAndPassword(e, password), cb);
+        // 4.1.0: linking a bank needs a verified email, so send the link right after sign-up.
+        auth.createUserWithEmailAndPassword(e, password).addOnCompleteListener(activity, t -> {
+            if (t.isSuccessful()) {
+                FirebaseUser u = currentUser();
+                if (u != null) u.sendEmailVerification();
+                cb.done(true, "", "");
+            } else cb.done(false, codeFor(t.getException()), messageFor(t.getException()));
+        });
+    }
+
+    /** Sends (or re-sends) the Firebase email verification link to the signed-in user. */
+    public void sendEmailVerification(Callback cb) {
+        if (!checkReady(cb)) return;
+        FirebaseUser u = currentUser();
+        if (u == null) { cb.done(false, "SIGN_IN_REQUIRED", "Sign in first."); return; }
+        if (u.isEmailVerified()) { cb.done(true, "", ""); return; }
+        complete(u.sendEmailVerification(), cb);
+    }
+
+    /**
+     * After the user opens the verification link: reload the profile, then force-refresh the ID token
+     * so the backend sees email_verified=true on the next call.
+     */
+    public void reloadAndRefreshToken(Callback cb) {
+        if (!checkReady(cb)) return;
+        FirebaseUser u = currentUser();
+        if (u == null) { cb.done(false, "SIGN_IN_REQUIRED", "Sign in first."); return; }
+        u.reload()
+                .continueWithTask(t -> {
+                    if (!t.isSuccessful() && t.getException() != null) throw t.getException();
+                    FirebaseUser fresh = currentUser();
+                    if (fresh == null) throw new IllegalStateException("signed out");
+                    return fresh.getIdToken(true);
+                })
+                .addOnCompleteListener(activity, t -> {
+                    if (t.isSuccessful()) cb.done(true, "", "");
+                    else cb.done(false, codeFor(t.getException()), messageFor(t.getException()));
+                });
     }
 
     public void sendPasswordReset(String email, Callback cb) {

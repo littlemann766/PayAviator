@@ -44,7 +44,10 @@ import android.webkit.WebResourceError;
 import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.payaviator.app.auth.AuthedRequest;
+import com.payaviator.app.auth.BackendHeaders;
+import com.payaviator.app.auth.PlayIntegrity;
 import com.payaviator.app.auth.FirebaseSignIn;
 import com.plaid.link.Plaid;
 import com.plaid.link.configuration.LinkTokenConfiguration;
@@ -592,6 +595,22 @@ public class MainActivity extends Activity {
         return Base64.encodeToString(raw, Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING);
     }
 
+    private PlayIntegrity playIntegrity;
+
+    private synchronized PlayIntegrity integrity() {
+        if (playIntegrity == null) playIntegrity = new PlayIntegrity(this);
+        return playIntegrity;
+    }
+
+    /** Settings.Secure.ANDROID_ID: 16 hex, per signing key + Android user; survives reinstall. */
+    private String getAndroidId() {
+        try {
+            return android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private synchronized String getSecureDeviceId() {
         SharedPreferences prefs = getSharedPreferences(DEVICE_PREFS, MODE_PRIVATE);
         String id = prefs.getString(DEVICE_ID_KEY, "");
@@ -604,7 +623,9 @@ public class MainActivity extends Activity {
 
     /**
      * One HTTPS call to the PayAviator backend. /api/plaid/* calls carry
-     * "Authorization: Bearer <Firebase ID token>". No device or user id is sent.
+     * "Authorization: Bearer <Firebase ID token>". 4.1.0: the three new-bank calls (create-link-token,
+     * exchange-public-token, hosted-status) also carry X-Device-Id = ANDROID_ID and, when configured, a
+     * Play Integrity token bound to ANDROID_ID|uid (see BackendHeaders, PlayIntegrity).
      */
     private AuthedRequest.Response executeBackendCall(String verb, String safePath, String body, String bearerToken) throws IOException {
         HttpURLConnection conn = null;
@@ -617,6 +638,15 @@ public class MainActivity extends Activity {
             conn.setRequestProperty("Accept", "application/json");
             if (bearerToken != null && !bearerToken.isEmpty()) {
                 conn.setRequestProperty("Authorization", "Bearer " + bearerToken);
+            }
+            if (BackendHeaders.isNewBankCall(safePath)) {
+                String androidId = getAndroidId();
+                String deviceId = BackendHeaders.deviceIdFor(safePath, androidId);
+                if (deviceId != null) conn.setRequestProperty(BackendHeaders.DEVICE_ID_HEADER, deviceId);
+                FirebaseUser u = signIn == null ? null : signIn.currentUser();
+                String hash = u == null ? null : BackendHeaders.integrityRequestHash(androidId, u.getUid());
+                String it = BackendHeaders.integrityHeaderFor(safePath, hash == null ? null : integrity().tokenFor(hash));
+                if (it != null) conn.setRequestProperty(BackendHeaders.INTEGRITY_HEADER, it);
             }
             conn.setRequestMethod(verb);
             if (!"GET".equals(verb) && !"HEAD".equals(verb) && !"DELETE".equals(verb)) {
@@ -841,6 +871,19 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void authCreateAccount(final String requestId, final String email, final String password) {
             runOnUiThread(() -> signIn.createAccount(email, password, (ok, code, msg) -> deliverAuthResult(requestId, ok, code, msg)));
+        }
+
+        @JavascriptInterface
+        public void authSendEmailVerification(final String requestId) {
+            runOnUiThread(() -> signIn.sendEmailVerification((ok, code, msg) -> deliverAuthResult(requestId, ok, code, msg)));
+        }
+
+        @JavascriptInterface
+        public void authReloadUser(final String requestId) {
+            runOnUiThread(() -> signIn.reloadAndRefreshToken((ok, code, msg) -> {
+                deliverAuthResult(requestId, ok, code, msg);
+                pushAuthState(null);
+            }));
         }
 
         @JavascriptInterface
