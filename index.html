@@ -24771,7 +24771,7 @@ body.ppconsent-open #mb119BottomNav,body.ppconsent-open #pp925TipLauncher,body.p
 /* Shown before Plaid Link every time a bank is connected or reconnected.
    ask(context) resolves true on Continue, false on Not now / close / Back. */
 const CONSENT_KEY='payaviator_plaid_consent_v1';   // new key; existing keys are not touched
-const POLICY_VERSION='2026-10';                     // PayAviator Privacy Policy, effective October 2026
+const POLICY_VERSION='2026-10b';                     // PayAviator Privacy Policy, effective October 2026
 const $=id=>document.getElementById(id);
 let resolver=null;
 function appVersion(){try{if(window.AndroidBridge&&typeof AndroidBridge.getAppVersionName==='function')return String(AndroidBridge.getAppVersionName()||'')}catch(_){}return ''}
@@ -25833,6 +25833,8 @@ else if(SHOW_ON_LAUNCH&&localStorage.getItem(CHOICE_KEY)==null&&!(window.PayAvia
 .pa410-dlg .form-actions button{width:100%;min-height:48px!important;height:auto!important;padding:12px 14px!important;flex:0 0 auto!important}
 .pa410-dlg{max-height:92vh;overflow:auto}
 #ppOnb .pa410-reason{margin:0 0 10px;font-weight:600}
+#ppOnb.pa410-nosell .onb-plans,#ppOnb.pa410-nosell .onb-trial,#ppOnb.pa410-nosell #ppOnbPrice,#ppOnb.pa410-nosell #ppOnbPriceFine,#ppOnb.pa410-nosell [data-onb-act="restore"]{display:none!important}
+#ppOnb .pa410-soon{margin:6px 0 12px;font-weight:800;font-size:1.05rem;text-align:center}
 </style>
 <dialog id="pa410VerifyDlg" class="pa410-dlg" aria-labelledby="pa410VerifyTitle"><div class="form">
 <h2 id="pa410VerifyTitle">Verify your email</h2>
@@ -25936,9 +25938,20 @@ function setReason(reason){
   if(!el){el=document.createElement('p');el.className='pa410-reason';el.setAttribute('data-pa410-reason','');const h=sec.querySelector('h2');h?h.after(el):sec.prepend(el)}
   el.textContent=REASONS[reason||'']||REASONS[''];el.dataset.reason=reason||'';
 }
+/* No price until the boss confirms it: hide plan cards, trial and price lines, show "Subscriptions coming soon". */
+const PRICE_CONFIRMED=false;
+function applyNoSell(){
+  const root=$('ppOnb'),sec=root&&root.querySelector('section[data-onb="upgrade"]');if(!sec)return;
+  root.classList.toggle('pa410-nosell',!PRICE_CONFIRMED);
+  const btn=sec.querySelector('[data-onb-act="subscribe"]');
+  let soon=sec.querySelector('.pa410-soon');
+  if(PRICE_CONFIRMED){if(soon)soon.remove();return}
+  if(!soon){soon=document.createElement('p');soon.className='pa410-soon';soon.textContent='Subscriptions coming soon';(btn&&btn.parentElement?btn.parentElement:sec).before(soon)}
+  if(btn){btn.textContent='Subscriptions coming soon';btn.disabled=true;btn.setAttribute('aria-disabled','true')}
+}
 function openUpgrade(reason){
   const s=screens();if(!s)return;
-  s.showUpgrade();setReason(reason);
+  s.showUpgrade();setReason(reason);applyNoSell();
   refreshStatus();
 }
 /* ---- email verification ---- */
