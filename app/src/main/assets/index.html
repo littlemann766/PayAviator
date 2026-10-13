@@ -25515,6 +25515,108 @@ if(document.readyState!=='loading')ink();else document.addEventListener('DOMCont
 })();
 </script>
 <style id="pa401-bill-color-ink-css">html body .cal-event.pa401-ink-dark,html body .cal-event.pa401-ink-dark *{color:#06121f!important;text-shadow:none!important}</style>
+<!-- PayAviator 4.0.3: Plaid update-mode banners (Reconnect your bank / New accounts found). UI only: never calls Plaid; Lucky wires onReconnect to update-link-token. -->
+<style id="paRcStyle">
+.pa-rc-wrap{margin:12px 0!important;display:flex!important;flex-direction:column!important;gap:10px!important}
+.pa-rc-wrap:empty{display:none!important}
+.pa-rc{position:relative!important;display:flex!important;gap:12px!important;align-items:flex-start!important;padding:14px 40px 14px 14px!important;border-radius:20px!important;background:linear-gradient(180deg,#0f2d5c 0%,var(--pa4-card,#0b234b) 100%)!important;color:#fff!important;border:1.5px solid var(--pa4-warn,#fbbf24)!important;box-shadow:0 10px 24px -14px rgba(4,18,31,.7)!important;text-align:left!important;animation:paRcIn .22s ease-out}
+.pa-rc[data-reason=new_accounts]{border-color:rgba(24,226,235,.75)!important}
+@keyframes paRcIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.pa-rc-ic{flex:0 0 40px!important;width:40px!important;height:40px!important;border-radius:14px!important;display:grid!important;place-items:center!important;background:rgba(251,191,36,.16)!important;color:var(--pa4-warn,#fbbf24)!important}
+.pa-rc[data-reason=new_accounts] .pa-rc-ic{background:rgba(0,245,255,.14)!important;color:#00f5ff!important}
+.pa-rc-ic svg{width:22px!important;height:22px!important}
+.pa-rc-body{flex:1 1 auto!important;min-width:0!important}
+.pa-rc-title{font-weight:850!important;font-size:15px!important;line-height:1.25!important;color:#fff!important;margin:0 0 3px!important}
+.pa-rc-sub{font-size:13.5px!important;line-height:1.35!important;color:rgba(255,255,255,.82)!important;margin:0 0 10px!important;overflow-wrap:anywhere!important}
+.pa-rc-btn{min-height:44px!important;padding:10px 20px!important;border:0!important;border-radius:22px!important;background:linear-gradient(135deg,#38bdf8 0%,#00f5ff 100%)!important;color:#04121f!important;font-weight:800!important;font-size:15px!important;box-shadow:0 8px 20px -10px rgba(0,245,255,.8)!important;cursor:pointer!important;touch-action:manipulation!important;width:auto!important}
+.pa-rc-btn:active{transform:scale(.97)}
+.pa-rc-x{position:absolute!important;top:6px!important;right:6px!important;width:34px!important;height:34px!important;min-height:0!important;padding:0!important;border:0!important;border-radius:17px!important;background:transparent!important;color:rgba(255,255,255,.8)!important;font-size:20px!important;line-height:1!important;cursor:pointer!important;box-shadow:none!important}
+.pa-rc-x:active{background:rgba(255,255,255,.12)!important}
+#pp920AccountsModal .pa-rc .pa-rc-btn{font-weight:800!important;color:#04121f!important;width:auto!important;min-height:44px!important;border-radius:22px!important}
+#pp920AccountsModal .pa-rc-wrap{margin:0 12px 12px!important}
+#pp920AccountsModal .pa-rc-wrap.pa-rc-top{margin:12px 0!important}
+</style>
+<script>
+(function(){
+  'use strict';
+  if(window.PayAviatorReconnect)return;
+  var banks=[],dismissed={},hooks={};
+  var IC_LOGIN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>';
+  var IC_NEW='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8"/><path d="M3 21h11"/><path d="M19 15v6M16 18h6"/></svg>';
+  function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function norm(b){if(!b||b.id==null)return null;var r=b.reason==='new_accounts'?'new_accounts':'login';return {id:String(b.id),name:String(b.name||'Your bank'),needsUpdate:!!b.needsUpdate,reason:r}}
+  function active(){return banks.filter(function(b){return b.needsUpdate&&!dismissed[b.id+'|'+b.reason]})}
+  function card(b){
+    var nw=b.reason==='new_accounts';
+    return '<div class="pa-rc" role="status" data-rc-bank="'+esc(b.id)+'" data-reason="'+b.reason+'">'+
+      '<div class="pa-rc-ic">'+(nw?IC_NEW:IC_LOGIN)+'</div><div class="pa-rc-body">'+
+      '<div class="pa-rc-title">'+(nw?'New accounts found':'Reconnect your bank')+'</div>'+
+      '<div class="pa-rc-sub">'+esc(b.name)+(nw?' has new accounts you can add.':' needs a quick sign-in to keep syncing.')+'</div>'+
+      '<button type="button" class="pa-rc-btn" data-rc-go="'+esc(b.id)+'">'+(nw?'Add accounts':'Reconnect')+'</button></div>'+
+      '<button type="button" class="pa-rc-x" data-rc-x="'+esc(b.id)+'" aria-label="Dismiss for now">×</button></div>';
+  }
+  function wire(host){
+    host.querySelectorAll('[data-rc-go]').forEach(function(btn){btn.onclick=function(e){e.preventDefault();e.stopPropagation();var b=find(btn.getAttribute('data-rc-go'));if(!b)return;try{hooks.onReconnect&&hooks.onReconnect(b.id,b.reason)}catch(err){console.warn('PayAviatorReconnect onReconnect:',err&&err.message||err)}}});
+    host.querySelectorAll('[data-rc-x]').forEach(function(btn){btn.onclick=function(e){e.preventDefault();e.stopPropagation();var b=find(btn.getAttribute('data-rc-x'));if(!b)return;dismissed[b.id+'|'+b.reason]=1;try{hooks.onDismiss&&hooks.onDismiss(b.id)}catch(err){console.warn('PayAviatorReconnect onDismiss:',err&&err.message||err)}render()}});
+  }
+  function find(id){for(var i=0;i<banks.length;i++)if(banks[i].id===id)return banks[i];return null}
+  /* Sit directly under the Home header: after the sticky header wrapper when present, else after the subtitle. */
+  function place(home,h){
+    var a=home.querySelector(':scope > .mb123-sticky-header')||home.querySelector(':scope > .mb119-sub')||home.querySelector(':scope > .mb119-title');
+    if(a){if(a.nextElementSibling!==h)a.insertAdjacentElement('afterend',h)}else if(home.firstElementChild!==h)home.insertBefore(h,home.firstChild);
+  }
+  function homeHost(){
+    var home=document.getElementById('mb119Home');if(!home)return null;
+    var h=document.getElementById('paRcHome');
+    if(!h){h=document.createElement('div');h.id='paRcHome';h.className='pa-rc-wrap'}
+    place(home,h);
+    if(!home.dataset.paRcWatch){home.dataset.paRcWatch='1';new MutationObserver(function(){var x=document.getElementById('paRcHome');if(x)place(home,x)}).observe(home,{childList:true})}
+    return h;
+  }
+  function renderAccounts(){
+    var body=document.getElementById('pp920AccountsBody');if(!body)return;
+    body.querySelectorAll('.pa-rc-wrap').forEach(function(w){w.remove()});
+    var list=active();if(!list.length)return;
+    var sections=[].slice.call(body.querySelectorAll('.pp920-bank[data-bank]')),orphans=[];
+    list.forEach(function(b){
+      var sec=sections.filter(function(s){var n='';try{n=decodeURIComponent(s.getAttribute('data-bank'))}catch(_){}return n.trim().toLowerCase()===b.name.trim().toLowerCase()})[0];
+      if(sec){var w=document.createElement('div');w.className='pa-rc-wrap';w.innerHTML=card(b);var head=sec.querySelector('.pp920-bankhead');if(head)head.insertAdjacentElement('afterend',w);else sec.insertBefore(w,sec.firstChild);wire(w)}
+      else orphans.push(b);
+    });
+    if(orphans.length){var w=document.createElement('div');w.className='pa-rc-wrap pa-rc-top';w.innerHTML=orphans.map(card).join('');var sum=body.querySelector('.pp920-summary');if(sum)body.insertBefore(w,sum);else body.insertBefore(w,body.firstChild);wire(w)}
+  }
+  var busy=false;
+  function render(){
+    if(busy)return;busy=true;
+    try{
+      var h=homeHost();if(h){var l=active();h.innerHTML=l.map(card).join('');wire(h)}
+      renderAccounts();
+    }finally{busy=false}
+  }
+  var obs=null;
+  function watch(){
+    if(obs)return;var body=document.getElementById('pp920AccountsBody');if(!body)return;
+    obs=new MutationObserver(function(){if(busy)return;if(active().length&&!body.querySelector('.pa-rc-wrap'))render()});
+    obs.observe(body,{childList:true});
+  }
+  function watchBody(){if(!document.body)return;new MutationObserver(function(){if(!obs&&document.getElementById('pp920AccountsBody')){watch();render()}}).observe(document.body,{childList:true})}
+  window.PayAviatorReconnect={
+    setBanks:function(list){banks=(Array.isArray(list)?list:[]).map(norm).filter(Boolean);Object.keys(dismissed).forEach(function(k){var id=k.split('|')[0];var b=find(id);if(!b||!b.needsUpdate)delete dismissed[k]});render();return active().length},
+    clear:function(id){id=String(id);banks.forEach(function(b){if(b.id===id)b.needsUpdate=false});Object.keys(dismissed).forEach(function(k){if(k.split('|')[0]===id)delete dismissed[k]});render()},
+    setHooks:function(h){h=h||{};if('onReconnect' in h)hooks.onReconnect=typeof h.onReconnect==='function'?h.onReconnect:null;if('onDismiss' in h)hooks.onDismiss=typeof h.onDismiss==='function'?h.onDismiss:null},
+    getBanks:function(){return banks.map(function(b){return {id:b.id,name:b.name,needsUpdate:b.needsUpdate,reason:b.reason}})},
+    visibleCount:function(){return active().length},
+    refresh:render
+  };
+  function boot(){
+    render();watch();watchBody();
+    var q='';try{q=new URLSearchParams(location.search).get('reconnect')||''}catch(_){}
+    if(q==='login'||q==='new'){window.PayAviatorReconnect.setBanks([{id:'preview-bank',name:'Demo Credit Union',needsUpdate:true,reason:q==='new'?'new_accounts':'login'}])}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
+</script>
+
 <!-- PayAviator sign-in & upgrade screens v2 (DESIGN ONLY, 4.0.x). No real auth: every action calls a mock hook in
      window.PayAviatorAuthScreens.hooks that Lucky connects to Firebase Auth / Lucian's API / Google Play Billing.
      Palette: light-blue page, navy card, cyan accent, PayAviator logo. -->
