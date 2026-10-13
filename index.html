@@ -10584,8 +10584,14 @@ function openAvailableNowSpendingV88(){
       }catch(e){return n+(Number(x.amount)||0)}
     },0);
     const colors=['#20c96b','#27d7e8','#f4d72c','#ff8a24','#ef4047','#8b5cf6'];
-    const r=76,cx=105,cy=105,C=2*Math.PI*r;let off=0;
-    const rings=parts.map(([label,val],i)=>{const len=gross?val/gross*C:0;const el=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[i%colors.length]}" stroke-width="34" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"/>`;off+=len;return el}).join('');
+    const r=76,cx=105,cy=105;
+    /* 4.0.3: draw each slice as its own arc path from exact start/end angles instead of a dashed full circle.
+       The old dash pattern relied on the circle's measured path length matching 2πr; on Android WebView it does not,
+       so the last slice's dash wrapped past 12 o'clock and painted a notch over the first slice. */
+    const live=parts.map((x,i)=>[x,i]).filter(([x])=>gross>0&&x[1]>0);
+    const ptA=t=>{const a=t*2*Math.PI;return[(cx+r*Math.cos(a)).toFixed(3),(cy+r*Math.sin(a)).toFixed(3)]};
+    let acc=0;
+    const rings=live.map(([[label,val],i],j)=>{const color=colors[i%colors.length];if(live.length===1)return `<circle data-slice="${i}" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="34"/>`;const a0=acc/gross;acc+=val;const a1=j===live.length-1?1:acc/gross;const A=ptA(a0),M=ptA((a0+a1)/2),B=ptA(a1);return `<path data-slice="${i}" d="M ${A[0]} ${A[1]} A ${r} ${r} 0 0 1 ${M[0]} ${M[1]} A ${r} ${r} 0 0 1 ${B[0]} ${B[1]}" fill="none" stroke="${color}" stroke-width="34" stroke-linecap="butt" stroke-linejoin="miter"/>`}).join('');
     const legend=parts.map(([label,val,logo],i)=>{
       const pct=gross?Math.round(val/gross*100):0;
       let marker=`<i style="background:${colors[i%colors.length]}"></i>`;
