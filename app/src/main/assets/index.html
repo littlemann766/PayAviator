@@ -8434,6 +8434,8 @@ function openAvailableNowSpendingV88(){
     const blob=new Blob([data],{type:'application/json'});
     const url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download='payaviator-backup.json';
+    // Keep the download click from reaching outside-tap handlers that close the open Settings sheet.
+    a.addEventListener('click',e=>e.stopPropagation());
     document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
@@ -12919,10 +12921,10 @@ body.mb-high-contrast textarea{border-width:2px!important}
       <div class="settings-section">
         <h3>Save & Backup</h3>
         <div class="settings-help">Save your data, download a backup, or restore a previous backup.</div>
-        <div style="display:flex;gap:9px;flex-wrap:wrap">
-          <button type="button" class="ghost" id="m312Save">Save</button>
-          <button type="button" class="ghost" id="m312Backup">Backup JSON</button>
-          <button type="button" class="ghost" id="m312Restore">Restore JSON</button>
+        <div class="pa402-backup-grid">
+          <button type="button" class="ghost" id="m312Save"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="5" rx="1"/></svg><span>Save</span></button>
+          <button type="button" class="ghost" id="m312Backup"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg><span>Backup JSON</span></button>
+          <button type="button" class="ghost" id="m312Restore"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/></svg><span>Restore JSON</span></button>
         </div>
       </div>
       <div class="settings-section">
@@ -12930,18 +12932,19 @@ body.mb-high-contrast textarea{border-width:2px!important}
         <div class="settings-row"><label>Confirm before deleting a bill</label><input id="m312ConfirmDelete" class="settings-switch" type="checkbox"></div>
         <div class="settings-row"><label>Confirm before Clear All</label><input id="m312ConfirmClear" class="settings-switch" type="checkbox"></div>
       </div>
-      <div class="settings-section" id="m312SecuritySection">
-        <h3>Security & App Lock</h3>
-        <div class="settings-help">Real connected financial accounts require your phone’s fingerprint, face, or device PIN/passcode. PayAviator never stores your device PIN.</div>
-        <div class="settings-row" style="align-items:flex-start">
-          <div><b>Device Authentication</b><div id="m312LockStatus" style="color:#b9c7da;font-size:12px;margin-top:5px">Checking security status…</div></div>
-          <input id="m312Lock" class="settings-switch" type="checkbox" ${lockAvailable?'':'disabled'}>
+      <div class="settings-section pa402-lock" id="m312SecuritySection">
+        <h3>Security &amp; App Lock</h3>
+        <div class="pa402-lock-row">
+          <span class="pa402-lock-ico"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.4" fill="currentColor"/></svg></span>
+          <div class="pa402-lock-txt"><div class="pa402-lock-title"><b>Device Authentication</b><span id="m312LockPill" class="pa402-pill" hidden></span></div><div id="m312LockStatus" class="pa402-lock-status">Checking security status…</div></div>
+          <input id="m312Lock" class="settings-switch" type="checkbox" role="switch" aria-label="Device Authentication" ${lockAvailable?'':'disabled'}>
         </div>
-        <div id="m312LockRequirement" class="settings-help" style="margin-top:10px"></div>
-        <button type="button" class="ghost" id="m312LockNow" ${lockAvailable?'':'disabled'}>Lock PayAviator Now</button>
+        <div class="settings-help pa402-lock-note">Uses your phone’s fingerprint, face, or device PIN/passcode. PayAviator never stores your device PIN.</div>
+        <div id="m312LockRequirement" class="settings-help pa402-lock-req"></div>
+        <button type="button" class="ghost pa402-wide" id="m312LockNow" ${lockAvailable?'':'disabled'}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.4" fill="currentColor"/></svg><span>Lock PayAviator Now</span></button>
       </div>
-      <div class="mb2034-version-copy" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px">
-        <div><b>App Version</b><div style="color:#b9c7da;font-size:12px;margin-top:3px">Confirm the newest build is running.</div></div>
+      <div class="mb2034-version-copy pa402-version">
+        <div><b>App Version</b><div class="pa402-sub">Confirm the newest build is running.</div></div>
         <strong data-app-version>${window.PayAviatorVersion?.name?.()||''}</strong>
       </div>
       ${done()}`);
@@ -12950,7 +12953,8 @@ body.mb-high-contrast textarea{border-width:2px!important}
     bind('m312ConfirmClear','confirmClearAll','check');
     $('m312Save').onclick=()=>{try{manualSave()}catch(e){}};
     $('m312Backup').onclick=()=>{try{backupBills()}catch(e){}};
-    $('m312Restore').onclick=()=>{try{$('restoreFile')?.click()}catch(e){}};
+    // The file input lives outside the sheet; keep its click from counting as an outside tap that closes Settings.
+    $('m312Restore').onclick=()=>{try{const f=$('restoreFile');if(f){f.addEventListener('click',e=>e.stopPropagation(),{once:true});f.click()}}catch(e){}};
     let realAccounts=false;
     try{if(lockAvailable && typeof AndroidBridge.areRealAccountsConnected==='function') realAccounts=!!AndroidBridge.areRealAccountsConnected()}catch(e){}
     const paintLockStatus=()=>{
@@ -12958,7 +12962,9 @@ body.mb-high-contrast textarea{border-width:2px!important}
       let enabled=lockEnabled;
       try{if(lockAvailable) enabled=!!AndroidBridge.isAppLockEnabled()}catch(e){}
       if(toggle){ toggle.checked=enabled; toggle.disabled=!lockAvailable || realAccounts; }
-      if(status) status.textContent=!lockAvailable?'Unavailable in this build':(realAccounts?'REQUIRED — real financial account connected':(enabled?'ON — device authentication enabled':'Not required — no real accounts connected'));
+      if(status) status.textContent=!lockAvailable?'Unavailable in this build':(realAccounts?'On — a real financial account is connected':(enabled?'ON — device authentication enabled':'Not required — no real accounts connected'));
+      const pill=$('m312LockPill'); if(pill){ const t=!lockAvailable?'':(realAccounts?'Required':(enabled?'On':'')); pill.textContent=t; pill.hidden=!t; pill.classList.toggle('pa402-pill-on',!realAccounts); }
+      if(toggle) toggle.classList.toggle('pa402-locked',!!(lockAvailable&&realAccounts));
       if(req) req.textContent=realAccounts?'App Lock cannot be disabled while real financial accounts are connected.':'Optional until a real financial account is connected. Sandbox/test banking does not require App Lock.';
     };
     paintLockStatus();
@@ -13015,6 +13021,53 @@ body.mb-high-contrast textarea{border-width:2px!important}
 })();
 </script>
 
+<style id="pa402-settings-polish">
+/* 4.0.3 (Beth): Settings sheets match the rest of the app. Visual only. */
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pp51-body.pa402-scrolled{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 16px)!important;mask-image:linear-gradient(to bottom,transparent 0,#000 16px)!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .settings-section h3{text-align:left!important;font-size:17px!important;font-weight:850!important;margin:0 0 6px!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .settings-help{text-align:left!important;color:#b9c7da!important;font-size:12.5px!important;line-height:1.45!important}
+/* Every row: label on the left. Switch rows stay on one line at all widths. */
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .settings-row,html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .mb20313-access-row{text-align:left!important;align-items:stretch!important;flex-direction:column!important;gap:8px!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .settings-row label,html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .mb20313-access-row label{text-align:left!important;width:auto!important;font-size:14px!important;font-weight:750!important;color:#fff!important;flex:1 1 auto!important;margin:0!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .settings-row:has(> .settings-switch),html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .mb20313-access-row:has(> .settings-switch){flex-direction:row!important;align-items:center!important;justify-content:space-between!important;gap:14px!important}
+/* App-style switch (same look as Tips & Tricks) */
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel input.settings-switch{-webkit-appearance:none!important;appearance:none!important;flex:0 0 54px!important;width:54px!important;min-width:54px!important;max-width:54px!important;height:30px!important;min-height:30px!important;margin:0!important;padding:0!important;border-radius:999px!important;border:2px solid rgba(255,255,255,.22)!important;background:radial-gradient(circle at 13px 50%,#fff 0 9px,transparent 10px) no-repeat,#6f7f93!important;cursor:pointer!important;transition:background .18s ease,border-color .18s ease!important;box-shadow:none!important;accent-color:auto!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel input.settings-switch:checked{background:radial-gradient(circle at 37px 50%,#07172d 0 9px,transparent 10px) no-repeat,#16e4ea!important;border-color:#16e4ea!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel input.settings-switch:focus-visible{outline:3px solid rgba(22,228,234,.55)!important;outline-offset:2px!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel input.settings-switch:disabled{cursor:not-allowed!important;opacity:.55!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel input.settings-switch.pa402-locked:disabled{opacity:.9!important}
+/* Fields */
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .settings-row select,html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .settings-row input[type=time],html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .settings-row input[type=number],html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .mb20313-access-row select{width:100%!important;max-width:100%!important;min-height:48px!important;border-radius:14px!important;border:2px solid #168ca0!important;background-color:#0b2447!important;color:#fff!important;font-size:15px!important;padding:0 14px!important;box-sizing:border-box!important}
+/* Buttons */
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pp51-body button.ghost,html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel #mb137Appearance .mb137-theme-actions button#mb137ResetTheme{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;min-height:48px!important;padding:0 16px!important;border-radius:14px!important;border:2px solid rgba(22,228,234,.55)!important;background:#0b2447!important;background-image:none!important;color:#fff!important;font-weight:850!important;font-size:14.5px!important;box-shadow:none!important;line-height:1.15!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pp51-body button.ghost:active{background:#123e72!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pp51-body button.ghost:disabled{opacity:.5!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pp51-body button.ghost svg{flex:0 0 auto;color:#16e4ea}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel #mb137Appearance .mb137-theme-actions button#mb137SaveTheme{min-height:48px!important;border-radius:14px!important;border:0!important;background:#00e7f0!important;background-image:none!important;color:#072036!important;font-weight:900!important;font-size:14.5px!important;box-shadow:none!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-backup-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:9px!important;margin-top:10px!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-backup-grid button.ghost{flex-direction:column!important;gap:5px!important;min-height:66px!important;padding:8px 6px!important;font-size:13px!important;text-align:center!important;width:100%!important;margin:0!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-wide{width:100%!important;margin:12px 0 0!important}
+/* Security & App Lock */
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-lock-row{display:flex!important;align-items:center!important;gap:12px!important;padding:12px!important;margin:8px 0 10px!important;border-radius:14px!important;background:#0b2447!important;border:1px solid rgba(255,255,255,.10)!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-lock-ico{flex:0 0 40px;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(22,228,234,.14);color:#16e4ea}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-lock-txt{flex:1 1 auto;min-width:0;text-align:left}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-lock-title{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-lock-title b{font-size:15px;color:#fff}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-lock-status{color:#b9c7da;font-size:12px;margin-top:3px;line-height:1.35}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:.02em;background:#16e4ea;color:#07172d}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-pill[hidden]{display:none}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-pill.pa402-pill-on{background:rgba(22,228,234,.18);color:#16e4ea}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-lock-req{margin-top:6px!important}
+/* App Version row looks like the other cards */
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-version{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin:0 0 14px!important;padding:16px!important;border:2px solid rgba(22,228,234,.45)!important;border-radius:18px!important;background:#14376b!important;text-align:left!important}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-version b{font-size:17px;font-weight:850}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-version .pa402-sub{color:#b9c7da;font-size:12.5px;margin-top:3px}
+html:not(#pa402a):not(#pa402b):not(#pa402c):not(#pa402d) body #mb123SettingsPanel .pa402-version strong{font-size:20px;font-weight:900;color:#fff;white-space:nowrap}
+</style>
+<script id="pa402-settings-polish-js">
+/* Fade the top edge of a Settings sheet only once it is scrolled, so text never looks sliced under the header. */
+document.addEventListener('scroll',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('pp51-body')&&t.parentElement&&t.parentElement.id==='mb123SettingsPanel')t.classList.toggle('pa402-scrolled',t.scrollTop>4)},true);
+</script>
 
 <script id="mb20313-final-usability-js">
 (function(){
