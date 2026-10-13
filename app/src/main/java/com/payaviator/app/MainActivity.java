@@ -173,6 +173,9 @@ public class MainActivity extends Activity {
         settings.setSaveFormData(false);
         settings.setSafeBrowsingEnabled(true);
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        // 4.1.3: keep the user's Android font size, but cap it at 130% so the
+        // layout (gauges, nav labels) can't break. The page reflows for up to 130%.
+        if (settings.getTextZoom() > 130) settings.setTextZoom(130);
 
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
@@ -311,6 +314,20 @@ public class MainActivity extends Activity {
     private void createLoadingShell() {
         rootView = new FrameLayout(this);
         rootView.setBackgroundColor(Color.rgb(5, 19, 40));
+        // 4.1.3: targetSdk 36 is always edge-to-edge, so keep the page out from under
+        // the status bar, navigation bar and camera cutout.
+        rootView.setOnApplyWindowInsetsListener((v, insets) -> {
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                android.graphics.Insets bars = insets.getInsets(
+                        android.view.WindowInsets.Type.systemBars()
+                                | android.view.WindowInsets.Type.displayCutout());
+                v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            } else {
+                v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
+                        insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+            }
+            return insets;
+        });
         setContentView(rootView);
 
         splashView = new CloudSplashLayout(this);
