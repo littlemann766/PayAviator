@@ -11563,7 +11563,7 @@ function openAvailableNowSpendingV88(){
 
     <section class="mb212-step active" data-mb212-step="0">
       <div class="pa41-icon"><svg viewBox="0 0 24 24"><path d="M2 16l20-7-6 11-3-5-5 3 1-4-7 2z"/></svg></div>
-      <h2>Welcome aboard</h2>
+      <h2>Let's get you set up</h2>
       <p class="pa41-lead">A few quick steps and PayAviator can show what's safe to spend. You can change anything later.</p>
       <div class="mb212-callout pa41-trust">
         <svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
@@ -11573,8 +11573,8 @@ function openAvailableNowSpendingV88(){
         <strong>Pick your Home screen</strong>
         <div class="mb20426-choice-buttons pa41-mode-cards" role="radiogroup">
           <button id="mb20426ChooseEasy" type="button" class="pa41-mode" role="radio">
-            <span class="pa41-prev pa41-prev-easy" aria-hidden="true"><i class="pv-swipe"><svg class="pv-gauge" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 9-19" stroke="#ef4444"/><path d="M14 12a25 25 0 0 1 27-5" stroke="#facc15"/><path d="M41 7a25 25 0 0 1 14 24" stroke="#22c55e"/><path d="M30 31l9-13" stroke="#fff"/></svg><svg class="pv-mini" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 50 0" stroke="#22c55e"/><path d="M30 31l-6-13" stroke="#fff"/></svg><svg class="pv-mini" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 50 0" stroke="#22c55e"/><path d="M30 31l-6-13" stroke="#fff"/></svg></i><i class="pv-why">On track: safe after bills</i><i class="pv-dots"><u></u><u></u><u></u></i><i class="pv-cush">Cushion $0 ›</i><i class="pv-next"><s>Next up: Rent, Fri</s><em>$850</em></i></span>
-            <b>Simple</b><small>Your 3 gauges, each explained in one line, your Cushion, and what is due next</small>
+            <span class="pa41-prev pa41-prev-easy" aria-hidden="true"><i class="pv-swipe"><svg class="pv-gauge" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 9-19" stroke="#ef4444"/><path d="M14 12a25 25 0 0 1 27-5" stroke="#facc15"/><path d="M41 7a25 25 0 0 1 14 24" stroke="#22c55e"/><path d="M30 31l9-13" stroke="#fff"/></svg><svg class="pv-mini" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 50 0" stroke="#22c55e"/><path d="M30 31l-6-13" stroke="#fff"/></svg><svg class="pv-mini" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 50 0" stroke="#22c55e"/><path d="M30 31l-6-13" stroke="#fff"/></svg></i><i class="pv-why">On track: safe after bills</i><i class="pv-dots"><u></u><u></u><u></u></i><i class="pv-cush">Cushion $0 ›</i></span>
+            <b>Simple</b><small>Your 3 gauges, each explained in one line, and your Cushion.</small>
           </button>
           <button id="mb20426ChooseAdvanced" type="button" class="pa41-mode" role="radio">
             <span class="pa41-prev pa41-prev-adv" aria-hidden="true"><svg class="pv-gauge" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 9-19" stroke="#ef4444"/><path d="M14 12a25 25 0 0 1 27-5" stroke="#facc15"/><path d="M41 7a25 25 0 0 1 14 24" stroke="#22c55e"/><path d="M30 31l9-13" stroke="#fff"/></svg><i class="pv-tiles"><u>Available</u><u>Savings</u><u>Cushion</u></i><i class="pv-row"><s>Advanced money details</s><em>›</em></i><i class="pv-cards"><svg class="pv-mini" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 50 0" stroke="#22c55e"/><path d="M30 31l-6-13" stroke="#fff"/></svg><svg class="pv-mini" viewBox="0 0 60 34"><path d="M5 31a25 25 0 0 1 50 0" stroke="#22c55e"/><path d="M30 31l-6-13" stroke="#fff"/></svg></i><i class="pv-row"><s>More information</s><em>›</em></i></span>
@@ -33988,6 +33988,16 @@ window.addEventListener('payaviator:accounts-updated',()=>{refreshLinked();if($(
 .pa412-bell .pa412-badge[hidden]{display:none}
 #pa412Alerts{position:fixed;inset:0;z-index:2147483600;display:none;flex-direction:column;background:linear-gradient(180deg,#1590d8 0%,#0c79bb 100%)!important;color:#fff;font-family:var(--pa4-font,system-ui,sans-serif);overflow:auto}
 #pa412Alerts.show{display:flex}
+/* Alerts open: bottom nav stays solid navy above it with its active tab; Home content underneath is hidden */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa412) body.pa412-alerts-open #mb119Shell .mb119-view{visibility:hidden!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa412) body.pa412-alerts-open #mb119BottomNav,html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa412) body.pa412-alerts-open.pp821-theme-live #mb119BottomNav{z-index:2147483601!important;background:#0b234b!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;visibility:visible!important}
+body.pa412-alerts-open #pp925TipLauncher{display:none!important}
+#pa412Alerts .pa412-acts{display:flex;gap:14px}
+.pa412-bell.pa412-hometip{right:108px!important;font-size:18px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa412) body #mb119Home .mb119-title,html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa412) body #mb119Home .mb119-sub{padding-right:140px!important;box-sizing:border-box!important}
+body.pp-help-off #mb119Home .mb119-sub{padding-right:0!important}
+body.pa412-on-home #pp925TipLauncher{display:none!important}
+body.pp-help-off .pa412-hometip{display:none!important}
 #pa412Alerts .pa412-head{background:var(--pa4-card,#0b234b);padding:22px 20px 18px;position:relative}
 #pa412Alerts .pa412-head h2{margin:0;font-size:30px;font-weight:800}
 #pa412Alerts .pa412-head p{margin:6px 0 0;color:rgba(255,255,255,.8);font-size:14px}
@@ -34158,6 +34168,12 @@ window.addEventListener('payaviator:accounts-updated',()=>{refreshLinked();if($(
     b.innerHTML=BELL+'<span class="pa412-badge" id="pa412BellBadge" hidden></span>';
     b.onclick=function(e){e.preventDefault();e.stopPropagation();openCenter()};
     home.classList.add('pp-help-view');home.appendChild(b);badge();
+    // Home: the floating 💡 covered the Credit gauge, so on Home it lives in the header (left of the bell).
+    var tip=document.createElement('button');tip.type='button';tip.id='pa412HomeTip';tip.className='pa412-bell pa412-hometip';tip.textContent='💡';tip.setAttribute('aria-label','Open a PayAviator tip');
+    tip.onclick=function(e){e.preventDefault();e.stopPropagation();var l=$('pp925TipLauncher');if(l)l.click()};
+    home.appendChild(tip);
+    var sync=function(){document.body.classList.toggle('pa412-on-home',home.classList.contains('active'))};
+    new MutationObserver(sync).observe(home,{attributes:true,attributeFilter:['class']});sync();
   }
   function ensureCenter(){
     if($('pa412Alerts'))return $('pa412Alerts');
@@ -34176,9 +34192,12 @@ window.addEventListener('payaviator:accounts-updated',()=>{refreshLinked();if($(
     var h='<button type="button" class="pa412-back" id="pa412Back">‹ Home</button>';
     if(!v.length){h+='<div class="pa412-empty"><div class="big">🔔</div><h3>You\'re all caught up</h3><p>Bill reminders, paydays and bank notices will show up here.</p></div>'}
     else{
-      if(today.length)h+='<div class="pa412-sec"><span>TODAY</span><button type="button" id="pa412ReadAll">Mark all read</button></div>'+rows(today,true);
-      if(earlier.length)h+='<div class="pa412-sec"><span>EARLIER</span>'+(today.length?'':'<button type="button" id="pa412ReadAll">Mark all read</button>')+'</div>'+rows(earlier,false);
-      h+='<div class="pa412-sec" style="justify-content:flex-end"><button type="button" id="pa412ClearAll">Clear all</button></div><div class="pa412-foot">Swipe an alert left to clear it · kept for 30 days</div>';
+      // Beth's layout: "Mark all read" on the TODAY heading, "Clear all" on the EARLIER heading (right side).
+      var RA='<button type="button" id="pa412ReadAll">Mark all read</button>',CA='<button type="button" id="pa412ClearAll">Clear all</button>';
+      if(today.length)h+='<div class="pa412-sec"><span>TODAY</span>'+RA+'</div>'+rows(today,true);
+      if(earlier.length)h+='<div class="pa412-sec"><span>EARLIER</span>'+(today.length?CA:'<span class="pa412-acts">'+RA+CA+'</span>')+'</div>'+rows(earlier,false);
+      else h+='<div class="pa412-sec" style="justify-content:flex-end">'+CA+'</div>';
+      h+='<div class="pa412-foot">Swipe an alert left to clear it · kept for 30 days</div>';
     }
     body.innerHTML=h;
     $('pa412Back').onclick=closeCenter;
@@ -34193,8 +34212,20 @@ window.addEventListener('payaviator:accounts-updated',()=>{refreshLinked();if($(
     });
   }
   function isOpen(){var d=$('pa412Alerts');return !!d&&d.classList.contains('show')}
-  function openCenter(){mergeNative();ensureCenter().classList.add('show');draw()}
-  function closeCenter(){var d=$('pa412Alerts');if(d)d.classList.remove('show');badge()}
+  // Other scripts pin inline !important styles on the nav and views, so the Alerts layering is set inline too.
+  var saved=[];
+  function pin(el,prop,val){if(!el)return;saved.push([el,prop,el.style.getPropertyValue(prop),el.style.getPropertyPriority(prop)]);el.style.setProperty(prop,val,'important')}
+  function layer(on){
+    if(!on){saved.reverse().forEach(function(x){if(x[2])x[0].style.setProperty(x[1],x[2],x[3]);else x[0].style.removeProperty(x[1])});saved=[];return}
+    if(saved.length)return;
+    var n=$('mb119BottomNav');
+    pin(n,'background','#0b234b');pin(n,'backdrop-filter','none');pin(n,'-webkit-backdrop-filter','none');pin(n,'z-index','2147483601');pin(n,'visibility','visible');
+    document.querySelectorAll('#mb119Shell .mb119-view').forEach(function(v){pin(v,'visibility','hidden')});
+  }
+  function openCenter(){mergeNative();ensureCenter().classList.add('show');document.body.classList.add('pa412-alerts-open');layer(true);draw();badge()}
+  function closeCenter(){var d=$('pa412Alerts');if(d)d.classList.remove('show');document.body.classList.remove('pa412-alerts-open');layer(false);badge()}
+  // The badge is always the unread count of the same stored list the Alerts screen draws.
+  window.addEventListener('storage',function(e){if(e.key===KEY){badge();if(isOpen())draw()}});
   window.PayAviatorAlertsBack=function(){if(isOpen()){closeCenter();return true}return false};
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&isOpen())closeCenter()});
 

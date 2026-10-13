@@ -9,6 +9,7 @@
   - FCM bank reconnect pushes (Lucian's fcm-reconnect-push contract): firebase-messaging + PushService; token registered with POST /api/devices/fcm after sign-in, on new token and on app start, removed with DELETE before sign-out (fails quietly until the server is deployed); "bank_reconnect" high-priority channel; tap or foreground receipt starts Plaid update mode for data.item_id.
 - Beth's compact Payoff Planner (pa412-payoff-compact-css): smaller gauge and tighter tiles; colors unchanged.
 - Beth's setup (setup-411) and tips (tips-411) updates.
+- Beth design check: Alerts keeps a solid navy bottom nav with the active tab and hides Home underneath; badge = unread count of the stored alert list; Home 💡 moved into the header (no overlap with the Credit gauge); "Clear all" on the EARLIER heading; setup step 1 "Let's get you set up", Simple preview without the Next up row.
 - Email verification links had an empty apiKey ("The selected page mode is invalid"): verification is now sent through Identity Toolkit accounts:sendOobCode with the public web API key (VerifyEmailRequest), SDK sendEmailVerification() as fallback.
 - tools/test-available-now.py runs in Detailed Home (Simple Home hides those tiles by design); new tools/test-notif-412.py.
 
