@@ -26067,7 +26067,8 @@ const hooks={
   restorePurchase:async()=>{const r=await restore();if(r.ok)return{ok:true,error:''};return{ok:false,error:r.unavailable?NOT_YET:'No purchase found for this Google account.'}},
   onClose:async()=>({ok:true})
 };
-function wireScreens(){const s=screens();if(s&&!s._pa410){s._pa410=1;s.setHooks(hooks)}}
+/* Confirmed pricing (app + web): $2.99/month or $29.99/year. Loaded into Beth's cards but hidden while PRICE_CONFIRMED=false. */
+function wireScreens(){const s=screens();if(s&&!s._pa410){s._pa410=1;s.setHooks(hooks);try{s.setPrice('$29.99','yr');s.setPrice('$2.99','mo')}catch(_){}}}
 /* ---- upgrade (402) ---- */
 function setReason(reason){
   const sec=document.querySelector('#ppOnb section[data-onb="upgrade"]');if(!sec)return;
