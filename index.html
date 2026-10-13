@@ -25486,6 +25486,317 @@ if(document.readyState!=='loading')ink();else document.addEventListener('DOMCont
 })();
 </script>
 <style id="pa401-bill-color-ink-css">html body .cal-event.pa401-ink-dark,html body .cal-event.pa401-ink-dark *{color:#06121f!important;text-shadow:none!important}</style>
+<!-- PayAviator sign-in & upgrade screens v2 (DESIGN ONLY, 4.0.x). No real auth: every action calls a mock hook in
+     window.PayAviatorAuthScreens.hooks that Lucky connects to Firebase Auth / Lucian's API / Google Play Billing.
+     Palette: light-blue page, navy card, cyan accent, PayAviator logo. -->
+<style id="payaviator-onb-css">
+#ppOnb{--onb-cyan:var(--pa4-accent,#00f5ff);--onb-navy:var(--pa4-card,#0b234b);--onb-deep:var(--pa4-sunken,#081a37);--onb-line:rgba(255,255,255,.14);--onb-muted:rgba(255,255,255,.78);--onb-grad:linear-gradient(135deg,#38bdf8 0%,#00f5ff 100%);position:fixed!important;inset:0!important;z-index:2147483645!important;display:none!important;flex-direction:column!important;align-items:center!important;padding:0 14px!important;background:radial-gradient(120% 60% at 50% 0%,#5cc8f5 0%,var(--pa4-page,#0c79bb) 55%,#0a5f97 100%)!important;overflow:auto!important;overscroll-behavior:contain!important;box-sizing:border-box!important;scroll-padding-bottom:140px!important;max-height:none!important;height:auto!important;margin:0!important;font-family:var(--pa4-font,system-ui,-apple-system,"Roboto","Segoe UI",sans-serif)!important}
+#ppOnb.show{display:flex!important}
+body.ppOnb-open{overflow:hidden!important}
+body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-open #pp925TipPopup{visibility:hidden!important}
+#ppOnb *{box-sizing:border-box!important}
+#ppOnb [hidden]{display:none!important}
+/* soft background shapes */
+#ppOnb .onb-bg{position:fixed!important;inset:0!important;pointer-events:none!important;overflow:hidden!important;z-index:0!important}
+#ppOnb .onb-bg i{position:absolute!important;border-radius:50%!important;filter:blur(2px)!important}
+#ppOnb .onb-bg i:nth-child(1){width:220px!important;height:220px!important;left:-70px!important;top:-60px!important;background:radial-gradient(circle,rgba(0,245,255,.35),transparent 70%)!important}
+#ppOnb .onb-bg i:nth-child(2){width:260px!important;height:260px!important;right:-100px!important;top:90px!important;background:radial-gradient(circle,rgba(255,255,255,.22),transparent 70%)!important}
+#ppOnb .onb-bg svg{position:absolute!important;left:0!important;right:0!important;top:min(34vh,290px)!important;width:100%!important;height:70px!important}
+#ppOnb .onb-card{position:relative!important;z-index:1!important;margin:auto 0 0!important;width:min(100%,440px)!important;background:linear-gradient(180deg,#0f2d5c 0%,var(--onb-navy) 38%)!important;color:#fff!important;border:1px solid var(--onb-line)!important;border-bottom:0!important;border-radius:28px 28px 0 0!important;padding:22px 18px 0!important;box-shadow:0 -10px 50px -10px rgba(4,18,31,.55)!important;text-align:center!important}
+#ppOnb section{animation:onbIn .38s cubic-bezier(.2,.8,.2,1) both!important}
+#ppOnb section .onb-stagger>*{animation:onbIn .45s cubic-bezier(.2,.8,.2,1) both!important}
+#ppOnb section .onb-stagger>*:nth-child(2){animation-delay:.06s!important}#ppOnb section .onb-stagger>*:nth-child(3){animation-delay:.12s!important}#ppOnb section .onb-stagger>*:nth-child(4){animation-delay:.18s!important}
+@keyframes onbIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes onbFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes onbGlow{0%,100%{box-shadow:0 0 0 0 rgba(0,245,255,.0),0 14px 36px -10px rgba(0,245,255,.55)}50%{box-shadow:0 0 0 8px rgba(0,245,255,.10),0 14px 36px -10px rgba(0,245,255,.75)}}
+@media (prefers-reduced-motion:reduce){#ppOnb *{animation:none!important;transition:none!important}}
+#ppOnb .onb-close,#ppOnb .onb-back{position:absolute!important;top:14px!important;z-index:2!important;width:40px!important;height:40px!important;min-height:40px!important;border-radius:50%!important;border:1px solid var(--onb-line)!important;background:rgba(255,255,255,.08)!important;color:#fff!important;font-size:1.35rem!important;font-weight:700!important;line-height:1!important;padding:0!important;cursor:pointer!important}
+#ppOnb .onb-close{right:14px!important}#ppOnb .onb-back{left:14px!important}
+/* hero: large logo with glow (welcome) */
+#ppOnb .onb-hero-logo{position:relative!important;width:112px!important;height:112px!important;margin:4px auto 16px!important;border-radius:30px!important;animation:onbGlow 3.2s ease-in-out infinite,onbFloat 5s ease-in-out infinite!important}
+#ppOnb .onb-hero-logo img{width:100%!important;height:100%!important;border-radius:30px!important;display:block!important;border:2px solid rgba(0,245,255,.55)!important}
+/* illustration icon badge */
+#ppOnb .onb-ill{position:relative!important;width:92px!important;height:92px!important;margin:6px auto 14px!important;border-radius:50%!important;display:flex!important;align-items:center!important;justify-content:center!important;background:radial-gradient(circle at 35% 30%,rgba(0,245,255,.35),rgba(56,189,248,.12) 60%,transparent 72%)!important;animation:onbFloat 5s ease-in-out infinite!important}
+#ppOnb .onb-ill::before{content:""!important;position:absolute!important;inset:10px!important;border-radius:50%!important;border:1.5px dashed rgba(0,245,255,.45)!important}
+#ppOnb .onb-ill svg{position:relative!important;width:48px!important;height:48px!important;fill:none!important;stroke:var(--onb-cyan)!important;stroke-width:1.6!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+#ppOnb .onb-ill .onb-mini{position:absolute!important;right:4px!important;bottom:6px!important;width:30px!important;height:30px!important;border-radius:50%!important;background:var(--onb-navy)!important;border:2px solid var(--onb-cyan)!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important}
+#ppOnb .onb-ill .onb-mini img{width:100%!important;height:100%!important}
+#ppOnb .onb-kicker{display:inline-block!important;margin:0 0 6px!important;padding:4px 10px!important;border-radius:999px!important;background:rgba(0,245,255,.12)!important;color:var(--onb-cyan)!important;font-size:12px!important;font-weight:800!important;letter-spacing:.08em!important;text-transform:uppercase!important}
+#ppOnb h2{margin:0 34px 8px!important;font-size:24px!important;letter-spacing:-.02em!important;font-weight:850!important;line-height:1.18!important;color:#fff!important}
+#ppOnb h2 em{font-style:normal!important;background:var(--onb-grad)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}
+#ppOnb .onb-sub{margin:0 0 16px!important;font-size:15px!important;line-height:1.45!important;color:var(--onb-muted)!important}
+#ppOnb button{font:inherit!important;-webkit-appearance:none!important;appearance:none!important;touch-action:manipulation!important;box-shadow:none!important}
+/* benefit list with icons */
+#ppOnb .onb-benefits{list-style:none!important;margin:0 0 4px!important;padding:0!important;display:grid!important;gap:10px!important;text-align:left!important}
+#ppOnb .onb-benefits li{display:flex!important;align-items:center!important;gap:12px!important;font-size:14.5px!important;line-height:1.35!important;color:var(--onb-muted)!important}
+#ppOnb .onb-benefits b{color:#fff!important;display:block!important;font-size:15px!important}
+#ppOnb .onb-bi{flex:0 0 40px!important;width:40px!important;height:40px!important;border-radius:13px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:linear-gradient(135deg,rgba(56,189,248,.25),rgba(0,245,255,.12))!important;border:1px solid rgba(0,245,255,.3)!important}
+#ppOnb .onb-bi svg{width:21px!important;height:21px!important;fill:none!important;stroke:var(--onb-cyan)!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+/* inputs with icons */
+#ppOnb form{display:grid!important;gap:12px!important;text-align:left!important}
+#ppOnb .onb-field{position:relative!important;display:block!important;margin:0!important}
+#ppOnb .onb-field>span{display:block!important;font-size:13px!important;font-weight:700!important;color:var(--onb-muted)!important;margin:0 0 6px 4px!important}
+#ppOnb .onb-field>svg{position:absolute!important;left:16px!important;bottom:15px!important;width:20px!important;height:20px!important;fill:none!important;stroke:var(--onb-cyan)!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important;pointer-events:none!important}
+#ppOnb input[type=email],#ppOnb input[type=password],#ppOnb input[type=text]{width:100%!important;min-height:52px!important;border-radius:26px!important;border:1px solid rgba(255,255,255,.16)!important;background:var(--onb-deep)!important;color:#fff!important;padding:12px 64px 12px 48px!important;font:inherit!important;font-size:16px!important;transition:border-color .15s,box-shadow .15s!important}
+#ppOnb input::placeholder{color:rgba(255,255,255,.6)!important}
+#ppOnb input:focus{outline:none!important;border-color:var(--onb-cyan)!important;box-shadow:0 0 0 4px rgba(0,245,255,.16)!important}
+#ppOnb .onb-eye{position:absolute!important;right:8px!important;bottom:6px!important;height:40px!important;min-height:40px!important;padding:0 10px!important;border:0!important;border-radius:20px!important;background:none!important;color:var(--onb-cyan)!important;font-size:13px!important;font-weight:750!important;cursor:pointer!important}
+/* buttons */
+#ppOnb .onb-primary{position:relative!important;overflow:hidden!important;width:100%!important;min-height:52px!important;border-radius:26px!important;border:0!important;background:var(--onb-grad)!important;color:#04121f!important;font-weight:800!important;font-size:16px!important;cursor:pointer!important;box-shadow:0 10px 24px -10px rgba(0,245,255,.8)!important;transition:transform .12s!important}
+#ppOnb .onb-primary:active{transform:scale(.98)!important}
+#ppOnb .onb-primary:disabled{opacity:.6!important}
+#ppOnb .onb-secondary{width:100%!important;min-height:50px!important;border-radius:26px!important;border:1.5px solid rgba(0,245,255,.55)!important;background:transparent!important;color:#fff!important;font-weight:750!important;font-size:15.5px!important;cursor:pointer!important}
+#ppOnb .onb-link{background:none!important;border:0!important;color:var(--onb-cyan)!important;font-weight:700!important;font-size:14.5px!important;padding:8px 4px!important;min-height:42px!important;cursor:pointer!important}
+#ppOnb .onb-row{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin-top:12px!important;text-align:left!important}
+#ppOnb .onb-switch{display:flex!important;align-items:center!important;gap:10px!important;font-size:14.5px!important;font-weight:700!important;color:#fff!important;margin:0!important;cursor:pointer!important}
+#ppOnb .onb-switch input{position:absolute!important;opacity:0!important;width:1px!important;height:1px!important}
+#ppOnb .onb-track{width:50px!important;height:30px!important;border-radius:15px!important;background:var(--onb-deep)!important;border:1px solid rgba(255,255,255,.2)!important;position:relative!important;flex:0 0 50px!important;transition:background .2s!important}
+#ppOnb .onb-track::after{content:""!important;position:absolute!important;top:3px!important;left:3px!important;width:22px!important;height:22px!important;border-radius:50%!important;background:#fff!important;transition:transform .2s cubic-bezier(.3,1.4,.5,1)!important}
+#ppOnb .onb-switch input:checked+.onb-track{background:var(--onb-grad)!important;border-color:transparent!important}
+#ppOnb .onb-switch input:checked+.onb-track::after{transform:translateX(20px)!important;background:#04121f!important}
+#ppOnb .onb-switch input:focus-visible+.onb-track{box-shadow:0 0 0 3px rgba(0,245,255,.35)!important}
+#ppOnb .onb-bio{display:flex!important;align-items:center!important;gap:8px!important;background:rgba(0,245,255,.1)!important;border:1px solid rgba(0,245,255,.35)!important;border-radius:22px!important;color:#fff!important;font-weight:700!important;font-size:14.5px!important;min-height:44px!important;padding:0 14px 0 10px!important;cursor:pointer!important}
+#ppOnb .onb-bio svg{width:24px!important;height:24px!important;fill:none!important;stroke:var(--onb-cyan)!important;stroke-width:1.7!important;stroke-linecap:round!important}
+#ppOnb .onb-note{display:flex!important;gap:10px!important;align-items:flex-start!important;margin:14px 0 0!important;padding:12px 14px!important;border-radius:18px!important;background:rgba(0,245,255,.09)!important;border:1px solid rgba(0,245,255,.3)!important;font-size:14px!important;line-height:1.4!important;text-align:left!important;color:var(--onb-muted)!important}
+#ppOnb .onb-note b{color:#fff!important}
+#ppOnb .onb-note svg{flex:0 0 22px!important;width:22px!important;height:22px!important;fill:none!important;stroke:var(--onb-cyan)!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important;margin-top:1px!important}
+/* plans */
+#ppOnb .onb-plans{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:10px!important;margin:4px 0 12px!important}
+#ppOnb .onb-plan{position:relative!important;display:block!important;width:100%!important;min-width:0!important;min-height:104px!important;padding:16px 10px 12px!important;border-radius:20px!important;border:1.5px solid rgba(255,255,255,.16)!important;background:var(--onb-deep)!important;color:#fff!important;cursor:pointer!important;text-align:center!important;transition:border-color .15s,transform .15s!important}
+#ppOnb .onb-plan small{display:block!important;font-size:12.5px!important;font-weight:750!important;color:var(--onb-muted)!important;text-transform:uppercase!important;letter-spacing:.06em!important}
+#ppOnb .onb-plan strong{display:block!important;margin-top:6px!important;font-size:22px!important;font-weight:850!important;letter-spacing:-.02em!important}
+#ppOnb .onb-plan span{display:block!important;font-size:12.5px!important;color:var(--onb-muted)!important;margin-top:2px!important}
+#ppOnb .onb-plan[aria-checked=true]{border-color:var(--onb-cyan)!important;background:linear-gradient(160deg,rgba(0,245,255,.16),var(--onb-deep) 70%)!important;transform:translateY(-2px)!important;box-shadow:0 10px 26px -14px rgba(0,245,255,.9)!important}
+#ppOnb .onb-plan.best{border-color:rgba(0,245,255,.55)!important}
+#ppOnb .onb-flag{position:absolute!important;top:-11px!important;left:50%!important;transform:translateX(-50%)!important;white-space:nowrap!important;padding:3px 10px!important;border-radius:999px!important;background:var(--onb-grad)!important;color:#04121f!important;font-size:11.5px!important;font-weight:850!important;letter-spacing:.04em!important;text-transform:uppercase!important}
+#ppOnb .onb-trial{display:inline-flex!important;align-items:center!important;gap:6px!important;margin:0 0 6px!important;padding:6px 12px!important;border-radius:999px!important;background:rgba(0,245,255,.12)!important;border:1px solid rgba(0,245,255,.4)!important;font-size:13.5px!important;font-weight:750!important;color:#fff!important}
+#ppOnb .onb-price{margin:0!important;font-size:13px!important;color:var(--onb-muted)!important}
+#ppOnb .onb-msg{min-height:1.2em!important;margin-top:10px!important;font-size:14px!important;line-height:1.4!important;color:#fda4af!important;text-align:left!important}
+#ppOnb .onb-msg:empty{min-height:0!important;margin:0!important}
+#ppOnb .onb-msg.ok{color:#6ee7b7!important}
+#ppOnb .onb-foot{margin-top:10px!important;font-size:13px!important;color:var(--onb-muted)!important;line-height:1.45!important}
+#ppOnb .onb-foot a{color:var(--onb-cyan)!important;font-weight:700!important}
+#ppOnb .onb-actions{position:sticky!important;bottom:0!important;z-index:3!important;display:grid!important;gap:8px!important;margin:18px -18px 0!important;padding:12px 18px calc(12px + env(safe-area-inset-bottom))!important;background:linear-gradient(180deg,rgba(11,35,75,.85),var(--onb-navy) 30%)!important;-webkit-backdrop-filter:blur(6px)!important;backdrop-filter:blur(6px)!important;border-top:1px solid rgba(255,255,255,.08)!important}
+@media (max-height:700px){#ppOnb .onb-hero-logo{width:84px!important;height:84px!important;margin-bottom:10px!important}#ppOnb .onb-ill{width:72px!important;height:72px!important;margin:0 auto 8px!important}#ppOnb .onb-ill svg{width:38px!important;height:38px!important}#ppOnb h2{font-size:22px!important}#ppOnb .onb-sub{margin-bottom:12px!important}}
+/* 4) Biometrics offer v3: centered card, full fingerprint with pulsing rings, clean toggle row */
+#ppOnb.onb-center{justify-content:center!important;padding:24px 14px!important}
+#ppOnb.onb-center .onb-card{margin:auto 0!important;border-bottom:1px solid var(--onb-line)!important;border-radius:28px!important;padding-top:30px!important}
+#ppOnb.onb-center .onb-actions{margin:20px -18px 0!important;border-radius:0 0 28px 28px!important;padding-bottom:16px!important}
+#ppOnb .onb-fp{position:relative!important;width:120px!important;height:120px!important;margin:0 auto 18px!important;border-radius:50%!important;display:flex!important;align-items:center!important;justify-content:center!important;background:radial-gradient(circle at 35% 30%,rgba(0,245,255,.28),rgba(56,189,248,.12) 62%,rgba(56,189,248,.06))!important;border:1.5px solid rgba(0,245,255,.45)!important}
+#ppOnb .onb-fp span{position:absolute!important;inset:-1px!important;border-radius:50%!important;border:2px solid rgba(0,245,255,.5)!important;animation:onbPulse 2.4s ease-out infinite!important}
+#ppOnb .onb-fp span+span{animation-delay:1.2s!important}
+#ppOnb .onb-fp svg{width:62px!important;height:62px!important;fill:none!important;stroke:var(--onb-cyan)!important;stroke-width:1.6!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+@keyframes onbPulse{from{transform:scale(1);opacity:.8}to{transform:scale(1.45);opacity:0}}
+#ppOnb .onb-toggle-row{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin:6px 0 0!important;padding:12px 14px 12px 16px!important;min-height:56px!important;border-radius:18px!important;background:var(--onb-deep)!important;border:1px solid rgba(255,255,255,.12)!important;font-size:15px!important;font-weight:700!important;color:#fff!important;text-align:left!important;cursor:pointer!important}
+#ppOnb .onb-toggle-row input{position:absolute!important;opacity:0!important;width:1px!important;height:1px!important}
+#ppOnb .onb-toggle-row input:checked+.onb-track{background:var(--onb-cyan)!important;border-color:transparent!important}
+#ppOnb .onb-toggle-row input:checked+.onb-track::after{transform:translateX(20px)!important;background:#fff!important;box-shadow:0 1px 3px rgba(4,18,31,.45)!important}
+#ppOnb .onb-toggle-row input:focus-visible+.onb-track{box-shadow:0 0 0 3px rgba(0,245,255,.35)!important}
+@media (max-height:700px){#ppOnb .onb-fp{width:100px!important;height:100px!important;margin-bottom:14px!important}#ppOnb .onb-fp svg{width:52px!important;height:52px!important}}
+</style>
+<div id="ppOnb" role="dialog" aria-modal="true" aria-labelledby="ppOnbTitle">
+ <div class="onb-bg" aria-hidden="true"><i></i><i></i><svg viewBox="0 0 400 70" preserveAspectRatio="none"><path d="M0 40 C80 10 160 70 240 38 S360 20 400 34 V70 H0Z" fill="rgba(255,255,255,.08)"/><path d="M0 52 C90 30 170 74 260 50 S370 40 400 48 V70 H0Z" fill="rgba(0,245,255,.08)"/></svg></div>
+ <div class="onb-card" id="ppOnbCard">
+  <!-- 1) Welcome -->
+  <section data-onb="welcome">
+   <div class="onb-hero-logo"><img src="payaviator-v126-192.png" alt="PayAviator logo"></div>
+   <h2 id="ppOnbTitle">Take control of <em>every bill</em></h2>
+   <p class="onb-sub">Bills, paydays and spending in one calm cockpit.</p>
+   <ul class="onb-benefits onb-stagger">
+    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span><span><b>Never miss a due date</b>See every bill on one calendar.</span></li>
+    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18"/></svg></span><span><b>Link your bank, free</b>Your first bank syncs on us.</span></li>
+    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span><span><b>Private by design</b>Read-only access. Guest mode stays on your phone.</span></li>
+   </ul>
+   <div class="onb-actions">
+    <button type="button" class="onb-primary" data-onb-go="create">Create account</button>
+    <button type="button" class="onb-secondary" data-onb-go="signin">Sign in</button>
+    <button type="button" class="onb-link" data-onb-act="guest">Continue as guest</button>
+   </div>
+  </section>
+  <!-- 2) Create account -->
+  <section data-onb="create" hidden>
+   <button type="button" class="onb-back" data-onb-go="welcome" aria-label="Back">‹</button>
+   <div class="onb-ill"><svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M3 20c.8-3.6 3.6-6 7-6 1.4 0 2.7.4 3.8 1.1"/><path d="M18 14v6M15 17h6"/></svg><span class="onb-mini"><img src="payaviator-v126-192.png" alt=""></span></div>
+   <span class="onb-kicker">Free to start</span>
+   <h2>Let's get you <em>cleared for takeoff</em></h2>
+   <p class="onb-sub">Create your account in under a minute.</p>
+   <form id="ppOnbCreateForm" novalidate>
+    <label class="onb-field"><span>Email</span><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><input id="ppOnbNewEmail" type="email" placeholder="you@example.com" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false"></label>
+    <label class="onb-field"><span>Password</span><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input id="ppOnbNewPw" type="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8"><button type="button" class="onb-eye" data-onb-eye="ppOnbNewPw" aria-label="Show password">Show</button></label>
+    <label class="onb-field"><span>Confirm password</span><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M10 15l1.5 1.5L14 14"/></svg><input id="ppOnbNewPw2" type="password" placeholder="Type it again" autocomplete="new-password" minlength="8"><button type="button" class="onb-eye" data-onb-eye="ppOnbNewPw2" aria-label="Show password">Show</button></label>
+   </form>
+   <div class="onb-note"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><span><b>Check your inbox.</b> We'll email a link to verify your address. Verify it before you link a bank.</span></div>
+   <div class="onb-msg" data-onb-msg role="alert" aria-live="polite"></div>
+   <div class="onb-foot">By creating an account you agree to our <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</div>
+   <div class="onb-actions">
+    <button type="submit" form="ppOnbCreateForm" class="onb-primary">Create account</button>
+    <button type="button" class="onb-link" data-onb-go="signin">Have an account? Sign in</button>
+   </div>
+  </section>
+  <!-- 3) Sign in -->
+  <section data-onb="signin" hidden>
+   <button type="button" class="onb-back" data-onb-go="welcome" aria-label="Back">‹</button>
+   <div class="onb-ill"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+   <h2>Welcome <em>back</em></h2>
+   <p class="onb-sub">Sign in to sync your banks securely.</p>
+   <form id="ppOnbSignForm" novalidate>
+    <label class="onb-field"><span>Email</span><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><input id="ppOnbEmail" type="email" placeholder="you@example.com" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false"></label>
+    <label class="onb-field"><span>Password</span><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input id="ppOnbPw" type="password" placeholder="Your password" autocomplete="current-password"><button type="button" class="onb-eye" data-onb-eye="ppOnbPw" aria-label="Show password">Show</button></label>
+   </form>
+   <div class="onb-row">
+    <label class="onb-switch"><input type="checkbox" id="ppOnbSave"><span class="onb-track"></span>Save email</label>
+    <button type="button" class="onb-bio" data-onb-act="bioSignIn"><svg viewBox="0 0 24 24"><path d="M12 11v3"/><path d="M8.5 8.5a5 5 0 0 1 8.5 3.5v1"/><path d="M7 12v1a5 5 0 0 0 3 4.6"/><path d="M5 9a8 8 0 0 1 14 3v2"/><path d="M15 14.5c0 2-.6 3.8-1.6 5"/></svg>Biometrics</button>
+   </div>
+   <div class="onb-msg" data-onb-msg role="alert" aria-live="polite"></div>
+   <div class="onb-actions">
+    <button type="submit" form="ppOnbSignForm" class="onb-primary">Sign in</button>
+    <button type="button" class="onb-link" data-onb-act="forgot">Forgot password?</button>
+   </div>
+  </section>
+  <!-- 4) Biometrics offer -->
+  <section data-onb="bio" hidden>
+   <div class="onb-fp" aria-hidden="true"><span></span><span></span><svg viewBox="0 0 24 24"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg></div>
+   <h2 id="ppOnbBioTitle">Sign in <em>faster</em></h2>
+   <p class="onb-sub">Use your fingerprint or face next time.</p>
+   <label class="onb-toggle-row"><span>Also save my email</span><input type="checkbox" id="ppOnbBioSave" checked><span class="onb-track"></span></label>
+   <div class="onb-msg" data-onb-msg role="alert" aria-live="polite"></div>
+   <div class="onb-actions">
+    <button type="button" class="onb-primary" data-onb-act="bioOn">Turn on</button>
+    <button type="button" class="onb-secondary" data-onb-act="bioSkip">Not now</button>
+   </div>
+  </section>
+  <!-- 5) Guest → sign up -->
+  <section data-onb="guest" hidden>
+   <button type="button" class="onb-close" data-onb-act="close" aria-label="Close">×</button>
+   <div class="onb-ill"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8"/><path d="M3 20h18"/></svg></div>
+   <h2>Bring your bank <em>on board</em></h2>
+   <p class="onb-sub">Linking a bank needs a free account so your data stays private to you.</p>
+   <ul class="onb-benefits onb-stagger">
+    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M20 12v8H4v-8"/><rect x="2" y="7" width="20" height="5" rx="1"/><path d="M12 20V7"/><path d="M12 7c-2-4-6-3-5 0M12 7c2-4 6-3 5 0"/></svg></span><span><b>Your first bank is free</b>Balances and transactions sync automatically.</span></li>
+    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span><span><b>Nothing is lost</b>Your bills, income and spending stay on this phone.</span></li>
+   </ul>
+   <div class="onb-actions">
+    <button type="button" class="onb-primary" data-onb-go="create">Sign up with email</button>
+    <button type="button" class="onb-secondary" data-onb-go="signin">I have an account</button>
+    <button type="button" class="onb-link" data-onb-act="close">Keep using as guest</button>
+   </div>
+  </section>
+  <!-- 6) Upgrade -->
+  <section data-onb="upgrade" hidden>
+   <button type="button" class="onb-close" data-onb-act="close" aria-label="Close">×</button>
+   <div class="onb-ill"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/><path d="M5 2.5l.6 1.4L7 4.5l-1.4.6L5 6.5l-.6-1.4L3 4.5l1.4-.6z"/></svg><span class="onb-mini"><img src="payaviator-v126-192.png" alt=""></span></div>
+   <h2>Fly with <em>every account</em></h2>
+   <p class="onb-sub">Your first bank is free. PayAviator Plus links your second bank and more.</p>
+   <ul class="onb-benefits onb-stagger" style="margin-bottom:16px!important">
+    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18"/></svg></span><span><b>Link more banks</b>All your accounts in one view.</span></li>
+    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg></span><span><b>The full picture</b>Every balance in Available now and the Snapshot.</span></li>
+   </ul>
+   <div class="onb-plans" role="radiogroup" aria-label="Choose a plan">
+    <button type="button" class="onb-plan" role="radio" aria-checked="true" data-onb-plan="mo"><small>Monthly</small><strong data-onb-amt="mo"></strong><span>per month</span></button>
+    <button type="button" class="onb-plan best" role="radio" aria-checked="false" data-onb-plan="yr"><span class="onb-flag">Best value</span><small>Yearly</small><strong data-onb-amt="yr"></strong><span data-onb-save>per year</span></button>
+   </div>
+   <span class="onb-trial">✦ 7-day free trial</span>
+   <p class="onb-price" id="ppOnbPrice"></p>
+   <div class="onb-foot" id="ppOnbPriceFine"></div>
+   <div class="onb-msg" data-onb-msg role="alert" aria-live="polite"></div>
+   <div class="onb-actions">
+    <button type="button" class="onb-primary" data-onb-act="subscribe">Start my free trial</button>
+    <button type="button" class="onb-link" data-onb-act="restore">Restore purchase</button>
+   </div>
+  </section>
+ </div>
+</div>
+<script id="payaviator-onb-js">
+(function(){
+'use strict';
+/* PRICE placeholders: the boss hasn't picked yet ($2.99/mo, $3.99/mo or $29.99/yr). Set with setPrice(amount,'mo'|'yr'). */
+const PRICES={mo:'$X.XX',yr:'$XX.XX'};
+let plan='mo';
+const SHOW_ON_LAUNCH=false;            /* design-only build: Lucky turns this on when wiring the real flow */
+const CHOICE_KEY='payaviator_onboarding_choice_v1', SAVED_EMAIL_KEY='payaviator_saved_email_v1';
+const $=id=>document.getElementById(id), root=$('ppOnb');
+const mock=(name)=>(...a)=>{console.info('[PayAviatorAuthScreens mock]',name);return Promise.resolve({ok:true,mock:true})};
+const hooks={
+  createAccount:mock('createAccount'),            // (email,password) → Firebase createUserWithEmailAndPassword + sendEmailVerification
+  signIn:mock('signIn'),                          // (email,password,{saveEmail}) → Firebase signInWithEmailAndPassword
+  biometricSignIn:mock('biometricSignIn'),        // () → Android BiometricPrompt, then restore session
+  forgotPassword:mock('forgotPassword'),          // (email) → Firebase sendPasswordResetEmail
+  enableBiometrics:mock('enableBiometrics'),      // ({saveEmail}) → enroll BiometricPrompt key
+  skipBiometrics:mock('skipBiometrics'),          // ()
+  continueAsGuest:mock('continueAsGuest'),        // () → local-only mode
+  startSubscription:mock('startSubscription'),    // ({amount,period}) → Google Play Billing launchBillingFlow, then Lucian's verify endpoint
+  restorePurchase:mock('restorePurchase'),        // () → Play queryPurchases + Lucian's verify endpoint
+  onClose:mock('onClose')                         // (screen)
+};
+let cur=null;
+function msg(t,ok){const m=root.querySelector(`section[data-onb="${cur}"] [data-onb-msg]`);if(m){m.textContent=t||'';m.classList.toggle('ok',!!ok)}}
+const per=p=>p==='yr'?'year':'month';
+function renderPrice(){
+  root.querySelectorAll('[data-onb-amt]').forEach(e=>e.textContent=PRICES[e.dataset.onbAmt]);
+  root.querySelectorAll('[data-onb-plan]').forEach(b=>b.setAttribute('aria-checked',String(b.dataset.onbPlan===plan)));
+  const m=parseFloat(PRICES.mo.replace(/[^\d.]/g,'')),y=parseFloat(PRICES.yr.replace(/[^\d.]/g,''));
+  root.querySelector('[data-onb-save]').textContent=(m>0&&y>0&&y<m*12)?`per year · save ${Math.round((1-y/(m*12))*100)}%`:'per year';
+  $('ppOnbPrice').textContent=`Selected: ${PRICES[plan]} / ${per(plan)}`;
+  $('ppOnbPriceFine').textContent=`Free for 7 days, then ${PRICES[plan]} per ${per(plan)}. Renews automatically until you cancel in Google Play.`}
+function show(name){
+  if(!root.querySelector(`section[data-onb="${name}"]`))return false;
+  cur=name;root.classList.add('onb-center');root.querySelectorAll('section[data-onb]').forEach(s=>s.hidden=s.dataset.onb!==name);
+  if(name==='upgrade')renderPrice();
+  if(name==='signin'){const e=localStorage.getItem(SAVED_EMAIL_KEY);$('ppOnbSave').checked=!!e;if(e&&!$('ppOnbEmail').value)$('ppOnbEmail').value=e}
+  msg('');root.classList.add('show');document.body.classList.add('ppOnb-open');root.scrollTop=0;
+  try{window.PayAviatorSheetBack&&window.PayAviatorSheetBack.install()}catch(_){}
+  return true}
+function close(){const was=cur;root.classList.remove('show');document.body.classList.remove('ppOnb-open');cur=null;try{window.PayAviatorSheetBack&&window.PayAviatorSheetBack.remove()}catch(_){}if(was)hooks.onClose(was)}
+const isOpen=()=>root.classList.contains('show');
+const validEmail=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+root.addEventListener('click',e=>{
+  const eye=e.target.closest('[data-onb-eye]');
+  if(eye){e.preventDefault();const i=$(eye.dataset.onbEye);const sh=i.type==='password';i.type=sh?'text':'password';eye.textContent=sh?'Hide':'Show';eye.setAttribute('aria-label',sh?'Hide password':'Show password');return}
+  const pl=e.target.closest('[data-onb-plan]');if(pl){plan=pl.dataset.onbPlan;renderPrice();return}
+  const go=e.target.closest('[data-onb-go]');if(go){e.preventDefault();show(go.dataset.onbGo);return}
+  const a=e.target.closest('[data-onb-act]');if(!a)return;e.preventDefault();
+  switch(a.dataset.onbAct){
+    case 'close':close();break;
+    case 'guest':localStorage.setItem(CHOICE_KEY,'guest');hooks.continueAsGuest().then(close);break;
+    case 'forgot':{const v=$('ppOnbEmail').value.trim();if(!validEmail(v)){msg('Enter your email above, then tap Forgot password.');break}hooks.forgotPassword(v).then(()=>msg('If an account exists for that email, a reset link is on its way.',true));break}
+    case 'bioSignIn':hooks.biometricSignIn().then(r=>r.ok?msg('Signed in with biometrics (preview).',true):msg(r.error||'Biometrics did not work. Use your password.'));break;
+    case 'bioOn':{const s=$('ppOnbBioSave').checked;hooks.enableBiometrics({saveEmail:s}).then(r=>{if(r.ok)close();else msg(r.error||'Could not turn on biometrics.')});break}
+    case 'bioSkip':hooks.skipBiometrics().then(close);break;
+    case 'subscribe':a.disabled=true;hooks.startSubscription({amount:PRICES[plan],period:plan}).then(r=>{a.disabled=false;r.ok?msg('Trial started (preview). You can link another bank now.',true):msg(r.error||'Purchase was not completed.')});break;
+    case 'restore':hooks.restorePurchase().then(r=>r.ok?msg('Purchase check finished (preview).',true):msg(r.error||'No purchase found for this Google account.'));break;
+  }
+});
+$('ppOnbCreateForm').addEventListener('submit',e=>{e.preventDefault();
+  const em=$('ppOnbNewEmail').value.trim(),p=$('ppOnbNewPw').value,p2=$('ppOnbNewPw2').value;
+  if(!validEmail(em))return msg('Enter a valid email.');
+  if(p.length<8)return msg('Use at least 8 characters for your password.');
+  if(p!==p2)return msg('Passwords don\'t match.');
+  hooks.createAccount(em,p).then(r=>{if(!r.ok)return msg(r.error||'Could not create your account.');localStorage.setItem(CHOICE_KEY,'account');$('ppOnbNewPw').value=$('ppOnbNewPw2').value='';$('ppOnbBioSave').checked=true;show('bio')})});
+$('ppOnbSignForm').addEventListener('submit',e=>{e.preventDefault();
+  const em=$('ppOnbEmail').value.trim(),p=$('ppOnbPw').value,save=$('ppOnbSave').checked;
+  if(!validEmail(em))return msg('Enter a valid email.');if(!p)return msg('Enter your password.');
+  hooks.signIn(em,p,{saveEmail:save}).then(r=>{if(!r.ok)return msg(r.error||'Sign-in failed. Please try again.');
+    if(save)localStorage.setItem(SAVED_EMAIL_KEY,em);else localStorage.removeItem(SAVED_EMAIL_KEY);
+    localStorage.setItem(CHOICE_KEY,'account');$('ppOnbPw').value='';close()})});
+try{window.PayAviatorSheetBack&&window.PayAviatorSheetBack.register('onboarding',isOpen,()=>{if(['create','signin'].includes(cur)&&localStorage.getItem(CHOICE_KEY)==null)show('welcome');else close()},0)}catch(_){}
+window.PayAviatorAuthScreens={
+  hooks,
+  setHooks(o){Object.keys(o||{}).forEach(k=>{if(k in hooks&&typeof o[k]==='function')hooks[k]=o[k]})},
+  show, close, isOpen, current:()=>cur,
+  showWelcome:()=>show('welcome'),
+  showGuestLinkPrompt:()=>show('guest'),      // call when a guest taps Connect bank
+  showUpgrade:()=>show('upgrade'),            // call on Lucian's SUBSCRIPTION_REQUIRED error
+  showBiometricsOffer:()=>show('bio'),
+  setPrice(amount,period){const k=period==='yr'?'yr':'mo';PRICES[k]=String(amount);plan=k;if(cur==='upgrade')renderPrice()},
+  getPrice:()=>({amount:PRICES[plan],period:plan,prices:Object.assign({},PRICES)}),
+  SHOW_ON_LAUNCH
+};
+/* Preview: index.html?authscreens=welcome|create|signin|bio|guest|upgrade */
+const q=new URLSearchParams(location.search).get('authscreens');
+if(q)show(q);
+else if(SHOW_ON_LAUNCH&&localStorage.getItem(CHOICE_KEY)==null&&!(window.PayAviatorAuth&&window.PayAviatorAuth.isSignedIn()))show('welcome');
+})();
+</script>
 </body>
 
 <script>
