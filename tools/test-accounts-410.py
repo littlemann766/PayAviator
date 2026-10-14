@@ -77,11 +77,11 @@ with sync_playwright() as p:
         e=pg.evaluate("window.PayAviatorBankApi('/api/plaid/create-link-token',{method:'POST',body:'{}'}).then(()=>null,e=>[e.code,e.message])"); pg.wait_for_timeout(200)
         check('403 -> friendly message + Verify dialog',e and e[0]=='EMAIL_NOT_VERIFIED' and isopen(pg,'pa410VerifyDlg'),e); shot(pg,'verify')
         pg.locator('[data-pa410-verify="send"]').tap(); pg.wait_for_timeout(300)
-        check('Send verification calls native',['NATIVE','sendVerify'] in pg.evaluate("__mock.calls") and 'inbox' in pg.inner_text('#pa410VerifyStatus'))
+        check('Send verification calls native',['NATIVE','sendVerify'] in pg.evaluate("__mock.calls") and 'newest email' in pg.inner_text('#pa410VerifyStatus'))
         pg.locator('[data-pa410-verify="done"]').tap(); pg.wait_for_timeout(300)
         check('not verified yet keeps dialog open',isopen(pg,'pa410VerifyDlg') and 'isn' in pg.inner_text('#pa410VerifyStatus'))
         pg.evaluate("__mock.emailVerified=true"); pg.locator('[data-pa410-verify="done"]').tap(); pg.wait_for_timeout(300); vmsg=pg.inner_text('#pa410VerifyStatus'); pg.wait_for_timeout(1600)
-        check('verified -> reload/refresh token natively, confirms, dialog closes','verified.' in vmsg and pg.evaluate("__mock.calls.filter(x=>x[1]==='reload').length")==2 and not isopen(pg,'pa410VerifyDlg'))
+        check('verified -> reload/refresh token natively, confirms, dialog closes','verified.' in vmsg and pg.evaluate("__mock.calls.filter(x=>x[1]==='reload').length")==3 and not isopen(pg,'pa410VerifyDlg'))
         ok_btn=pg.get_by_role('button',name='OK')
         if ok_btn.count() and ok_btn.first.is_visible(): ok_btn.first.click(); pg.wait_for_timeout(300)
         msgs={}

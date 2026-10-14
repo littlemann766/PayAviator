@@ -26050,7 +26050,7 @@ else if(SHOW_ON_LAUNCH&&localStorage.getItem(CHOICE_KEY)==null&&!(window.PayAvia
 <p class="pa410-status" id="pa410VerifyStatus" role="status"></p>
 <div class="form-actions">
 <button class="primary" type="button" data-pa410-verify="send">Send verification email</button>
-<button type="button" data-pa410-verify="done">I've verified my email</button>
+<button type="button" data-pa410-verify="done">I verified, continue</button>
 <button type="button" data-pa410-close="pa410VerifyDlg">Not now</button>
 </div></div></dialog>
 <script id="pa-410-accounts-js">
@@ -26176,21 +26176,39 @@ function openUpgrade(reason){
   refreshStatus();
 }
 /* ---- email verification ---- */
+/* 4.1.3: every send makes a new link and kills the older ones, so send only on an explicit tap, with a
+   60s cooldown. "I verified, continue" (and app resume) reloads the user + force-refreshes the ID token,
+   then retries Connect bank so the backend sees email_verified=true. */
+const VERIFY_COOLDOWN_MS=60000;let lastVerifySend=0,verifyRetryArmed=false;
 function openVerify(){$('pa410VerifyStatus').textContent='';show('pa410VerifyDlg')}
+function retryConnect(){if(typeof window.PayAviatorConnectBank==='function'){window.PayAviatorConnectBank();return}const b=document.querySelector('#pp920ConnectBank,[data-pp920-connect],[data-pp-connect-bank]');if(b){connectTap=Date.now();b.click()}}
+async function reloadVerified(){const r=await nativeCall('authReloadUser');return{r,v:!!(r.state?r.state.emailVerified:(auth()&&auth().getState().emailVerified))}}
 async function verifyAction(kind){
   const st=$('pa410VerifyStatus');
-  if(kind==='send'){st.textContent='Sending…';const r=await nativeCall('authSendEmailVerification');
-    st.textContent=r.ok?'Check your inbox for the verification link, then come back and tap "I\'ve verified my email".':(r.error||'Could not send the email. Try again.');return}
+  if(kind==='send'){
+    const wait=VERIFY_COOLDOWN_MS-(Date.now()-lastVerifySend);
+    if(wait>0){st.textContent='We just sent a link. Use the newest email; you can resend in '+Math.ceil(wait/1000)+'s.';return}
+    lastVerifySend=Date.now();st.textContent='Sending…';const r=await nativeCall('authSendEmailVerification');
+    if(!r.ok)lastVerifySend=0;
+    st.textContent=r.ok?'Sent. Open the link in the newest email (older links stop working), then tap "I verified, continue".':(r.error||'Could not send the email. Try again.');return}
   st.textContent='Checking…';
-  const r=await nativeCall('authReloadUser');   // reloads the user and force-refreshes the Firebase ID token natively
-  const v=!!(r.state?r.state.emailVerified:(auth()&&auth().getState().emailVerified));
-  if(r.ok&&v){st.textContent='Email verified. Tap Connect a bank again.';setTimeout(()=>hide('pa410VerifyDlg'),1500)}
-  else st.textContent=r.ok||r.code==='AUTH_UNAVAILABLE'?'Your email isn\'t verified yet. Open the link in the email, then try again.':(r.error||'Could not check. Try again.');
+  const {r,v}=await reloadVerified();
+  if(r.ok&&v){st.textContent='Email verified. Opening your bank…';setTimeout(()=>{hide('pa410VerifyDlg');retryConnect()},600)}
+  else st.textContent=r.ok||r.code==='AUTH_UNAVAILABLE'?'Your email isn\'t verified yet. Open the link in the newest email, then try again.':(r.error||'Could not check. Try again.');
 }
+/* App resume: a user who verified in the mail app comes back with a stale token, so refresh it. */
+document.addEventListener('visibilitychange',async()=>{
+  if(document.visibilityState!=='visible')return;const a=auth();if(!a||!a.isSignedIn())return;const st=a.getState();
+  const wasOpen=!!$('pa410VerifyDlg').open;if(st.emailVerified&&!wasOpen)return;
+  const {r,v}=await reloadVerified();
+  if(r.ok&&v&&wasOpen){$('pa410VerifyStatus').textContent='Email verified. Opening your bank…';setTimeout(()=>{hide('pa410VerifyDlg');retryConnect()},600)}
+});
 /* ---- gate errors from new-bank calls (create-link-token, exchange, hosted-status) ---- */
 function handle(err,body){
   const code=String(err&&err.code||'').toUpperCase();
-  if(code==='EMAIL_NOT_VERIFIED'){const st=auth()&&auth().getState();if(st&&st.provider==='google'){err.message='Please try again in a moment.';nativeCall('authReloadUser');return true}err.message='Verify your email to link a bank.';setTimeout(openVerify,0);return true}
+  if(code==='EMAIL_NOT_VERIFIED'){const st=auth()&&auth().getState();if(st&&st.provider==='google'){err.message='Please try again in a moment.';nativeCall('authReloadUser');return true}/* Token may predate the click on the link: refresh once and retry before asking. */
+    if(!verifyRetryArmed){verifyRetryArmed=true;err.message='Checking your email verification…';reloadVerified().then(({r,v})=>{if(r.ok&&v)retryConnect();else{verifyRetryArmed=false;openVerify()}},()=>{verifyRetryArmed=false;openVerify()});return true}
+    verifyRetryArmed=false;err.message='Verify your email to link a bank.';setTimeout(openVerify,0);return true}
   if(code==='SUBSCRIPTION_REQUIRED'){const r=String((body&&body.reason)||'');err.reason=r;err.message=(REASONS[r]||REASONS['']).split('.')[0]+'.';setTimeout(()=>openUpgrade(r),0);return true}
   if(code==='DEVICE_ID_REQUIRED'||code==='DEVICE_ID_INVALID'){err.message='Please update PayAviator from Google Play to link a bank.';return true}
   if(code==='INTEGRITY_FAILED'){err.reason='integrity_failed';err.message=REASONS.integrity_failed;setTimeout(()=>openUpgrade('integrity_failed'),0);return true}
