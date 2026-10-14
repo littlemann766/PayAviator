@@ -96,8 +96,9 @@ with sync_playwright() as p:
             shot(pg,'upgrade-'+(reason or 'limit'))
             vis=pg.evaluate("()=>{const q=s=>{const e=document.querySelector(s);return !!e&&e.getClientRects().length>0};return {plans:q('#ppOnb .onb-plans'),price:q('#ppOnbPrice'),fine:q('#ppOnbPriceFine'),trial:q('#ppOnb .onb-trial')}}")
             txt=pg.inner_text('#ppOnb section[data-onb="upgrade"]')
-            check(f'no price shown ({reason or "none"})',not any(vis.values()) and '$' not in txt and 'trial' not in txt.lower(),[vis,txt[:200]])
-            check('Subscriptions coming soon, button disabled','Subscriptions coming soon' in txt and pg.evaluate("document.querySelector('#ppOnb [data-onb-act=subscribe]').disabled"))
+            # 4.1.3 (boss-approved): prices always show, no trial, "Plus is coming soon." once, button "Upgrade" disabled
+            check(f'prices shown, no trial ({reason or "none"})',vis['plans'] and '$3.99' in txt and '$29.99' in txt and not vis['trial'] and 'trial' not in txt.lower(),[vis,txt[:200]])
+            check('Plus is coming soon (once), Upgrade button disabled','Plus is coming soon.' in txt and txt.lower().count('coming soon')==1 and pg.evaluate("(b=>b.disabled&&b.innerText.trim()=='Upgrade')(document.querySelector('#ppOnb [data-onb-act=subscribe]'))"),txt[-200:])
             pg.evaluate("window.payAviatorHandleAndroidBack()"); pg.wait_for_timeout(300)
             check('Back closes upgrade',not onb(pg)=='upgrade')
         check('three distinct reason messages',len(set(msgs.values()))==3,msgs)

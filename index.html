@@ -128,7 +128,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='4.1.2';
+  const BUNDLED_VERSION='4.1.3';
   const code=n=>{const p=String(n||'').replace(/^Version:\s*/i,'').trim().split('.').map(Number);return p.length===3&&p.every(Number.isFinite)?p[0]*10000+p[1]*100+p[2]:0};
   const S={name:BUNDLED_VERSION,code:code(BUNDLED_VERSION)};
   function paint(root=document){
@@ -25808,7 +25808,7 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
   <section data-onb="welcome">
    <div class="onb-hero-logo"><img src="payaviator-v126-192.png" alt="PayAviator logo"></div>
    <h2 id="ppOnbTitle">Take control of <em>every bill</em></h2>
-   <p class="onb-sub">Bills, paydays and spending in one calm cockpit.</p>
+   <p class="onb-sub">Bills, paydays and spending, all in one place.</p>
    <ul class="onb-benefits onb-stagger">
     <li><span class="onb-bi"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span><span><b>Never miss a due date</b>See every bill on one calendar.</span></li>
     <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18"/></svg></span><span><b>Link your bank, free</b>Your first bank syncs on us.</span></li>
@@ -25827,7 +25827,7 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
    <button type="button" class="onb-back" data-onb-go="welcome" aria-label="Back">‹</button>
    <div class="onb-ill"><svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M3 20c.8-3.6 3.6-6 7-6 1.4 0 2.7.4 3.8 1.1"/><path d="M18 14v6M15 17h6"/></svg><span class="onb-mini"><img src="payaviator-v126-192.png" alt=""></span></div>
    <span class="onb-kicker">Free to start</span>
-   <h2>Let's get you <em>cleared for takeoff</em></h2>
+   <h2>Create your <em>free account</em></h2>
    <p class="onb-sub">Create your account in under a minute.</p>
    <form id="ppOnbCreateForm" novalidate>
     <label class="onb-field"><span>Email</span><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><input id="ppOnbNewEmail" type="email" placeholder="you@example.com" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false"></label>
@@ -25899,25 +25899,24 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
    </div>
   </section>
   <!-- 6) Upgrade -->
-  <section data-onb="upgrade" hidden>
+  <section data-onb="upgrade" class="upg" hidden>
    <button type="button" class="onb-close" data-onb-act="close" aria-label="Close">×</button>
-   <div class="onb-ill"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/><path d="M5 2.5l.6 1.4L7 4.5l-1.4.6L5 6.5l-.6-1.4L3 4.5l1.4-.6z"/></svg><span class="onb-mini"><img src="payaviator-v126-192.png" alt=""></span></div>
-   <h2>Fly with <em>every account</em></h2>
-   <p class="onb-sub">Your first bank is free. PayAviator Plus links your second bank and more.</p>
-   <ul class="onb-benefits onb-stagger" style="margin-bottom:16px!important">
-    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18"/></svg></span><span><b>Link more banks</b>All your accounts in one view.</span></li>
-    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg></span><span><b>The full picture</b>Every balance in Available now and the Snapshot.</span></li>
+   <div class="upg-hero"><span class="upg-logo"><img src="payaviator-v126-192.png" alt=""></span><span class="upg-tag">PayAviator Plus</span></div>
+   <h2>Link <em>every account</em></h2>
+   <p class="onb-sub upg-sub"><span class="upg-free">✓ Your first bank is free.</span><span class="upg-rest"> Plus connects your second bank and more.</span></p>
+   <ul class="upg-perks">
+    <li><b>Unlimited banks</b> in one view</li>
+    <li><b>Every balance</b> in Available now &amp; Snapshot</li>
    </ul>
-   <div class="onb-plans" role="radiogroup" aria-label="Choose a plan">
-    <button type="button" class="onb-plan" role="radio" aria-checked="true" data-onb-plan="mo"><small>Monthly</small><strong data-onb-amt="mo"></strong><span>per month</span></button>
-    <button type="button" class="onb-plan best" role="radio" aria-checked="false" data-onb-plan="yr"><span class="onb-flag">Best value</span><small>Yearly</small><strong data-onb-amt="yr"></strong><span data-onb-save>per year</span></button>
+   <div class="onb-plans upg-plans" role="radiogroup" aria-label="Choose a plan">
+    <button type="button" class="onb-plan upg-plan" role="radio" aria-checked="true" data-onb-plan="mo"><small>Monthly</small><strong data-onb-amt="mo"></strong><span>per month</span><em class="upg-note">Billed monthly</em></button>
+    <button type="button" class="onb-plan upg-plan best" role="radio" aria-checked="false" data-onb-plan="yr"><span class="onb-flag"></span><small>Yearly</small><strong data-onb-amt="yr"></strong><span data-onb-save>per year</span><em class="upg-note">Billed yearly</em></button>
    </div>
-   <span class="onb-trial">✦ 7-day free trial</span>
-   <p class="onb-price" id="ppOnbPrice"></p>
-   <div class="onb-foot" id="ppOnbPriceFine"></div>
+   <label class="upg-agree"><input type="checkbox" id="ppOnbAgree"> <span>I agree to the <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer">Terms &amp; Privacy Policy</a></span></label>
+   <div class="onb-foot upg-fine" id="ppOnbPriceFine"></div>
    <div class="onb-msg" data-onb-msg role="alert" aria-live="polite"></div>
    <div class="onb-actions">
-    <button type="button" class="onb-primary" data-onb-act="subscribe">Start my free trial</button>
+    <button type="button" class="onb-primary" data-onb-act="subscribe">Subscribe</button>
     <button type="button" class="onb-link" data-onb-act="restore">Restore purchase</button>
    </div>
   </section>
@@ -25929,9 +25928,12 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
 /* PRICE placeholders: the boss hasn't picked yet ($3.99/mo or $29.99/yr; the wired values below win). Set with setPrice(amount,'mo'|'yr'). */
 const PRICES={mo:'$X.XX',yr:'$XX.XX'};
 let plan='mo';
+/* 4.1.3: phone sign-in is on hold. Set PHONE_SIGNIN=true to bring the Phone buttons back. */
+const PHONE_SIGNIN=false;
 const SHOW_ON_LAUNCH=false;            /* design-only build: Lucky turns this on when wiring the real flow */
 const CHOICE_KEY='payaviator_onboarding_choice_v1', SAVED_EMAIL_KEY='payaviator_saved_email_v1';
 const $=id=>document.getElementById(id), root=$('ppOnb');
+if(root)root.classList.toggle('pa413-nophone',!PHONE_SIGNIN);
 const mock=(name)=>(...a)=>{console.info('[PayAviatorAuthScreens mock]',name);return Promise.resolve({ok:true,mock:true})};
 const hooks={
   createAccount:mock('createAccount'),            // (email,password) → Firebase createUserWithEmailAndPassword + sendEmailVerification
@@ -25955,9 +25957,9 @@ function renderPrice(){
   const m=parseFloat(PRICES.mo.replace(/[^\d.]/g,'')),y=parseFloat(PRICES.yr.replace(/[^\d.]/g,''));
   const pct=(m>0&&y>0&&y<m*12)?Math.floor((1-y/(m*12))*100):0;   /* $29.99 vs $3.99 x 12 = 37% */
   root.querySelector('[data-onb-save]').textContent='per year';
-  const flag=root.querySelector('[data-onb-plan="yr"] .onb-flag');if(flag)flag.textContent=pct>0?`Save ${pct}%`:'Best value';
-  $('ppOnbPrice').textContent=`Selected: ${PRICES[plan]} / ${per(plan)}`;
-  $('ppOnbPriceFine').textContent=`Free for 7 days, then ${PRICES[plan]} per ${per(plan)}. Renews automatically until you cancel in Google Play.`}
+  const flag=root.querySelector('[data-onb-plan="yr"] .onb-flag');if(flag){flag.textContent=pct>0?`Save ${pct}%`:'';flag.hidden=!(pct>0)}
+  const live=root.classList.contains('pa413-live'),ag=$('ppOnbAgree');if(ag)ag.disabled=!live;
+  $('ppOnbPriceFine').textContent=live?`${PRICES[plan]} per ${per(plan)}, renews until you cancel in Google Play. Cancel anytime.`:'Plus is coming soon.'}
 function show(name){
   if(!root.querySelector(`section[data-onb="${name}"]`))return false;
   if(name==='welcome')fromWelcome=true;else if(!isOpen())fromWelcome=false;
@@ -25985,7 +25987,7 @@ root.addEventListener('click',e=>{
     case 'bioSignIn':hooks.biometricSignIn().then(r=>r.ok?msg('Signed in with biometrics (preview).',true):msg(r.error||'Biometrics did not work. Use your password.'));break;
     case 'bioOn':{const s=$('ppOnbBioSave').checked;hooks.enableBiometrics({saveEmail:s}).then(r=>{if(r.ok)close();else msg(r.error||'Could not turn on biometrics.')});break}
     case 'bioSkip':hooks.skipBiometrics().then(close);break;
-    case 'subscribe':a.disabled=true;hooks.startSubscription({amount:PRICES[plan],period:plan}).then(r=>{a.disabled=false;r.ok?msg('Trial started (preview). You can link another bank now.',true):msg(r.error||'Purchase was not completed.')});break;
+    case 'subscribe':if(!$('ppOnbAgree').checked){msg('Please tick the agree box first.');break}a.disabled=true;hooks.startSubscription({amount:PRICES[plan],period:plan}).then(r=>{a.disabled=false;r.ok?msg('Plus is active (preview). You can link another bank now.',true):msg(r.error||'Purchase was not completed.')});break;
     case 'restore':hooks.restorePurchase().then(r=>r.ok?msg('Purchase check finished (preview).',true):msg(r.error||'No purchase found for this Google account.'));break;
   }
 });
@@ -26041,8 +26043,57 @@ else if(SHOW_ON_LAUNCH&&localStorage.getItem(CHOICE_KEY)==null&&!(window.PayAvia
 .pa410-dlg .form-actions button{width:100%;min-height:48px!important;height:auto!important;padding:12px 14px!important;flex:0 0 auto!important}
 .pa410-dlg{max-height:92vh;overflow:auto}
 #ppOnb .pa410-reason{margin:0 0 10px;font-weight:600}
-#ppOnb.pa410-nosell .onb-plans,#ppOnb.pa410-nosell .onb-trial,#ppOnb.pa410-nosell #ppOnbPrice,#ppOnb.pa410-nosell #ppOnbPriceFine,#ppOnb.pa410-nosell [data-onb-act="restore"]{display:none!important}
+#ppOnb.pa410-nosell [data-onb-act="restore"]{display:none!important}
 #ppOnb .pa410-soon{margin:6px 0 12px;font-weight:800;font-size:1.05rem;text-align:center}
+/* 4.1.3 Upgrade (Plus) redesign: original palette, side-by-side plans that shrink (never stack) at large text. */
+#ppOnb .upg{--u-navy:#0d2a55;--u-navy2:#173f79;--u-cyan:#16e4ea;--u-green:#3ddc97;--u-amber:#fbbf24;text-align:center!important}
+#ppOnb .upg .upg-hero{display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;margin:2px 44px 10px!important}
+#ppOnb .upg .upg-logo{width:34px!important;height:34px!important;flex:0 0 34px!important;border-radius:50%!important;overflow:hidden!important;border:2px solid var(--u-cyan)!important;box-shadow:0 0 18px -4px var(--u-cyan)!important}
+#ppOnb .upg .upg-logo img{width:100%!important;height:100%!important;display:block!important}
+#ppOnb .upg .upg-tag{padding:4px 12px!important;border-radius:999px!important;background:linear-gradient(135deg,rgba(22,228,234,.22),rgba(61,220,151,.22))!important;border:1px solid rgba(22,228,234,.5)!important;color:#fff!important;font-size:12.5px!important;font-weight:800!important;letter-spacing:.06em!important;text-transform:uppercase!important;white-space:nowrap!important}
+#ppOnb .upg h2{margin:0 8px 6px!important;font-size:26px!important}
+#ppOnb .upg h2 em{background:linear-gradient(90deg,var(--u-cyan),var(--u-green))!important;-webkit-background-clip:text!important;background-clip:text!important}
+#ppOnb .upg .pa410-reason{margin:0 0 6px!important;font-size:14px!important;font-weight:600!important;color:rgba(255,255,255,.86)!important}
+#ppOnb .upg .upg-sub{margin:0 0 10px!important;font-size:14.5px!important}
+#ppOnb .upg .upg-free{color:var(--u-green)!important;font-weight:800!important}
+#ppOnb .upg .upg-perks{list-style:none!important;margin:0 0 14px!important;padding:0!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}
+#ppOnb .upg .upg-perks li{min-width:0!important;padding:8px 8px!important;border-radius:14px!important;background:rgba(22,228,234,.08)!important;border:1px solid rgba(22,228,234,.22)!important;font-size:12.5px!important;line-height:1.3!important;color:rgba(255,255,255,.8)!important;overflow-wrap:anywhere!important}
+#ppOnb .upg .upg-perks b{display:block!important;color:var(--u-cyan)!important;font-size:13.5px!important}
+#ppOnb .upg .upg-plans{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:10px!important;margin:12px 0 10px!important;align-items:stretch!important}
+#ppOnb .upg .upg-plan{container-type:inline-size!important;min-height:0!important;padding:18px 6px 12px!important;border-radius:20px!important;background:linear-gradient(165deg,var(--u-navy2),var(--u-navy) 75%)!important;border:2px solid rgba(22,228,234,.35)!important;overflow:visible!important}
+#ppOnb .upg .upg-plan[aria-checked=true]{border-color:var(--u-cyan)!important;background:linear-gradient(165deg,rgba(22,228,234,.28),var(--u-navy2) 45%,var(--u-navy))!important;box-shadow:0 10px 26px -12px rgba(22,228,234,.9)!important}
+#ppOnb .upg .upg-plan.best{border-color:rgba(22,228,234,.35)!important}
+#ppOnb .upg .upg-plan.best[aria-checked=true]{border-color:var(--u-cyan)!important}
+#ppOnb .upg .upg-plan small{font-size:min(12.5px,9cqi)!important;color:rgba(255,255,255,.85)!important}
+#ppOnb .upg .upg-plan strong{margin-top:4px!important;font-size:min(28px,14cqi)!important;color:#fff!important;white-space:nowrap!important}
+#ppOnb .upg .upg-plan>span:not(.onb-flag){font-size:min(13px,9.5cqi)!important;color:rgba(255,255,255,.8)!important}
+#ppOnb .upg .upg-note{display:block!important;margin-top:6px!important;font-style:normal!important;font-size:min(11.5px,8.5cqi)!important;color:var(--u-green)!important;font-weight:700!important}
+#ppOnb .upg .onb-flag{top:-12px!important;background:var(--u-amber)!important;color:#1d1300!important;font-size:min(11.5px,9cqi)!important;box-shadow:0 4px 12px -4px rgba(251,191,36,.8)!important}
+#ppOnb .upg .onb-flag[hidden]{display:none!important}
+#ppOnb .upg .upg-agree{display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;margin:0 0 4px!important;font-size:13px!important;color:rgba(255,255,255,.8)!important;text-align:left!important}
+#ppOnb .upg .upg-agree input{width:18px!important;height:18px!important;flex:0 0 18px!important;accent-color:var(--u-cyan)!important}
+#ppOnb .upg .upg-agree a{color:var(--u-cyan)!important}
+#ppOnb.pa410-nosell .upg .upg-agree{opacity:.55!important}
+#ppOnb .upg .upg-fine{margin:0 0 8px!important;font-size:12px!important;color:rgba(255,255,255,.7)!important}
+#ppOnb .upg .onb-primary{background:linear-gradient(90deg,var(--u-cyan),var(--u-green))!important;color:#03202a!important}
+#ppOnb .upg .onb-primary:disabled{opacity:1!important;background:rgba(255,255,255,.12)!important;color:rgba(255,255,255,.9)!important;border:1.5px dashed rgba(251,191,36,.7)!important;cursor:not-allowed!important}
+#ppOnb .upg .pa410-reason:not(:empty)~.upg-sub .upg-rest{display:none!important}
+@media (max-height:700px){#ppOnb .upg .upg-perks{display:none!important}#ppOnb .upg .pa410-reason{display:none!important}#ppOnb .upg .upg-sub .upg-rest{display:inline!important}}
+@media (max-height:700px){#ppOnb .upg .upg-hero{margin-bottom:6px!important}#ppOnb .upg .upg-logo{width:28px!important;height:28px!important;flex-basis:28px!important}#ppOnb .upg h2{font-size:22px!important;margin-bottom:4px!important}#ppOnb .upg .upg-perks{margin-bottom:8px!important}#ppOnb .upg .upg-plan{padding:15px 6px 9px!important}#ppOnb .upg .upg-note{margin-top:3px!important}}
+/* 4.1.3 sign-in look: original palette; Phone hidden while PHONE_SIGNIN=false. */
+#ppOnb.pa413-nophone .onb-phone{display:none!important}
+#ppOnb .onb-card{background:linear-gradient(180deg,#173f79 0%,#0d2a55 42%)!important;border-color:rgba(22,228,234,.25)!important}
+#ppOnb h2 em{background:linear-gradient(90deg,#16e4ea,#3ddc97)!important;-webkit-background-clip:text!important;background-clip:text!important}
+#ppOnb .onb-primary{background:linear-gradient(90deg,#16e4ea,#3ddc97)!important;color:#03202a!important;box-shadow:0 10px 24px -12px rgba(61,220,151,.9)!important}
+#ppOnb .onb-kicker{background:rgba(251,191,36,.16)!important;border-color:rgba(251,191,36,.55)!important;color:#fbbf24!important}
+#ppOnb .onb-bi{background:rgba(22,228,234,.12)!important;border-color:rgba(22,228,234,.4)!important}
+#ppOnb .onb-bi svg{stroke:#16e4ea!important}
+#ppOnb .onb-benefits li:nth-child(2) .onb-bi{background:rgba(61,220,151,.14)!important;border-color:rgba(61,220,151,.45)!important}#ppOnb .onb-benefits li:nth-child(2) .onb-bi svg{stroke:#3ddc97!important}
+#ppOnb .onb-benefits li:nth-child(3) .onb-bi{background:rgba(251,191,36,.14)!important;border-color:rgba(251,191,36,.45)!important}#ppOnb .onb-benefits li:nth-child(3) .onb-bi svg{stroke:#fbbf24!important}
+#ppOnb .onb-field input:focus{border-color:#16e4ea!important;box-shadow:0 0 0 3px rgba(22,228,234,.25)!important}
+#ppOnb .onb-link{color:#16e4ea!important}
+#ppOnb .onb-alt{display:grid!important;grid-template-columns:1fr!important;gap:10px!important}
+#ppOnb button,#ppOnb .onb-google{min-width:0!important;overflow-wrap:anywhere!important}
 </style>
 <dialog id="pa410VerifyDlg" class="pa410-dlg" aria-labelledby="pa410VerifyTitle"><div class="form">
 <h2 id="pa410VerifyTitle">Verify your email</h2>
@@ -26050,7 +26101,7 @@ else if(SHOW_ON_LAUNCH&&localStorage.getItem(CHOICE_KEY)==null&&!(window.PayAvia
 <p class="pa410-status" id="pa410VerifyStatus" role="status"></p>
 <div class="form-actions">
 <button class="primary" type="button" data-pa410-verify="send">Send verification email</button>
-<button type="button" data-pa410-verify="done">I've verified my email</button>
+<button type="button" data-pa410-verify="done">I verified, continue</button>
 <button type="button" data-pa410-close="pa410VerifyDlg">Not now</button>
 </div></div></dialog>
 <script id="pa-410-accounts-js">
@@ -26141,7 +26192,7 @@ const hooks={
   onClose:async()=>{setTimeout(()=>{try{window.PayAviatorSetupWizard&&window.PayAviatorSetupWizard.maybeShow()}catch(_){}},300);const w=signinWaiters.splice(0);const ok=!!(auth()&&auth().isSignedIn());w.forEach(f=>f(ok));return{ok:true}}
 };
 const signinWaiters=[];
-/* Confirmed pricing (app + web): $3.99/month or $29.99/year (4.1.1). Loaded into Beth's cards but hidden while PRICE_CONFIRMED=false. */
+/* Confirmed pricing (app + web): $3.99/month or $29.99/year (4.1.1). Shown on Beth's cards; buying stays off while BILLING_LIVE=false. */
 function syncGoogle(){const s=screens(),a=auth();if(s&&s.setGoogleAvailable&&a){const st=a.getState();s.setGoogleAvailable(!(st.googleAvailable===false||st.available===false))}}
 function wireScreens(){const s=screens();if(s&&!s._pa410){s._pa410=1;s.setHooks(hooks);try{syncGoogle();auth()&&auth().onChange(syncGoogle)}catch(_){}try{s.setPrice('$29.99','yr');s.setPrice('$3.99','mo')}catch(_){}}}
 /* ---- upgrade (402) ---- */
@@ -26151,23 +26202,23 @@ function setReason(reason){
   if(!el){el=document.createElement('p');el.className='pa410-reason';el.setAttribute('data-pa410-reason','');const h=sec.querySelector('h2');h?h.after(el):sec.prepend(el)}
   el.textContent=REASONS[reason||'']||REASONS[''];el.dataset.reason=reason||'';
 }
-/* No price until the boss confirms it: hide plan cards, trial and price lines, show "Subscriptions coming soon". */
-const PRICE_CONFIRMED=false;
+/* 4.1.3: prices always show. BILLING_LIVE=false keeps the main button disabled ("Upgrade"), the agree box off
+   and shows "Plus is coming soon." Flip to true once Play Billing is wired. */
+const BILLING_LIVE=false;
 function applyNoSell(){
   const root=$('ppOnb'),sec=root&&root.querySelector('section[data-onb="upgrade"]');if(!sec)return;
-  root.classList.toggle('pa410-nosell',!PRICE_CONFIRMED);
+  root.classList.toggle('pa410-nosell',!BILLING_LIVE);root.classList.toggle('pa413-live',BILLING_LIVE);
   const btn=sec.querySelector('[data-onb-act="subscribe"]');
-  let soon=sec.querySelector('.pa410-soon');
-  if(PRICE_CONFIRMED){if(soon)soon.remove();return}
-  if(!soon){soon=document.createElement('p');soon.className='pa410-soon';soon.textContent='Subscriptions coming soon';(btn&&btn.parentElement?btn.parentElement:sec).before(soon)}
-  if(btn){btn.textContent='Subscriptions coming soon';btn.disabled=true;btn.setAttribute('aria-disabled','true')}
+  if(btn){btn.textContent=BILLING_LIVE?'Subscribe':'Upgrade';btn.disabled=!BILLING_LIVE;btn.setAttribute('aria-disabled',String(!BILLING_LIVE))}
+  const ag=$('ppOnbAgree'),fine=$('ppOnbPriceFine');if(ag)ag.disabled=!BILLING_LIVE;
+  if(fine&&!BILLING_LIVE)fine.textContent='Plus is coming soon.';
 }
 /* 'premium' and 'comp' (complimentary) are both full access: no bank limit, no upgrade button. */
 const isPaid=b=>!!b&&(b.plan==='premium'||b.plan==='comp');
 function applyPaid(){
   const sec=document.querySelector('#ppOnb section[data-onb="upgrade"]');if(!sec||!isPaid(billing))return;
   const btn=sec.querySelector('[data-onb-act="subscribe"]');if(btn)btn.hidden=true;
-  const soon=sec.querySelector('.pa410-soon');if(soon)soon.textContent='Your plan includes unlimited banks.';
+  let soon=sec.querySelector('.pa410-soon');if(!soon){soon=document.createElement('p');soon.className='pa410-soon';sec.querySelector('.onb-actions').before(soon)}soon.textContent='Your plan includes unlimited banks.';
 }
 function openUpgrade(reason){
   const s=screens();if(!s)return;
@@ -26176,21 +26227,39 @@ function openUpgrade(reason){
   refreshStatus();
 }
 /* ---- email verification ---- */
+/* 4.1.3: every send makes a new link and kills the older ones, so send only on an explicit tap, with a
+   60s cooldown. "I verified, continue" (and app resume) reloads the user + force-refreshes the ID token,
+   then retries Connect bank so the backend sees email_verified=true. */
+const VERIFY_COOLDOWN_MS=60000;let lastVerifySend=0,verifyRetryArmed=false;
 function openVerify(){$('pa410VerifyStatus').textContent='';show('pa410VerifyDlg')}
+function retryConnect(){if(typeof window.PayAviatorConnectBank==='function'){window.PayAviatorConnectBank();return}const b=document.querySelector('#pp920ConnectBank,[data-pp920-connect],[data-pp-connect-bank]');if(b){connectTap=Date.now();b.click()}}
+async function reloadVerified(){const r=await nativeCall('authReloadUser');return{r,v:!!(r.state?r.state.emailVerified:(auth()&&auth().getState().emailVerified))}}
 async function verifyAction(kind){
   const st=$('pa410VerifyStatus');
-  if(kind==='send'){st.textContent='Sending…';const r=await nativeCall('authSendEmailVerification');
-    st.textContent=r.ok?'Check your inbox for the verification link, then come back and tap "I\'ve verified my email".':(r.error||'Could not send the email. Try again.');return}
+  if(kind==='send'){
+    const wait=VERIFY_COOLDOWN_MS-(Date.now()-lastVerifySend);
+    if(wait>0){st.textContent='We just sent a link. Use the newest email; you can resend in '+Math.ceil(wait/1000)+'s.';return}
+    lastVerifySend=Date.now();st.textContent='Sending…';const r=await nativeCall('authSendEmailVerification');
+    if(!r.ok)lastVerifySend=0;
+    st.textContent=r.ok?'Sent. Open the link in the newest email (older links stop working), then tap "I verified, continue".':(r.error||'Could not send the email. Try again.');return}
   st.textContent='Checking…';
-  const r=await nativeCall('authReloadUser');   // reloads the user and force-refreshes the Firebase ID token natively
-  const v=!!(r.state?r.state.emailVerified:(auth()&&auth().getState().emailVerified));
-  if(r.ok&&v){st.textContent='Email verified. Tap Connect a bank again.';setTimeout(()=>hide('pa410VerifyDlg'),1500)}
-  else st.textContent=r.ok||r.code==='AUTH_UNAVAILABLE'?'Your email isn\'t verified yet. Open the link in the email, then try again.':(r.error||'Could not check. Try again.');
+  const {r,v}=await reloadVerified();
+  if(r.ok&&v){st.textContent='Email verified. Opening your bank…';setTimeout(()=>{hide('pa410VerifyDlg');retryConnect()},600)}
+  else st.textContent=r.ok||r.code==='AUTH_UNAVAILABLE'?'Your email isn\'t verified yet. Open the link in the newest email, then try again.':(r.error||'Could not check. Try again.');
 }
+/* App resume: a user who verified in the mail app comes back with a stale token, so refresh it. */
+document.addEventListener('visibilitychange',async()=>{
+  if(document.visibilityState!=='visible')return;const a=auth();if(!a||!a.isSignedIn())return;const st=a.getState();
+  const wasOpen=!!$('pa410VerifyDlg').open;if(st.emailVerified&&!wasOpen)return;
+  const {r,v}=await reloadVerified();
+  if(r.ok&&v&&wasOpen){$('pa410VerifyStatus').textContent='Email verified. Opening your bank…';setTimeout(()=>{hide('pa410VerifyDlg');retryConnect()},600)}
+});
 /* ---- gate errors from new-bank calls (create-link-token, exchange, hosted-status) ---- */
 function handle(err,body){
   const code=String(err&&err.code||'').toUpperCase();
-  if(code==='EMAIL_NOT_VERIFIED'){const st=auth()&&auth().getState();if(st&&st.provider==='google'){err.message='Please try again in a moment.';nativeCall('authReloadUser');return true}err.message='Verify your email to link a bank.';setTimeout(openVerify,0);return true}
+  if(code==='EMAIL_NOT_VERIFIED'){const st=auth()&&auth().getState();if(st&&st.provider==='google'){err.message='Please try again in a moment.';nativeCall('authReloadUser');return true}/* Token may predate the click on the link: refresh once and retry before asking. */
+    if(!verifyRetryArmed){verifyRetryArmed=true;err.message='Checking your email verification…';reloadVerified().then(({r,v})=>{if(r.ok&&v)retryConnect();else{verifyRetryArmed=false;openVerify()}},()=>{verifyRetryArmed=false;openVerify()});return true}
+    verifyRetryArmed=false;err.message='Verify your email to link a bank.';setTimeout(openVerify,0);return true}
   if(code==='SUBSCRIPTION_REQUIRED'){const r=String((body&&body.reason)||'');err.reason=r;err.message=(REASONS[r]||REASONS['']).split('.')[0]+'.';setTimeout(()=>openUpgrade(r),0);return true}
   if(code==='DEVICE_ID_REQUIRED'||code==='DEVICE_ID_INVALID'){err.message='Please update PayAviator from Google Play to link a bank.';return true}
   if(code==='INTEGRITY_FAILED'){err.reason='integrity_failed';err.message=REASONS.integrity_failed;setTimeout(()=>openUpgrade('integrity_failed'),0);return true}

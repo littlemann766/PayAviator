@@ -1,3 +1,9 @@
+## 4.1.3 — Email-verify loop fix, large-text fit, new Upgrade + sign-in screens
+- Verify email: sends only on tap (60s resend cooldown, "use the newest email" hint); "I verified, continue" reloads and force-refreshes the sign-in token and retries Connect bank; silent refresh + retry on first 403 email_not_verified; re-check on resume.
+- Large text / small screens: heading wrap, Cash/Credit gauges scale (never stack), metric tiles, nav label ellipsis, system-bar insets, textZoom cap 130%.
+- Beth's Upgrade + sign-in redesign: original palette, $3.99/month and $29.99/year side by side, no trial wording. While BILLING_LIVE=false the note reads "Plus is coming soon." and the button says "Upgrade". Phone sign-in hidden (PHONE_SIGNIN=false).
+- Version 4.1.3 everywhere; service-worker cache payaviator-4.1.3; Android versionCode floor 410300.
+
 ## 4.1.2 — Notifications rework (phase 1), compact Payoff Planner
 - Version 4.1.2 everywhere; service-worker cache payaviator-4.1.2; Android versionCode floor 410200.
 - Notifications (Beth's DESIGN.md, phase 1, local only, no server or paid service):
