@@ -136,6 +136,8 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk "$OUT/PayAviator-$EXPECTED_VERSION.apk"
           cp app/build/outputs/bundle/release/app-release.aab "$OUT/PayAviator-$EXPECTED_VERSION.aab"
           cp VERSION.txt "$OUT/VERSION.txt"
+          # mapping.txt only exists when R8/minify is on; keep it if present
+          if [ -f app/build/outputs/mapping/release/mapping.txt ]; then cp app/build/outputs/mapping/release/mapping.txt "$OUT/mapping.txt"; fi
 
       - name: Upload PayAviator release
         uses: actions/upload-artifact@v4
@@ -145,5 +147,6 @@ jobs:
             ${{ runner.temp }}/payaviator-release/PayAviator-${{ steps.version.outputs.version }}.apk
             ${{ runner.temp }}/payaviator-release/PayAviator-${{ steps.version.outputs.version }}.aab
             ${{ runner.temp }}/payaviator-release/VERSION.txt
-          if-no-files-found: error
+            ${{ runner.temp }}/payaviator-release/mapping.txt
+          if-no-files-found: warn
           retention-days: 14

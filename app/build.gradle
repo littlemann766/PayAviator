@@ -108,6 +108,8 @@ android {
             signingConfig signingConfigs.release
             minifyEnabled false
             shrinkResources false
+            // 4.1.6: include native debug symbols in the AAB (Play Console warning)
+            ndk { debugSymbolLevel 'SYMBOL_TABLE' }
         }
     }
 }

@@ -1,3 +1,6 @@
+## 4.1.6 — Build hygiene
+- Release AAB now includes native debug symbols (debugSymbolLevel SYMBOL_TABLE) to clear Play Console's native-code warning. R8/minify stays off (WebView JS bridge, Plaid, Firebase, billing untested under shrinking), so there is no mapping.txt; the workflow uploads one automatically if minify is ever enabled. No app behavior change.
+
 ## 4.1.5 — Cloud sync fix
 - Fix: the Android app now sends its sign-in token on /api/sync/* calls (they were rejected with 401, so nothing synced).
 - New: Settings > Cloud sync row (status, signed-in email, last synced, error text, Sync now). Sync runs right after sign-in and on app open.
