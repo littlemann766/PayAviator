@@ -26674,6 +26674,18 @@ html body details.pa414-custom>.pa414-cbody{padding:0 0 8px}
 html body .pa414-themerow{display:block!important}
 html body .pa414-themerow>label{display:block!important;margin-bottom:4px}
 html body .pa414-themerow input[type=color][data-pa414]{display:none!important}
+/* 4.1.4 compact App Colors: one row per color (label + current circle + chevron); tap to open the swatches */
+html body .pa414-themerow{padding:0!important;margin:6px 0!important}
+html body .pa414-themerow>label.pa414-thead{display:flex!important;align-items:center;gap:10px;min-height:44px;width:100%!important;margin:0!important;padding:0 12px;cursor:pointer;box-sizing:border-box;font-size:14px;line-height:1.2}
+html body .pa414-thead .pa414-tdot{margin-left:auto;width:22px;height:22px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 0 2px #fff,inset 0 0 0 1px rgba(0,0,0,.25)}
+html body .pa414-thead .pa414-tchev{flex:0 0 auto;width:10px;height:10px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin:-4px 4px 0 4px;transition:transform .15s;opacity:.8}
+html body .pa414-themerow.pa414-open .pa414-tchev{transform:rotate(-135deg);margin-top:4px}
+html body .pa414-themerow:not(.pa414-open)>.pa414-themepick{display:none!important}
+html body .pa414-themerow>.pa414-themepick{padding:0 12px 6px}
+html body .pa414-themerow .pa414-themepick button.pa414-sw{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important}
+html body .pa414-themerow .pa414-themepick button.pa414-sw>i{width:24px;height:24px}
+html body .pa414-themerow details.pa414-custom{margin:2px 0}
+html body .pa414-themerow details.pa414-custom>summary{min-height:36px}
 </style>
 <script id="pa414-billcolor-js">
 (function(){
@@ -26732,13 +26744,20 @@ html body .pa414-themerow input[type=color][data-pa414]{display:none!important}
   mb137Cyan:[['Original cyan','#00f5ff'],['Green','#3ddc97'],['Amber','#fbbf24'],['Red','#e5484d'],['Purple','#a78bfa'],['Slate','#7c98bd']],
   mb137Page:[['Original sky','#0c79bb'],['Deep navy','#07152e'],['Green','#0b4f3a'],['Purple','#3b1d7a'],['Brown','#5a2f12'],['Charcoal','#1f2937']],
   mb137Text:[['White','#ffffff'],['Ice','#e6f2ff'],['Cream','#fef3c7'],['Mint','#dcfce7'],['Pink','#fce7f3'],['Silver','#cbd5e1']]};
+ var THV={mb137Navy:'--mb137-navy',mb137Surface:'--mb137-surface',mb137Cyan:'--mb137-cyan',mb137Page:'--mb137-page',mb137Text:'--mb137-text'};
  var themePickers={};
  function enhance(){var box=document.getElementById('mb137Appearance');if(!box)return;
-  Object.keys(SETS).forEach(function(id){var inp=document.getElementById(id);if(!inp||inp.dataset.pa414)return;var row=inp.closest('.mb137-color-row');if(!row)return;
-   inp.dataset.pa414='1';row.classList.add('pa414-themerow');row.style.setProperty('display','block','important');var l0=row.querySelector('label');if(l0){l0.style.setProperty('display','block','important');l0.style.setProperty('width','auto','important');l0.style.setProperty('margin','0 0 6px','important')}var m=document.createElement('div');m.className='pa414-themepick';row.appendChild(m);
+  Object.keys(SETS).forEach(function(id){var inp=document.getElementById(id);if(inp&&inp.__pa414dot)inp.__pa414dot();if(!inp||inp.dataset.pa414)return;var row=inp.closest('.mb137-color-row');if(!row)return;
+   inp.dataset.pa414='1';row.classList.add('pa414-themerow');row.style.setProperty('display','block','important');var m=document.createElement('div');m.className='pa414-themepick';row.appendChild(m);
    var lab=row.querySelector('label');
+   if(lab&&!lab.querySelector('.pa414-tdot')){lab.classList.add('pa414-thead');lab.removeAttribute('for');var dot=document.createElement('i');dot.className='pa414-tdot';var ch=document.createElement('i');ch.className='pa414-tchev';lab.appendChild(dot);lab.appendChild(ch);
+    var upd=function(){var v=inp.value;if(!v){try{v=getComputedStyle(document.documentElement).getPropertyValue(THV[id]).trim()}catch(e){}}dot.style.background=v||'transparent'};upd();[200,800,2000].forEach(function(t){setTimeout(upd,t)});
+    lab.setAttribute('role','button');lab.setAttribute('tabindex','0');lab.setAttribute('aria-expanded','false');
+    var tog=function(e){e.preventDefault();var o=row.classList.toggle('pa414-open');lab.setAttribute('aria-expanded',o?'true':'false')};
+    lab.addEventListener('click',tog);lab.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' ')tog(e)});
+    ['input','change'].forEach(function(ev){inp.addEventListener(ev,upd)});row.addEventListener('click',function(){setTimeout(upd,60)});inp.__pa414dot=upd}
    themePickers[id]=inp.__pa414=create({input:inp,mount:m,clear:false,autoOpen:false,label:lab?lab.textContent:id,swatches:SETS[id],ids:{det:id+'Custom414'}})})}
- function syncTheme(){Object.keys(SETS).forEach(function(k){var i=document.getElementById(k);if(i&&i.__pa414)i.__pa414.sync(false)})}
+ function syncTheme(){Object.keys(SETS).forEach(function(k){var i=document.getElementById(k);if(i&&i.__pa414){i.__pa414.sync(false);if(i.__pa414dot)i.__pa414dot()}})}
  var t=null;new MutationObserver(function(){clearTimeout(t);t=setTimeout(enhance,30)}).observe(document.body,{childList:true,subtree:true});
  document.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('#mb137ResetTheme'))setTimeout(function(){enhance();syncTheme()},250)});
  window.PA414EnhanceAppColors=enhance;enhance();
