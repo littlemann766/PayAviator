@@ -27098,7 +27098,7 @@ async function pp982SyncLiveBank(){
 }
 window.PayAviatorSyncLiveBank982=pp982SyncLiveBank;
 function state(){
-  const aa=accounts(),inc=aa.filter(included),cw=wallet(),bankAvailable=inc.reduce((s,a)=>s+bal(a),0),bankSavings=aa.filter(a=>kind(a)==='savings').reduce((s,a)=>s+bal(a),0),checksAvailable=pp982CheckAvailable(),live=pp982LiveBankActive()&&inc.length>0;
+  const aa=accounts(),inc=aa.filter(a=>included(a)&&!/^(credit|loan)$/i.test(String(a?.type||''))&&!/credit/i.test(String(a?.subtype||''))),cw=wallet(),bankAvailable=inc.reduce((s,a)=>s+bal(a),0),bankSavings=aa.filter(a=>kind(a)==='savings').reduce((s,a)=>s+bal(a),0),checksAvailable=pp982CheckAvailable(),live=pp982LiveBankActive()&&inc.length>0;
   /* 9.13.14: When real connected spendable accounts exist, their bank-reported
      available balances are the authority for Available Now. The paycheck/manual
      cash ledger is only the fallback when live accounts are not active. This keeps
