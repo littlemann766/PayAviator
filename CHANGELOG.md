@@ -1,3 +1,7 @@
+## 4.1.5 — Cloud sync fix
+- Fix: the Android app now sends its sign-in token on /api/sync/* calls (they were rejected with 401, so nothing synced).
+- New: Settings > Cloud sync row (status, signed-in email, last synced, error text, Sync now). Sync runs right after sign-in and on app open.
+
 ## 4.1.4 — Any-email sign-up, App lock off by default
 - Sign-up works with any email provider (Gmail, Yahoo, AOL, Outlook, iCloud...). Welcome screen now offers "Sign up with email" next to Google, plus "Already have an account? Sign in". Verification note mentions Spam folder.
 - App lock (fingerprint / face / phone PIN) is OFF by default and opt-in only: a one-time migration (security storage version 414) turns it off for everyone upgrading, and connecting a bank no longer forces it on.

@@ -67,10 +67,10 @@ public final class AuthedRequest {
 
     private AuthedRequest() { }
 
-    /** Only these paths carry the Firebase token (plaid + billing, backend PR #8); /api/health stays public. */
+    /** Only these paths carry the Firebase token (plaid + billing + devices + sync, backend PR #8); /api/health stays public. */
     public static boolean requiresAuth(String path) {
         return path != null && (path.startsWith("/api/plaid/") || path.startsWith("/api/billing/")
-                || path.startsWith("/api/devices/"));
+                || path.startsWith("/api/devices/") || path.startsWith("/api/sync/"));
     }
 
     /**

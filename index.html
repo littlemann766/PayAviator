@@ -128,7 +128,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='4.1.4';
+  const BUNDLED_VERSION='4.1.5';
   const code=n=>{const p=String(n||'').replace(/^Version:\s*/i,'').trim().split('.').map(Number);return p.length===3&&p.every(Number.isFinite)?p[0]*10000+p[1]*100+p[2]:0};
   const S={name:BUNDLED_VERSION,code:code(BUNDLED_VERSION)};
   function paint(root=document){
@@ -34781,7 +34781,7 @@ async function run(reason){
   }catch(e){
     var f2=meta(),code=String(e&&e.code||'').toUpperCase();
     if(code==='EMAIL_NOT_VERIFIED'){setStatus('needs_verify','Verify your email to sync');return{error:code}}
-    if(e&&(e.status===401||code==='SIGN_IN_REQUIRED')){setStatus('needs_signin','Sign in again to sync');return{error:code}}
+    if(e&&(e.status===401||code==='SIGN_IN_REQUIRED')){f2.lastError='Server said not signed in ('+(e.status||code)+')';saveMeta(f2);setStatus('needs_signin','Sign in again to sync');return{error:code||'HTTP 401'}}
     f2.tries=(f2.tries||0)+1;f2.nextAt=Date.now()+backoffMs(f2.tries);f2.lastError=code||String(e&&e.message||e);saveMeta(f2);
     setStatus(navigator.onLine===false?'offline':'retrying',f2.lastError);schedule(f2.nextAt-Date.now());
     return{error:f2.lastError}
@@ -34799,14 +34799,51 @@ setInterval(function(){if(document.visibilityState!=='hidden')run('interval')},9
 document.addEventListener('payaviator:authchange',function(e){var r=e&&e.detail&&e.detail.reason||'',s=e&&e.detail&&e.detail.state||{};
   if(r==='account_deleted'){resetState('');clearTimeout(timer);return}
   if(s.signedIn){run(r==='signed_in'?'signin':'verified')}else{clearTimeout(timer)}});
-setTimeout(function(){run('start')},4000);
+setTimeout(function(){run('start')},1500);setTimeout(function(){var m=meta();if(!m.lastSyncAt)run('start')},9000);
 function line(){var m=meta(),s=m.status||st.state;
   if(!me())return '';
   var t=m.lastSyncAt?new Date(m.lastSyncAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'';
   var q=Object.keys(rd(KO,{})).length;
-  return s==='synced'?'Cloud sync: up to date'+(t?' ('+t+')':''):s==='syncing'?'Cloud sync: syncing…':s==='offline'?'Cloud sync: waiting for a connection'+(q?' ('+q+' change'+(q===1?'':'s')+' queued)':''):s==='needs_verify'?'Cloud sync: verify your email to start':s==='retrying'?'Cloud sync: will retry shortly'+(q?' ('+q+' queued)':''):s==='held'?'Cloud sync: large deletion held back':'Cloud sync: on'}
+  return s==='synced'?'Cloud sync: up to date'+(t?' ('+t+')':''):s==='syncing'?'Cloud sync: syncing…':s==='offline'?'Cloud sync: waiting for a connection'+(q?' ('+q+' change'+(q===1?'':'s')+' queued)':''):s==='needs_verify'?'Cloud sync: verify your email to start':s==='retrying'?'Cloud sync: will retry shortly'+(q?' ('+q+' queued)':''):s==='held'?'Cloud sync: large deletion held back':s==='needs_signin'?'Cloud sync: sign in again to sync':s==='disabled'?'Cloud sync: off on this phone':'Cloud sync: on'}
 async function wipeCloudCopy(){await api('/api/sync/all',{method:'DELETE'});resetState(me()&&me().uid||'');var m=meta();m.disabled=true;saveMeta(m);setStatus('disabled','Cloud copy deleted; sync is off on this phone');return{ok:true}}
 function enable(){var m=meta();delete m.disabled;m.migrated=false;saveMeta(m);return run('manual')}
-window.PayAviatorSync={sync:function(r){return run(r||'manual')},scan:scan,status:function(){var m=meta();return Object.assign({},m,{queued:Object.keys(rd(KO,{})).length,state:m.status||st.state})},statusLine:line,wipeCloudCopy:wipeCloudCopy,enable:enable,confirmMassDelete:function(){var m=meta();m.confirmMass=true;saveMeta(m);return run('manual')},_hash:sig};
+window.PayAviatorSync={sync:function(r){return run(r||'manual')},scan:scan,status:function(){var m=meta();return Object.assign({},m,{queued:Object.keys(rd(KO,{})).length,state:m.status||st.state,detail:st.detail||m.lastError||''})},statusLine:line,wipeCloudCopy:wipeCloudCopy,enable:enable,confirmMassDelete:function(){var m=meta();m.confirmMass=true;saveMeta(m);return run('manual')},_hash:sig};
+})();
+</script>
+<script id="pa415-sync-row">
+/* 4.1.5: visible Cloud sync row in Settings: status, signed-in email, last synced time, error text and Sync now. */
+(function(){
+'use strict';
+function $(i){return document.getElementById(i)}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function mount(){
+  var host=$('mb119Settings');if(!host)return null;var c=$('pa415SyncRow');if(c)return c;
+  c=document.createElement('div');c.id='pa415SyncRow';c.className='mb119-card';c.style.cssText='margin:12px 0;display:block';
+  var anchor=$('mb123SettingsPanel');if(anchor&&anchor.parentNode===host)host.insertBefore(c,anchor);else host.appendChild(c);
+  c.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-pa415-sync]');if(!b)return;e.preventDefault();e.stopPropagation();
+    var S=window.PayAviatorSync,A=window.PayAviatorAuth;
+    if(A&&A.isSignedIn&&!A.isSignedIn()){try{A.ensureSignedIn()}catch(_){}return}
+    if(!S)return;b.disabled=true;b.textContent='Syncing…';
+    Promise.resolve(S.sync('manual')).catch(function(){}).then(function(){render()})});
+  return c}
+function render(){
+  var c=mount();if(!c)return;
+  var A=window.PayAviatorAuth,S=window.PayAviatorSync,signed=!!(A&&A.isSignedIn&&A.isSignedIn()),us=(A&&A.getState&&A.getState())||{};
+  var line,sub='',btn='Sync now';
+  if(!signed){line='Not signed in';sub='Sign in to back up and sync your bills with the website.';btn='Sign in'}
+  else{
+    var s=S?S.status():{};var t=s.lastSyncAt?new Date(s.lastSyncAt).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'Not yet';
+    var state=s.state||'idle';
+    line=S&&S.statusLine?(S.statusLine()||'Cloud sync'):'Cloud sync';
+    sub='Signed in as '+esc(us.email||us.name||'your account')+'<br>Last synced: '+t+(s.queued?' • '+s.queued+' change'+(s.queued===1?'':'s')+' waiting':'');
+    if(s.lastError||(s.detail&&state!=='synced'&&state!=='syncing'))sub+='<br><span style="color:#ffb4b4">'+esc(s.lastError||s.detail)+'</span>';
+    if(state==='syncing')btn='Syncing…'}
+  c.innerHTML='<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><b>Cloud sync</b><div style="font-size:13px;margin-top:3px">'+esc(line)+'</div><div style="color:#b9c7da;font-size:12px;margin-top:3px">'+sub+'</div></div><button type="button" data-pa415-sync class="mb119-btn" style="flex:none;min-width:96px"'+(btn==='Syncing…'?' disabled':'')+'>'+btn+'</button></div>'}
+document.addEventListener('payaviator:sync-status',render);
+document.addEventListener('payaviator:authchange',function(){setTimeout(render,50)});
+document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('.mb119-nav'))setTimeout(render,200)});
+document.addEventListener('visibilitychange',render);
+if(document.readyState!=='loading')render();else document.addEventListener('DOMContentLoaded',render);
+setTimeout(render,2000);setInterval(function(){var h=$('mb119Settings');if(h&&h.offsetParent!==null)render()},5000);
 })();
 </script>

@@ -141,6 +141,8 @@ public class AuthedRequestTest {
         assertTrue(AuthedRequest.requiresAuth("/api/plaid/accounts"));
         assertTrue(AuthedRequest.requiresAuth("/api/plaid/user"));
         assertTrue(AuthedRequest.requiresAuth("/api/devices/fcm"));
+        assertTrue(AuthedRequest.requiresAuth("/api/sync/changes?since=0"));
+        assertTrue(AuthedRequest.requiresAuth("/api/sync/push"));
         assertFalse(AuthedRequest.requiresAuth("/api/health"));
         assertFalse(AuthedRequest.requiresAuth(null));
     }
