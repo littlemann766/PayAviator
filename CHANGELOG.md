@@ -1,3 +1,8 @@
+## 4.1.8 — Compact Cloud sync card, flexible layout
+- Settings > Cloud sync card is much smaller (one status line, smaller button).
+- Fix: an override entry ({deleted}/{paid:false}) no longer makes a bill count as paid. Bank activity rows now say Pending or Processed.
+- Layout hardening for any phone width / font scale (min-width on settings rows, 100dvh dialog height). No color or button changes.
+
 ## 4.1.7 — Safe to Spend counts checking only
 - Available Now / Safe to Spend now counts checking accounts and cash on hand by default; savings, money market and CD are left out unless included. The Include/Exclude switch in Connected Accounts now changes the total. Credit, loan and investment stay excluded.
 - Fix: card gauge pages never show available credit as cash. Home help text matches the math.

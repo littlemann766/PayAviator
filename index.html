@@ -140,7 +140,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='4.1.7';
+  const BUNDLED_VERSION='4.1.8';
   const code=n=>{const p=String(n||'').replace(/^Version:\s*/i,'').trim().split('.').map(Number);return p.length===3&&p.every(Number.isFinite)?p[0]*10000+p[1]*100+p[2]:0};
   const S={name:BUNDLED_VERSION,code:code(BUNDLED_VERSION)};
   function paint(root=document){
@@ -2739,7 +2739,9 @@ function persistBillOverrides(){
 function billOccurrenceKey(b,iso){return `${b.id}|${iso}`}
 function billPaidAmount(b,iso){
   const key=billOccurrenceKey(b,iso);
-  const fallbackPaid=Object.prototype.hasOwnProperty.call(billOverrides,key)?!!billOverrides[key]:!!b.paid;
+  const ovr=billOverrides[key];
+  /* 4.1.8: an override entry only decides paid when it carries a paid flag ({deleted}/{movedTo} or {paid:false} must not count as paid). */
+  const fallbackPaid=(ovr&&typeof ovr==='object')?(ovr.paid!==undefined?!!ovr.paid:!!b.paid):(ovr!==undefined&&ovr!==null?!!ovr:!!b.paid);
   return Number(billPaidAmounts[key] ?? (fallbackPaid?b.amount:0)) || 0;
 }
 
@@ -10661,7 +10663,7 @@ function openAvailableNowSpendingV88(){
     $('mb119SpendList').innerHTML=rows.length?rows.map(x=>{
       if(x.kind==='bank'){
         const incoming=(Number(x.amount)||0)<0;
-        const pending=x.pending?' • Pending':'';
+        const pending=x.pending?' • Pending':' • Processed';
         const inst=x.institution_name||x.institutionName||x.institution||'Connected bank';
         const merchant=pp317MerchantName(x),logo=x.logo_url||x.logoUrl||x.merchant_logo_url||x.merchantLogoUrl||x.counterparty?.logo_url||'',letter=(String(merchant).trim()[0]||'?').toUpperCase(),isCard=!!x._isCard||/capital one/i.test(String(x.institution_name||x.institutionName||x.institution||''));return `<div class="mb119-ledger-item pp-bank-transaction" data-pp-name="${esc(merchant)}" data-pa325-card="${isCard?'1':'0'}" data-pp-category="${esc(x.personal_finance_category?.primary||x.personalFinanceCategory?.primary||x.category?.[0]||'')}" data-pp-logo="${esc(logo)}"><div class="mb119-ledger-title"><span class="pp-merchant-logo pp-merchant-fallback" data-pa-logo-slot>${logo?`<img src="${esc(logo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:''}${letter}</span><span>${esc(merchant)}</span> <span class="mb146-spend-type${isCard?' pa325-card':''}">${isCard?'Card':'Bank'}</span></div><div class="mb119-ledger-amt">${incoming?'+':'−'}${cash(Math.abs(Number(x.amount)||0))}</div><div class="mb119-ledger-time">${esc(inst)} • ${x._d.toLocaleString()}${pending}</div></div>`;
       }
@@ -26775,6 +26777,13 @@ html body .pa414-themerow details.pa414-custom>summary{min-height:36px}
  window.PA414EnhanceAppColors=enhance;enhance();
 })();
 </script>
+<style id="pa418-flex">
+/* 4.1.8: flexible layout on any phone width / font scale. Sizing only: no colors or buttons change. */
+#mb123SettingsPanel .settings-row>div{min-width:0}
+#mb123SettingsPanel .settings-help{overflow-wrap:anywhere}
+.pp-mini-switch{flex:none}
+#pa415SyncRow{max-width:100%;box-sizing:border-box}
+</style>
 </body>
 
 <script>
@@ -28711,7 +28720,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 #pp920AccountsModal .pp920-action{width:auto!important;min-height:48px!important;padding:10px 16px!important;border-radius:14px!important;background:var(--pp51-field,#0b2348)!important}
 #pp920AccountsModal .pp920-note{margin:14px 0 0!important;padding:14px 16px!important;border-radius:16px!important;background:var(--pp51-field,#0b2851)!important;font-size:.94rem!important;line-height:1.42!important}
 @media(max-width:560px){
- #pp920AccountsModal .pp920-sheet{width:calc(100vw - 14px)!important;height:calc(100vh - 140px)!important;padding:11px!important;border-radius:25px!important;gap:11px!important}
+ #pp920AccountsModal .pp920-sheet{width:calc(100vw - 14px)!important;height:calc(100vh - 140px)!important;height:calc(100dvh - 140px)!important;padding:11px!important;border-radius:25px!important;gap:11px!important}
  #pp920AccountsModal .pp920-head{padding:7px 6px 3px 10px!important}
  #pp920AccountsModal .pp920-close{flex-basis:50px!important;width:50px!important;height:50px!important;min-width:50px!important;min-height:50px!important}
  #pp920AccountsBody{padding:14px 14px 26px!important;border-radius:19px!important}
@@ -34830,7 +34839,7 @@ function $(i){return document.getElementById(i)}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function mount(){
   var host=$('mb119Settings');if(!host)return null;var c=$('pa415SyncRow');if(c)return c;
-  c=document.createElement('div');c.id='pa415SyncRow';c.className='mb119-card';c.style.cssText='margin:12px 0;display:block';
+  c=document.createElement('div');c.id='pa415SyncRow';c.className='mb119-card';c.style.cssText='margin:8px 0;display:block;padding:10px 14px;min-height:0';
   var anchor=$('mb123SettingsPanel');if(anchor&&anchor.parentNode===host)host.insertBefore(c,anchor);else host.appendChild(c);
   c.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-pa415-sync]');if(!b)return;e.preventDefault();e.stopPropagation();
     var S=window.PayAviatorSync,A=window.PayAviatorAuth;
@@ -34842,15 +34851,15 @@ function render(){
   var c=mount();if(!c)return;
   var A=window.PayAviatorAuth,S=window.PayAviatorSync,signed=!!(A&&A.isSignedIn&&A.isSignedIn()),us=(A&&A.getState&&A.getState())||{};
   var line,sub='',btn='Sync now';
-  if(!signed){line='Not signed in';sub='Sign in to back up and sync your bills with the website.';btn='Sign in'}
+  if(!signed){line='Not signed in';sub='Sign in to sync your bills with the website.';btn='Sign in'}
   else{
     var s=S?S.status():{};var t=s.lastSyncAt?new Date(s.lastSyncAt).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'Not yet';
     var state=s.state||'idle';
     line=S&&S.statusLine?(S.statusLine()||'Cloud sync'):'Cloud sync';
-    sub='Signed in as '+esc(us.email||us.name||'your account')+'<br>Last synced: '+t+(s.queued?' • '+s.queued+' change'+(s.queued===1?'':'s')+' waiting':'');
-    if(s.lastError||(s.detail&&state!=='synced'&&state!=='syncing'))sub+='<br><span style="color:#ffb4b4">'+esc(s.lastError||s.detail)+'</span>';
+    sub=esc(us.email||us.name||'your account')+' • Last synced: '+t+(s.queued?' • '+s.queued+' change'+(s.queued===1?'':'s')+' waiting':'');
+    if(s.lastError||(s.detail&&state!=='synced'&&state!=='syncing'))sub+=' • <span style="color:#ffb4b4">'+esc(s.lastError||s.detail)+'</span>';
     if(state==='syncing')btn='Syncing…'}
-  c.innerHTML='<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><b>Cloud sync</b><div style="font-size:13px;margin-top:3px">'+esc(line)+'</div><div style="color:#b9c7da;font-size:12px;margin-top:3px">'+sub+'</div></div><button type="button" data-pa415-sync class="mb119-btn" style="flex:none;min-width:96px"'+(btn==='Syncing…'?' disabled':'')+'>'+btn+'</button></div>'}
+  c.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div style="flex:1 1 150px;min-width:0"><div style="display:flex;gap:8px;align-items:baseline;min-width:0"><b style="font-size:15px;flex:none">Cloud sync</b><span style="font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(line)+'</span></div><div style="color:#b9c7da;font-size:11.5px;margin-top:2px;overflow-wrap:anywhere">'+sub+'</div></div><button type="button" data-pa415-sync class="mb119-btn" style="flex:none;min-width:84px;min-height:36px;padding:6px 14px;font-size:14px"'+(btn==='Syncing…'?' disabled':'')+'>'+btn+'</button></div>'}
 document.addEventListener('payaviator:sync-status',render);
 document.addEventListener('payaviator:authchange',function(){setTimeout(render,50)});
 document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('.mb119-nav'))setTimeout(render,200)});
