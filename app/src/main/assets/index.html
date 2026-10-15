@@ -2488,7 +2488,7 @@ body,#app,.app,.page,.tab-page,main{background:var(--bg,#0c79bb)}
     <div id="recurringOptions" style="display:none"><label>Repeat</label><select id="recurrence" style="width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font-size:16px"><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option></select></div>
 <label class="check"><input id="autopay" type="checkbox"> Autopay enabled</label>
 <div class="meta" style="margin-top:4px">Tracking indicator only — this does not send a payment.</div>
-<label>Calendar color — selected color is shown below</label><input id="color" class="color-input" type="color" value="#ff0000" title="Choose this bill's calendar color">
+<div id="billColorRow414" class="pa414-colorrow" style="background:none!important;border:0!important;box-shadow:none!important;padding:0!important"><label id="billColorLbl414">Color</label><input id="color" type="hidden" value=""><div class="pa414-sws" style="background:none!important;border:0!important;padding:0!important" role="radiogroup" aria-labelledby="billColorLbl414"><button type="button" class="pa414-sw" role="radio" aria-checked="false" aria-label="Green" data-color="#3ddc97"><i style="background:#3ddc97"></i></button><button type="button" class="pa414-sw" role="radio" aria-checked="false" aria-label="Cyan" data-color="#16e4ea"><i style="background:#16e4ea"></i></button><button type="button" class="pa414-sw" role="radio" aria-checked="false" aria-label="Amber" data-color="#fbbf24"><i style="background:#fbbf24"></i></button><button type="button" class="pa414-sw" role="radio" aria-checked="false" aria-label="Red" data-color="#e5484d"><i style="background:#e5484d"></i></button><button type="button" class="pa414-sw" role="radio" aria-checked="false" aria-label="Purple" data-color="#a78bfa"><i style="background:#a78bfa"></i></button><button type="button" class="pa414-sw" role="radio" aria-checked="false" aria-label="Slate" data-color="#7c98bd"><i style="background:#7c98bd"></i></button><button type="button" class="pa414-sw pa414-sw-custom" role="radio" aria-checked="false" aria-label="Custom color" data-custom="1"><i></i></button></div><div id="billColorCustom414" class="pa414-custom" hidden><div class="pa414-prev"><i id="billColorPrev414"></i><span id="billColorHex414">#000000</span></div><label class="pa414-sl">Hue<input id="bcHue414" type="range" min="0" max="360" value="180" aria-label="Hue"></label><label class="pa414-sl">Saturation<input id="bcSat414" type="range" min="0" max="100" value="80" aria-label="Saturation"></label><label class="pa414-sl">Lightness<input id="bcLit414" type="range" min="15" max="85" value="55" aria-label="Lightness"></label></div><div class="meta" style="margin-top:2px">Shows as a dot on this bill in lists and a color on the Calendar. Tap the chosen color again to clear it.</div></div>
 
 <label class="check"><input id="billNotify" type="checkbox" onchange="toggleBillNotificationOptions()"> Remind me</label>
 <div id="billNotificationOptions" class="notification-options" style="display:none">
@@ -4786,7 +4786,7 @@ function toggleRecurringOptions(){
 function openForm(b=null,presetDue=null){
  if(b&&b.recurring&&presetDue) window.__editingOccurrence={id:b.id, iso:presetDue};
  else if(!b) window.__editingOccurrence=null;
- $('formTitle').textContent=b?'Edit Bill':'Add a Bill';$('editId').value=b?.id||'';$('name').value=b?.name||'';$('amount').value=b?.amount||'';$('due').value=presetDue||b?.due||'';$('recurring').checked=!!b?.recurring;$('recurrence').value=b?.recurrence||'weekly';$('color').value=b?.color||'#ff0000';toggleRecurringOptions();
+ $('formTitle').textContent=b?'Edit Bill':'Add a Bill';$('editId').value=b?.id||'';$('name').value=b?.name||'';$('amount').value=b?.amount||'';$('due').value=presetDue||b?.due||'';$('recurring').checked=!!b?.recurring;$('recurrence').value=b?.recurrence||'weekly';$('color').value=b?.color||'';try{pa414SyncSwatches()}catch(_){};toggleRecurringOptions();
  $('billNotify').checked=b?!!b.notify:!!appSettings.defaultBillNotify;
  setBillReminderWhen(b?.notifyDaysBefore??appSettings.defaultBillDays??appSettings.notificationDays??0);
  $('billNotifyTime').value=b?.notifyTime||appSettings.defaultBillTime||appSettings.notificationTime||'09:00';
@@ -26618,6 +26618,54 @@ body.mb-home-easy #pp967Advanced,body.mb-home-easy #pp959MiniCash .pp1200-foot,b
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
+<style id="pa414-billcolor-css">
+/* 4.1.4 bill color picker: 6 round swatches, 44px hit area, white ring + cyan outline when chosen */
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body .pa414-colorrow{margin:10px 0 6px}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body .pa414-sws{display:flex;flex-wrap:wrap;gap:0;margin:4px -2px 2px}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body button.pa414-sw{appearance:none;-webkit-appearance:none;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;padding:0!important;margin:0 -5px 0 0!important;border:0!important;border-radius:50%!important;background:transparent!important;background-image:none!important;box-shadow:none!important;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body button.pa414-sw>i{display:block;width:28px;height:28px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);transition:box-shadow .12s,transform .12s}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body button.pa414-sw[aria-checked="true"]>i{box-shadow:0 0 0 3px #fff,0 0 0 5px #16e4ea}
+html:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5):not(#q6) body button.pa414-sw:focus-visible{outline:2px solid #16e4ea!important;outline-offset:-2px}
+html body .pa414-colorrow,html body .pa414-colorrow div.pa414-sws{background:transparent!important;background-image:none!important;border:0!important;box-shadow:none!important;padding:0!important}
+html body .pa414-sw-custom>i{background:conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)!important}
+html body .pa414-custom{margin:6px 0 4px;padding:10px 12px;border:1px solid rgba(128,160,200,.35);border-radius:12px}
+html body .pa414-custom[hidden]{display:none}
+html body .pa414-prev{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+html body .pa414-prev i{width:30px;height:30px;border-radius:50%;display:block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+html body .pa414-sl{display:block;font-size:13px;margin:4px 0}
+html body .pa414-sl input[type=range]{display:block;width:100%;min-height:32px;margin:2px 0;padding:0}
+html body .pa414-custom input[type=range]{-webkit-appearance:none!important;appearance:none!important;background:transparent!important;height:28px!important;min-height:28px!important;padding:0!important;margin:2px 0!important;border:0!important;box-shadow:none!important;accent-color:#fff}
+html body .pa414-custom input[type=range]::-webkit-slider-runnable-track{height:14px!important;border-radius:8px!important;background:var(--bc-track,#888)!important;border:1px solid rgba(255,255,255,.35)!important;box-shadow:none!important}
+html body .pa414-custom input[type=range]::-moz-range-track{height:14px!important;border-radius:8px!important;background:var(--bc-track,#888)!important;border:1px solid rgba(255,255,255,.35)!important}
+html body .pa414-custom input[type=range]::-webkit-slider-thumb{-webkit-appearance:none!important;appearance:none!important;width:24px!important;height:24px!important;margin-top:-6px!important;border-radius:50%!important;background:#fff!important;border:2px solid #16e4ea!important;box-shadow:0 1px 4px rgba(0,0,0,.4)!important}
+html body .pa414-custom input[type=range]::-moz-range-thumb{width:20px!important;height:20px!important;border-radius:50%!important;background:#fff!important;border:2px solid #16e4ea!important}
+</style>
+<script id="pa414-billcolor-js">
+(function(){
+ var HEX=/^#[0-9a-f]{6}$/i;
+ function $(i){return document.getElementById(i)}
+ function sws(){return Array.prototype.slice.call(document.querySelectorAll('#billColorRow414 .pa414-sw'))}
+ function h2hsl(h){var r=parseInt(h.substr(1,2),16)/255,g=parseInt(h.substr(3,2),16)/255,b=parseInt(h.substr(5,2),16)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,d=mx-mn,s=0,hh=0;if(d){s=d/(1-Math.abs(2*l-1));if(mx===r)hh=((g-b)/d)%6;else if(mx===g)hh=(b-r)/d+2;else hh=(r-g)/d+4;hh*=60;if(hh<0)hh+=360}return [Math.round(hh),Math.round(s*100),Math.round(l*100)]}
+ function hsl2h(h,s,l){s/=100;l/=100;var c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2,r=0,g=0,b=0;if(h<60){r=c;g=x}else if(h<120){r=x;g=c}else if(h<180){g=c;b=x}else if(h<240){g=x;b=c}else if(h<300){r=x;b=c}else{r=c;b=x}function t(v){var n=Math.round((v+m)*255).toString(16);return n.length<2?'0'+n:n}return '#'+t(r)+t(g)+t(b)}
+ var customOpen=false;
+ function paintCustom(h){$('billColorPrev414').style.background=h;$('billColorHex414').textContent=h;var H=+$('bcHue414').value,S=+$('bcSat414').value,L=+$('bcLit414').value;$('bcHue414').style.setProperty('--bc-track','linear-gradient(90deg,'+[0,60,120,180,240,300,360].map(function(x){return hsl2h(x,Math.max(S,40),L)}).join(',')+')');$('bcSat414').style.setProperty('--bc-track','linear-gradient(90deg,'+hsl2h(H,0,L)+','+hsl2h(H,100,L)+')');$('bcLit414').style.setProperty('--bc-track','linear-gradient(90deg,'+hsl2h(H,S,15)+','+hsl2h(H,S,50)+','+hsl2h(H,S,85)+')')}
+ window.pa414SyncSwatches=function(){var v=(($('color')||{}).value||'').toLowerCase(),preset=false,all=sws();all.forEach(function(b){if(b.dataset.custom)return;var on=!!v&&b.dataset.color.toLowerCase()===v;if(on)preset=true;b.setAttribute('aria-checked',on?'true':'false')});var cust=all.filter(function(b){return b.dataset.custom})[0];var isCustom=!!v&&!preset;if(!isCustom&&!customOpen&&!(v===''&&false)){}
+  if(isCustom){customOpen=true;var a=h2hsl(v);$('bcHue414').value=a[0];$('bcSat414').value=a[1];$('bcLit414').value=Math.min(85,Math.max(15,a[2]));paintCustom(v)}
+  else if(!v||preset){customOpen=false}
+  if(cust){cust.setAttribute('aria-checked',(customOpen&&(isCustom||!v))?'true':'false');$('billColorCustom414').hidden=!customOpen}
+  all.forEach(function(b){b.tabIndex=b.getAttribute('aria-checked')==='true'?0:-1});if(!all.some(function(b){return b.tabIndex===0}))all[0].tabIndex=0};
+ window.pa414NormalizeBillColor=function(c){c=String(c==null?'':c).trim();return HEX.test(c)?c.toLowerCase():''};
+ function setVal(v){var inp=$('color');inp.value=v;try{inp.dispatchEvent(new Event('change',{bubbles:true}))}catch(_){}}
+ function fromSliders(){var h=hsl2h(+$('bcHue414').value,+$('bcSat414').value,+$('bcLit414').value);setVal(h);paintCustom(h);return h}
+ function pick(b){var was=b.getAttribute('aria-checked')==='true';
+  if(b.dataset.custom){if(was){customOpen=false;setVal('');window.pa414SyncSwatches();return}customOpen=true;$('billColorCustom414').hidden=false;fromSliders();window.pa414SyncSwatches();return}
+  customOpen=false;setVal(was?'':b.dataset.color);window.pa414SyncSwatches()}
+ document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('.pa414-sw');if(b)pick(b)});
+ document.addEventListener('input',function(e){if(e.target&&/^bc(Hue|Sat|Lit)414$/.test(e.target.id))fromSliders()});
+ document.addEventListener('keydown',function(e){var b=e.target.closest&&e.target.closest('.pa414-sw');if(!b)return;var all=sws(),i=all.indexOf(b),n=null;if(e.key==='ArrowRight'||e.key==='ArrowDown')n=all[(i+1)%all.length];else if(e.key==='ArrowLeft'||e.key==='ArrowUp')n=all[(i+all.length-1)%all.length];else if(e.key===' '||e.key==='Enter'){e.preventDefault();pick(b);return}if(n){e.preventDefault();n.focus();pick(n)}});
+ window.pa414HexToHsl=h2hsl;window.pa414SyncSwatches();
+})();
+</script>
 </body>
 
 <script>
@@ -32843,7 +32891,7 @@ dialog form > button[type="button"]:last-child {
     const amount=Number(el('amount')?.value);
     return {
       name:(el('name')?.value||'').trim(),amount,due,
-      color:el('color')?.value||src.color,
+      color:el('color')?el('color').value:src.color,
       category:(el('category')?.value||'').trim()||src.category||'',
       notes:(el('billNotes')?.value||'').trim(),
       autopay:!!el('autopay')?.checked,
