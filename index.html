@@ -140,7 +140,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='4.1.8';
+  const BUNDLED_VERSION='4.1.9';
   const code=n=>{const p=String(n||'').replace(/^Version:\s*/i,'').trim().split('.').map(Number);return p.length===3&&p.every(Number.isFinite)?p[0]*10000+p[1]*100+p[2]:0};
   const S={name:BUNDLED_VERSION,code:code(BUNDLED_VERSION)};
   function paint(root=document){
@@ -27079,7 +27079,7 @@ async function pp982SyncLiveBank(){
   try{window.PayAviatorSavePlaidItemHealth?.(ad)}catch(_){}
   const rows=Array.isArray(ad.accounts)?ad.accounts:[];
   const old=accounts(), oldBy=new Map(old.map(a=>[rawId(a),a]));
-  const mappedRaw=rows.map(a=>{const prev=oldBy.get(String(a.account_id||a.id||''))||{};return Object.assign({},prev,{id:a.account_id||a.id,name:a.name||a.official_name||'Account',officialName:a.official_name||'',institution:a.institution_name||a.institution||'Connected institution',institutionName:a.institution_name||a.institution||'Connected institution',mask:a.mask||'',type:a.type||'',subtype:a.subtype||'',current:num(a.balances?.current??a.current),available:num(a.balances?.available??a.balances?.current??a.available??a.current),creditLimit:num(a.credit_limit??a.balances?.limit??a.limit),availableCredit:(a.available_credit??a.balances?.available??null),balanceUsed:num(a.balance_used??a.balances?.current??a.current),utilizationPercent:(a.utilization_percent??null),balanceSource:a.balance_source||'plaid_accounts_get',itemId:a.item_id||'',lastSync:new Date().toISOString(),source:'plaid'});});const mapped=[...new Map(mappedRaw.map(a=>[key(a),a])).values()];
+  const mappedRaw=rows.map(a=>{const prev=oldBy.get(String(a.account_id||a.id||''))||{};return Object.assign({},prev,{id:a.account_id||a.id,name:a.name||a.official_name||'Account',officialName:a.official_name||'',institution:a.institution_name||a.institution||'Connected institution',institutionName:a.institution_name||a.institution||'Connected institution',mask:a.mask||'',type:a.type||'',subtype:a.subtype||'',current:num(a.balances?.current??a.current),available:num(a.balances?.available??a.balances?.current??a.available??a.current),balances:(a.balances&&typeof a.balances==='object')?a.balances:null,creditLimit:num(a.credit_limit??a.balances?.limit??a.limit),availableCredit:(a.available_credit??a.balances?.available??null),balanceUsed:num(a.balance_used??a.balances?.current??a.current),utilizationPercent:(a.utilization_percent??null),balanceSource:a.balance_source||'plaid_accounts_get',itemId:a.item_id||'',lastSync:new Date().toISOString(),source:'plaid'});});const mapped=[...new Map(mappedRaw.map(a=>[key(a),a])).values()];
   localStorage.setItem(ACCOUNT_KEY,JSON.stringify(mapped));
   // Production Plaid accounts require Android device authentication. Sandbox and
   // development connections stay exempt so test builds remain usable.

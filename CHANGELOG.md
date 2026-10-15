@@ -1,3 +1,6 @@
+## 4.1.9 — Fix stale bank balances
+- Fix: a bank refresh now replaces the balances saved when the bank was first linked. Before, Available now and Safe to Spend kept using the old connect-time balance (for example $108.55 while the bank showed $14.93).
+
 ## 4.1.8 — Compact Cloud sync card, flexible layout
 - Settings > Cloud sync card is much smaller (one status line, smaller button).
 - Fix: an override entry ({deleted}/{paid:false}) no longer makes a bill count as paid. Bank activity rows now say Pending or Processed.
