@@ -1,3 +1,7 @@
+## 4.1.7 — Safe to Spend counts checking only
+- Available Now / Safe to Spend now counts checking accounts and cash on hand by default; savings, money market and CD are left out unless included. The Include/Exclude switch in Connected Accounts now changes the total. Credit, loan and investment stay excluded.
+- Fix: card gauge pages never show available credit as cash. Home help text matches the math.
+
 ## 4.1.6 — Build hygiene
 - Release AAB now includes native debug symbols (debugSymbolLevel SYMBOL_TABLE) to clear Play Console's native-code warning. R8/minify stays off (WebView JS bridge, Plaid, Firebase, billing untested under shrinking), so there is no mapping.txt; the workflow uploads one automatically if minify is ever enabled. No app behavior change.
 

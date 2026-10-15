@@ -2,7 +2,7 @@
 """4.0.2 regression: Available now = spendable balances, one shared function on every screen.
 Sample data: Chase Checking available 1,240.50 (current 1,302.75), Chase Savings available null
 -> current 3,000.00, cash on hand 150.00; Capital One credit 812.33, Ally auto loan 9,400 and a
-Fidelity brokerage 5,000 are excluded. Expected 4,390.50.
+Fidelity brokerage 5,000 are excluded. 4.1.7: checking only by default (savings excluded unless the Include choice says so) -> expected 1,390.50.
 Usage: test-available-now.py http://localhost:PORT/index.html  (needs Playwright + Chrome)."""
 import sys, json
 from playwright.sync_api import sync_playwright
@@ -40,22 +40,29 @@ with sync_playwright() as p:
         return home,snap,apis
     # 1. sample data
     seed(accts(),{'spendable':150,'saved':0}); a=pg.evaluate("window.PayAviatorAvailableNow()")
-    check('sample total 4390.50',a['total']==4390.5,a['total'])
-    check('counted: checking 1240.50 (available), savings 3000 (current fallback), cash 150',[(x['name'],x['amount']) for x in a['items']]==[('Chase Checking ••1111',1240.5),('Chase Savings ••2222',3000),('Cash on hand',150)],a['items'])
-    check('credit, loan, investment excluded',sorted(x['type'] for x in a['excluded'])==['credit','investment','loan'])
+    check('sample total 1390.50 (checking + cash, no savings)',a['total']==1390.5,a['total'])
+    check('counted: checking 1240.50 (available), cash 150; savings not counted',[(x['name'],x['amount']) for x in a['items']]==[('Chase Checking ••1111',1240.5),('Cash on hand',150)],a['items'])
+    check('credit, loan, investment excluded',sorted(x['type'] for x in a['excluded'])==['credit','depository','investment','loan'])
     home,snap,apis=screens()
-    check('Home shows $4,390.50',home and '$4,390.50' in home,home)
-    check('Snapshot shows $4,390.50',snap and '$4,390.50' in snap and 'estimate' not in snap.lower(),snap)
-    check('all APIs agree',all(abs(x-4390.5)<0.005 for x in apis),apis)
+    check('Home shows $1,390.50',home and '$1,390.50' in home,home)
+    check('Snapshot shows $1,390.50',snap and '$1,390.50' in snap and 'estimate' not in snap.lower(),snap)
+    check('all APIs agree',all(abs(x-1390.5)<0.005 for x in apis),apis)
     # breakdown by tap
     pg.locator('#pp2059GaugeMetrics .pp967-metric').filter(has_text='Available now').first.tap(); pg.wait_for_timeout(500)
     bd=pg.evaluate("document.getElementById('pa402AvailDlg').open?document.getElementById('pa402AvailBody').innerText:''")
-    check('tap opens breakdown listing each account',all(s in bd for s in ['Chase Checking','$1,240.50','Chase Savings','$3,000.00','Cash on hand','$150.00','$4,390.50','Not counted']),bd.replace('\n',' | ')[:200])
+    check('tap opens breakdown listing each account',all(s in bd for s in ['Chase Checking','$1,240.50','Chase Savings','Cash on hand','$150.00','$1,390.50','Not counted']),bd.replace('\n',' | ')[:200])
     pg.evaluate("window.payAviatorHandleAndroidBack()"); pg.wait_for_timeout(300)
     check('Back closes breakdown',not pg.evaluate("document.getElementById('pa402AvailDlg').open"))
     # 2. empty-string available falls back to current; cash already in bank is not double counted
     seed(accts(chk_av=''),{'spendable':150,'saved':0,'inBankAccount':True}); t=pg.evaluate("window.PayAviatorAvailableNow().total")
-    check('blank available -> current; cash in bank not double counted (1302.75+3000)',t==4302.75,t)
+    check('blank available -> current; cash in bank not double counted (1302.75 only)',t==1302.75,t)
+    # 2b. 4.1.7: per-account Include/Exclude choice is honored (checking off, savings on)
+    seed(accts(),{'spendable':150,'saved':0})
+    pg.evaluate("localStorage.setItem('payaviator_account_choices_v920',JSON.stringify({'acc-chk':false,'acc-sav':true}))"); t=pg.evaluate("window.PayAviatorAvailableNow().total")
+    check('toggle: checking excluded + savings included -> 3150',t==3150,t)
+    pg.evaluate("localStorage.setItem('payaviator_account_choices_v920',JSON.stringify({'acc-cc':true,'acc-loan':true}))"); t=pg.evaluate("window.PayAviatorAvailableNow().total")
+    check('toggle can never pull in credit/loan -> 1390.50',t==1390.5,t)
+    pg.evaluate("localStorage.removeItem('payaviator_account_choices_v920')")
     # 3. negative real balance shows negative
     seed(accts(chk_av=-50.25,sav_av=0),None); t=pg.evaluate("window.PayAviatorAvailableNow().total"); home,snap,_=screens()
     check('negative checking -> -50.25',t==-50.25,t); check('Home shows negative',home and '50.25' in home and ('−' in home or '-' in home),home)
