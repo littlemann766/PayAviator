@@ -1104,6 +1104,11 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public boolean isDeviceSecure() {
+            return MainActivity.this.isDeviceSecure();
+        }
+
+        @JavascriptInterface
         public boolean areRealAccountsConnected() {
             return MainActivity.this.areRealAccountsConnected();
         }

@@ -1,6 +1,7 @@
 ## 4.1.4 — Any-email sign-up, App lock off by default
 - Sign-up works with any email provider (Gmail, Yahoo, AOL, Outlook, iCloud...). Welcome screen now offers "Sign up with email" next to Google, plus "Already have an account? Sign in". Verification note mentions Spam folder.
 - App lock (fingerprint / face / phone PIN) is OFF by default and opt-in only: a one-time migration (security storage version 414) turns it off for everyone upgrading, and connecting a bank no longer forces it on.
+- Optional device-lock prompt: after a bank connects, a dialog suggests locking PayAviator with the phone's PIN, fingerprint or face scan ("Turn on lock" / "Not now"). It uses the existing app lock and never forces it. If the lock stays off while a bank is connected, a gentle reminder shows on app open at most once every 7 days, with "Don't remind me" (stored only on the device). New bridge method isDeviceSecure() so the prompt can ask users to set up an Android screen lock first.
 - Version 4.1.4 everywhere; service-worker cache payaviator-4.1.4; Android versionCode floor 410400.
 
 ## 4.1.3 — Email-verify loop fix, large-text fit, new Upgrade + sign-in screens

@@ -21285,7 +21285,7 @@ body.pp821-theme-live .mb137-color-row{
       await loadPlaidScript();
       const tok=await api('/api/plaid/create-link-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
       if(!tok.link_token)throw new Error('No link token returned');
-      const handler=window.Plaid.create({token:tok.link_token,onSuccess:async(public_token,metadata)=>{try{await api('/api/plaid/exchange-public-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({public_token,metadata})});await syncPlaidAccounts();render();toast((metadata?.institution?.name||'Bank')+' connected to PayAviator')}catch(e){toast('Bank connected, but account sync failed: '+e.message)}},onExit:(err)=>{if(err)toast('Plaid connection closed: '+(err.display_message||err.error_message||'Please try again'))}}); handler.open();
+      const handler=window.Plaid.create({token:tok.link_token,onSuccess:async(public_token,metadata)=>{try{await api('/api/plaid/exchange-public-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({public_token,metadata})});await syncPlaidAccounts();render();toast((metadata?.institution?.name||'Bank')+' connected to PayAviator');try{window.PayAviatorLockPrompt414?.afterConnect()}catch(_){ }}catch(e){toast('Bank connected, but account sync failed: '+e.message)}},onExit:(err)=>{if(err)toast('Plaid connection closed: '+(err.display_message||err.error_message||'Please try again'))}}); handler.open();
     }catch(e){
       console.error('PayAviator Plaid open failed',e);
       toast('Could not open secure bank connection: '+(e?.message||'Please check your internet connection and try again.'));
@@ -22583,6 +22583,7 @@ setState(readNative());
             });
             await pp920SyncPlaidAccounts(); render();
             pp920Toast((metadata?.institution?.name||'Bank')+' connected to PayAviator');
+            try{window.PayAviatorLockPrompt414?.afterConnect()}catch(_){ }
           }catch(err){pp920Toast('Bank connected, but account sync failed: '+(err?.message||err))}
         },
         onExit:(err)=>{
@@ -22629,6 +22630,7 @@ setState(readNative());
         await pp920SyncPlaidAccounts(); render();
         try{await window.PayAviatorSyncLiveBank982?.()}catch(_){ }
         pp920Toast((data.institution_name||'Bank')+(updateItemId?' reconnected':' connected')+' to PayAviator');
+        if(!updateItemId){try{window.PayAviatorLockPrompt414?.afterConnect()}catch(_){ }}
       }else if(data.status==='exit'){
         pp920PendingNativeUpdateItemId=null;
         const msg=data.error_display_message||data.error_message||'';
@@ -26540,6 +26542,80 @@ body.mb-home-easy #pp967Advanced,body.mb-home-easy #pp959MiniCash .pp1200-foot,b
     const h=$('mb119Home');if(h)try{new MutationObserver(ms=>{if(ms.some(x=>{const n=x.target.nodeType===1?x.target:x.target.parentElement;return !(n&&n.closest&&n.closest('.pa41-why,#pa41Next'))}))soon()}).observe(h,{childList:true,subtree:true,characterData:true})}catch(_){}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+</script>
+
+<dialog id="lockPrompt414Dlg">
+  <div class="form">
+    <h2 id="lockPrompt414Title">Protect your financial info</h2>
+    <div class="meta" id="lockPrompt414Msg" style="margin-bottom:12px"></div>
+    <div class="form-actions">
+      <button class="primary" type="button" id="lockPrompt414On">Turn on lock</button>
+      <button type="button" id="lockPrompt414Later">Not now</button>
+    </div>
+    <div style="text-align:center;margin-top:10px"><button type="button" id="lockPrompt414Never" style="display:none;background:none;border:0;color:#d8e0ee;text-decoration:underline;font:inherit">Don't remind me</button></div>
+  </div>
+</dialog>
+<script id="lock-prompt-414">
+/* 4.1.4: optional device-lock suggestion after a bank connects + gentle reminder (max once per 7 days).
+   Uses the existing native app-lock path (AndroidBridge.setAppLockEnabled). Preference stays on this device only. */
+(function(){
+  'use strict';
+  var LAST='payaviator_lock_prompt_last_v414',NEVER='payaviator_lock_prompt_never_v414',DAY=86400000,GAP=7*DAY;
+  var AK='payaviator_connected_accounts_v1';
+  function br(){return window.AndroidBridge&&typeof AndroidBridge.isAppLockEnabled==='function'&&typeof AndroidBridge.setAppLockEnabled==='function'?AndroidBridge:null}
+  function lockOn(){try{return !!br().isAppLockEnabled()}catch(_){return true}}
+  function hasBank(){try{var a=JSON.parse(localStorage.getItem(AK)||'[]');return Array.isArray(a)&&a.length>0}catch(_){return false}}
+  function get(k){try{return localStorage.getItem(k)}catch(_){return null}}
+  function set(k,v){try{localStorage.setItem(k,v)}catch(_){}}
+  function stamp(){set(LAST,String(Date.now()))}
+  function dlg(){return document.getElementById('lockPrompt414Dlg')}
+  function busy(){var o=document.querySelector('dialog[open]');return !!(o&&o.id!=='lockPrompt414Dlg')||document.body.classList.contains('ppOnb-open')}
+  function close(){var d=dlg();try{d.close()}catch(_){d.removeAttribute('open')}}
+  function show(kind){
+    var d=dlg();if(!d||d.open)return;
+    var msg=document.getElementById('lockPrompt414Msg'),never=document.getElementById('lockPrompt414Never'),title=document.getElementById('lockPrompt414Title');
+    if(kind==='connect'){
+      title.textContent='Protect your financial info';
+      msg.textContent="Your bank is connected. Your device and financial info are safer if PayAviator is locked with your phone's PIN, fingerprint or face scan. It's optional, and you can change it any time in Settings.";
+      never.style.display='none';
+    }else{
+      title.textContent='A quick reminder';
+      msg.textContent="Your phone's PIN, fingerprint or face scan can lock PayAviator and keep your bank info private. It's optional. We'll only remind you about once a week.";
+      never.style.display='';
+    }
+    d.dataset.kind=kind;
+    try{d.showModal()}catch(_){d.setAttribute('open','')}
+  }
+  function turnOn(){
+    var b=br();if(!b){close();return}
+    var secure=true;try{if(typeof b.isDeviceSecure==='function')secure=!!b.isDeviceSecure()}catch(_){}
+    if(!secure){
+      document.getElementById('lockPrompt414Msg').textContent="Set up a PIN, pattern, password or fingerprint in your phone's Android settings first, then come back to Settings and turn on PIN Lock.";
+      stamp();return;
+    }
+    try{b.setAppLockEnabled(true)}catch(_){}
+    stamp();close();
+  }
+  function init(){
+    var d=dlg();if(!d||d.dataset.bound)return;d.dataset.bound='1';
+    document.getElementById('lockPrompt414On').addEventListener('click',turnOn);
+    document.getElementById('lockPrompt414Later').addEventListener('click',function(){stamp();close()});
+    document.getElementById('lockPrompt414Never').addEventListener('click',function(){set(NEVER,'1');stamp();close()});
+    d.addEventListener('cancel',function(){stamp()});
+  }
+  function maybeRemind(tries){
+    if(!br()||get(NEVER)==='1'||lockOn()||!hasBank())return;
+    var last=Number(get(LAST))||0;if(Date.now()-last<GAP)return;
+    if(busy()){if((tries||0)<5)setTimeout(function(){maybeRemind((tries||0)+1)},4000);return}
+    stamp();show('remind');
+  }
+  window.PayAviatorLockPrompt414={
+    afterConnect:function(){init();if(!br()||lockOn())return;setTimeout(function(){if(lockOn())return;show('connect')},600)},
+    maybeRemind:maybeRemind
+  };
+  function start(){init();setTimeout(maybeRemind,3500)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
 </body>
