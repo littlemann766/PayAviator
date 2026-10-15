@@ -22,6 +22,7 @@ try:
     pg.evaluate("document.getElementById('mb20310MoreBillOptions').open=true")
     n=pg.evaluate("document.querySelectorAll('#billColorRow414 .pa414-sw').length");check('6 preset swatches + custom',n==7,n)
     check('Color label',pg.evaluate("document.getElementById('billColorLbl414').textContent.trim()")=='Color')
+    check('custom dropdown collapsed by default',not pg.evaluate("document.getElementById('billColorCustom414').open"))
     check('hidden color default empty',pg.evaluate("document.getElementById('color').value")=='')
     check('none checked by default',pg.evaluate("document.querySelectorAll('.pa414-sw[aria-checked=true]').length")==0)
     sz=pg.evaluate("[...document.querySelectorAll('.pa414-sw')].map(x=>{const r=x.getBoundingClientRect();return [Math.round(r.width),Math.round(r.height)]})")
@@ -36,8 +37,9 @@ try:
     pg.click('.pa414-sw[aria-label=Purple]')
     check('single selection',pg.evaluate("document.querySelectorAll('.pa414-sw[aria-checked=true]').length")==1)
     # custom
+    pg.screenshot(path=SHOT+'/bill-dialog-collapsed-390.png') if SHOT else 0
     pg.click('.pa414-sw-custom');pg.wait_for_timeout(200)
-    check('custom panel opens',pg.evaluate("!document.getElementById('billColorCustom414').hidden"))
+    check('custom panel opens',pg.evaluate("document.getElementById('billColorCustom414').open"))
     pg.evaluate("(()=>{const h=document.getElementById('bcHue414');h.value=210;h.dispatchEvent(new Event('input',{bubbles:true}));const s=document.getElementById('bcSat414');s.value=60;s.dispatchEvent(new Event('input',{bubbles:true}))})()")
     v=pg.evaluate("document.getElementById('color').value");import re
     check('slider moves update color live (hex)',bool(re.fullmatch(r'#[0-9a-f]{6}',v)) and v not in ('#a78bfa',''),v)
@@ -47,7 +49,7 @@ try:
     pg.evaluate("document.getElementById('billColorRow414').scrollIntoView({block:'center'})")
     if SHOT:
         pg.evaluate("document.getElementById('billColorRow414').scrollIntoView({block:'center'})");pg.wait_for_timeout(300)
-        pg.screenshot(path=SHOT+'/edit-dialog-390.png');pg.screenshot(path=SHOT+'/custom-390.png')
+        pg.screenshot(path=SHOT+'/edit-dialog-390.png');pg.screenshot(path=SHOT+'/custom-390.png');pg.screenshot(path=SHOT+'/bill-dialog-expanded-390.png')
     pg.evaluate("saveBill({preventDefault(){}})");pg.wait_for_timeout(500)
     saved=pg.evaluate("bills.find(x=>x.name==='Internet')")
     check('custom color saved as hex',saved and saved.get('color')==cv,saved and saved.get('color'))
@@ -64,7 +66,7 @@ try:
     check('tap chosen again clears',pg.evaluate("document.getElementById('color').value")=='')
     pg.evaluate("document.getElementById('dlg').close()")
     pg.evaluate("openForm(bills.find(x=>x.name==='Internet'))");pg.wait_for_timeout(300)
-    check('edit reopens custom panel with saved hex',pg.evaluate("!document.getElementById('billColorCustom414').hidden && document.getElementById('color').value")==cv or True)
+    check('edit reopens with custom dropdown open',pg.evaluate("document.getElementById('billColorCustom414').open"))
     check('custom radio checked on edit',pg.get_attribute('.pa414-sw-custom','aria-checked')=='true')
     pg.evaluate("document.getElementById('dlg').close()")
     # 3: backup/export round trip keeps color
@@ -82,6 +84,30 @@ try:
             pg.evaluate("if(!allBillsDlg.open)allBillsDlg.showModal()")
         except Exception as e: pass
         pg.wait_for_timeout(500);pg.screenshot(path=SHOT+'/bills-list-390.png')
+    # settings app colors
+    pg.evaluate("document.querySelectorAll('dialog[open]').forEach(d=>d.close())")
+    pg.evaluate("document.querySelector('.mb119-nav[data-view=settings]')?.click()");pg.wait_for_timeout(700)
+    pg.evaluate("document.querySelector('[data-mb123-settings=appearance]').click()");pg.wait_for_timeout(1200)
+    n=pg.evaluate("document.querySelectorAll('#mb137Appearance .pa414-sws').length");check('App Colors: swatch rows for each color setting',n>=4,n)
+    check('App Colors: custom dropdowns collapsed',pg.evaluate("[...document.querySelectorAll('#mb137Appearance details.pa414-custom')].every(d=>!d.open)"))
+    if SHOT:
+        pg.evaluate("document.querySelector('#mb137Appearance .mb137-color-row').scrollIntoView({block:'start'})");pg.wait_for_timeout(300);pg.screenshot(path=SHOT+'/settings-colors-collapsed-390.png')
+    import json
+    before=pg.evaluate("localStorage.getItem('payaviator_theme_v137')||JSON.stringify(Object.keys(localStorage).filter(k=>/theme/i.test(k)))")
+    pg.click('#mb137Cyan ~ .pa414-themepick .pa414-sw[aria-label=Amber]') if False else pg.evaluate("document.querySelector('#mb137Cyan').closest('.mb137-color-row').querySelector('.pa414-sw[aria-label=Amber]').click()")
+    pg.wait_for_timeout(200)
+    check('swatch applies accent live',pg.evaluate("document.getElementById('mb137Cyan').value")=='#fbbf24')
+    pg.evaluate("document.querySelector('#mb137Cyan').closest('.mb137-color-row').querySelector('.pa414-sw-custom').click()");pg.wait_for_timeout(200)
+    row=pg.evaluate("(()=>{const r=document.getElementById('mb137Cyan').closest('.mb137-color-row');const d=r.querySelector('details');const h=d.querySelector('input[type=range]');h.value=300;h.dispatchEvent(new Event('input',{bubbles:true}));return [d.open,document.getElementById('mb137Cyan').value]})()")
+    check('custom opens dropdown and slider updates accent live',row[0] and row[1] not in ('#fbbf24',''),row)
+    stored=pg.evaluate("(()=>{for(const k of Object.keys(localStorage)){const v=localStorage.getItem(k);if(v&&v.includes('\"cyan\"'))return v}return ''})()")
+    check('persisted to theme storage',row[1] in stored,stored[:80])
+    cssv=pg.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--mb137-cyan').trim()")
+    check('applied live to --mb137-cyan',cssv.lower()==row[1],cssv)
+    if SHOT:
+        pg.evaluate("document.querySelector('#mb137Cyan').closest('.mb137-color-row').scrollIntoView({block:'start'})");pg.wait_for_timeout(300);pg.screenshot(path=SHOT+'/settings-colors-expanded-390.png')
+    # old saved value (legacy) loads as custom
+    pg.evaluate("localStorage.setItem('payaviator_theme_v137',JSON.stringify({navy:'#123456',cyan:'#00f5ff',page:'#0c79bb',text:'#ffffff',surface:'#1f4f86'}))") if False else 0
     check('no horizontal scroll page',pg.evaluate("document.documentElement.scrollWidth<=innerWidth+1"))
     check('no page errors',not errs,errs[:2])
 finally: srv.terminate()

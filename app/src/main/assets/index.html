@@ -2488,7 +2488,7 @@ body,#app,.app,.page,.tab-page,main{background:var(--bg,#0c79bb)}
     <div id="recurringOptions" style="display:none"><label>Repeat</label><select id="recurrence" style="width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font-size:16px"><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option></select></div>
 <label class="check"><input id="autopay" type="checkbox"> Autopay enabled</label>
 <div class="meta" style="margin-top:4px">Tracking indicator only — this does not send a payment.</div>
-<div id="billColorRow414" class="pa414-colorrow" style="background:none!important;border:0!important;box-shadow:none!important;padding:0!important"><label id="billColorLbl414">Color</label><input id="color" type="hidden" value=""><div class="pa414-sws" style="background:none!important;border:0!important;padding:0!important" role="radiogroup" aria-labelledby="billColorLbl414"><button type="button" class="pa414-sw" role="radio" aria-checked="false" aria-label="Green" data-color="#3ddc97"><i style="background:#3ddc97"></i></button><button type="button" class="pa414-sw" role="radio" aria-checked="false" aria-label="Cyan" data-color="#16e4ea"><i style="background:#16e4ea"></i></button><button type="button" class="pa414-sw" role="radio" aria-checked="false" aria-label="Amber" data-color="#fbbf24"><i style="background:#fbbf24"></i></button><button type="button" class="pa414-sw" role="radio" aria-checked="false" aria-label="Red" data-color="#e5484d"><i style="background:#e5484d"></i></button><button type="button" class="pa414-sw" role="radio" aria-checked="false" aria-label="Purple" data-color="#a78bfa"><i style="background:#a78bfa"></i></button><button type="button" class="pa414-sw" role="radio" aria-checked="false" aria-label="Slate" data-color="#7c98bd"><i style="background:#7c98bd"></i></button><button type="button" class="pa414-sw pa414-sw-custom" role="radio" aria-checked="false" aria-label="Custom color" data-custom="1"><i></i></button></div><div id="billColorCustom414" class="pa414-custom" hidden><div class="pa414-prev"><i id="billColorPrev414"></i><span id="billColorHex414">#000000</span></div><label class="pa414-sl">Hue<input id="bcHue414" type="range" min="0" max="360" value="180" aria-label="Hue"></label><label class="pa414-sl">Saturation<input id="bcSat414" type="range" min="0" max="100" value="80" aria-label="Saturation"></label><label class="pa414-sl">Lightness<input id="bcLit414" type="range" min="15" max="85" value="55" aria-label="Lightness"></label></div><div class="meta" style="margin-top:2px">Shows as a dot on this bill in lists and a color on the Calendar. Tap the chosen color again to clear it.</div></div>
+<div id="billColorRow414" class="pa414-colorrow" style="background:none!important;border:0!important;box-shadow:none!important;padding:0!important"><label id="billColorLbl414">Color</label><input id="color" type="hidden" value=""><div id="billColorMount414"></div><div class="meta" style="margin-top:2px">Shows as a dot on this bill in lists and a color on the Calendar. Tap the chosen color again to clear it.</div></div>
 
 <label class="check"><input id="billNotify" type="checkbox" onchange="toggleBillNotificationOptions()"> Remind me</label>
 <div id="billNotificationOptions" class="notification-options" style="display:none">
@@ -26639,31 +26639,82 @@ html body .pa414-custom input[type=range]::-webkit-slider-runnable-track{height:
 html body .pa414-custom input[type=range]::-moz-range-track{height:14px!important;border-radius:8px!important;background:var(--bc-track,#888)!important;border:1px solid rgba(255,255,255,.35)!important}
 html body .pa414-custom input[type=range]::-webkit-slider-thumb{-webkit-appearance:none!important;appearance:none!important;width:24px!important;height:24px!important;margin-top:-6px!important;border-radius:50%!important;background:#fff!important;border:2px solid #16e4ea!important;box-shadow:0 1px 4px rgba(0,0,0,.4)!important}
 html body .pa414-custom input[type=range]::-moz-range-thumb{width:20px!important;height:20px!important;border-radius:50%!important;background:#fff!important;border:2px solid #16e4ea!important}
+html body details.pa414-custom{margin:6px 0 4px;padding:0 12px;border:1px solid rgba(128,160,200,.35)!important;border-radius:12px;background:transparent!important}
+html body details.pa414-custom>summary{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer;font-size:14px;font-weight:600;color:inherit;list-style-position:inside}
+html body details.pa414-custom>summary .pa414-chip{width:18px;height:18px;border-radius:50%;display:inline-block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);background:transparent}
+html body details.pa414-custom>summary .pa414-hexl{margin-left:auto;font-weight:500;opacity:.8;font-size:13px}
+html body details.pa414-custom>.pa414-cbody{padding:0 0 8px}
+html body .pa414-themerow{display:block!important}
+html body .pa414-themerow>label{display:block!important;margin-bottom:4px}
+html body .pa414-themerow input[type=color][data-pa414]{display:none!important}
 </style>
 <script id="pa414-billcolor-js">
 (function(){
  var HEX=/^#[0-9a-f]{6}$/i;
- function $(i){return document.getElementById(i)}
- function sws(){return Array.prototype.slice.call(document.querySelectorAll('#billColorRow414 .pa414-sw'))}
+ function norm(c){c=String(c==null?'':c).trim();return HEX.test(c)?c.toLowerCase():''}
  function h2hsl(h){var r=parseInt(h.substr(1,2),16)/255,g=parseInt(h.substr(3,2),16)/255,b=parseInt(h.substr(5,2),16)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,d=mx-mn,s=0,hh=0;if(d){s=d/(1-Math.abs(2*l-1));if(mx===r)hh=((g-b)/d)%6;else if(mx===g)hh=(b-r)/d+2;else hh=(r-g)/d+4;hh*=60;if(hh<0)hh+=360}return [Math.round(hh),Math.round(s*100),Math.round(l*100)]}
  function hsl2h(h,s,l){s/=100;l/=100;var c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2,r=0,g=0,b=0;if(h<60){r=c;g=x}else if(h<120){r=x;g=c}else if(h<180){g=c;b=x}else if(h<240){g=x;b=c}else if(h<300){r=x;b=c}else{r=c;b=x}function t(v){var n=Math.round((v+m)*255).toString(16);return n.length<2?'0'+n:n}return '#'+t(r)+t(g)+t(b)}
- var customOpen=false;
- function paintCustom(h){$('billColorPrev414').style.background=h;$('billColorHex414').textContent=h;var H=+$('bcHue414').value,S=+$('bcSat414').value,L=+$('bcLit414').value;$('bcHue414').style.setProperty('--bc-track','linear-gradient(90deg,'+[0,60,120,180,240,300,360].map(function(x){return hsl2h(x,Math.max(S,40),L)}).join(',')+')');$('bcSat414').style.setProperty('--bc-track','linear-gradient(90deg,'+hsl2h(H,0,L)+','+hsl2h(H,100,L)+')');$('bcLit414').style.setProperty('--bc-track','linear-gradient(90deg,'+hsl2h(H,S,15)+','+hsl2h(H,S,50)+','+hsl2h(H,S,85)+')')}
- window.pa414SyncSwatches=function(){var v=(($('color')||{}).value||'').toLowerCase(),preset=false,all=sws();all.forEach(function(b){if(b.dataset.custom)return;var on=!!v&&b.dataset.color.toLowerCase()===v;if(on)preset=true;b.setAttribute('aria-checked',on?'true':'false')});var cust=all.filter(function(b){return b.dataset.custom})[0];var isCustom=!!v&&!preset;if(!isCustom&&!customOpen&&!(v===''&&false)){}
-  if(isCustom){customOpen=true;var a=h2hsl(v);$('bcHue414').value=a[0];$('bcSat414').value=a[1];$('bcLit414').value=Math.min(85,Math.max(15,a[2]));paintCustom(v)}
-  else if(!v||preset){customOpen=false}
-  if(cust){cust.setAttribute('aria-checked',(customOpen&&(isCustom||!v))?'true':'false');$('billColorCustom414').hidden=!customOpen}
-  all.forEach(function(b){b.tabIndex=b.getAttribute('aria-checked')==='true'?0:-1});if(!all.some(function(b){return b.tabIndex===0}))all[0].tabIndex=0};
- window.pa414NormalizeBillColor=function(c){c=String(c==null?'':c).trim();return HEX.test(c)?c.toLowerCase():''};
- function setVal(v){var inp=$('color');inp.value=v;try{inp.dispatchEvent(new Event('change',{bubbles:true}))}catch(_){}}
- function fromSliders(){var h=hsl2h(+$('bcHue414').value,+$('bcSat414').value,+$('bcLit414').value);setVal(h);paintCustom(h);return h}
- function pick(b){var was=b.getAttribute('aria-checked')==='true';
-  if(b.dataset.custom){if(was){customOpen=false;setVal('');window.pa414SyncSwatches();return}customOpen=true;$('billColorCustom414').hidden=false;fromSliders();window.pa414SyncSwatches();return}
-  customOpen=false;setVal(was?'':b.dataset.color);window.pa414SyncSwatches()}
- document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('.pa414-sw');if(b)pick(b)});
- document.addEventListener('input',function(e){if(e.target&&/^bc(Hue|Sat|Lit)414$/.test(e.target.id))fromSliders()});
- document.addEventListener('keydown',function(e){var b=e.target.closest&&e.target.closest('.pa414-sw');if(!b)return;var all=sws(),i=all.indexOf(b),n=null;if(e.key==='ArrowRight'||e.key==='ArrowDown')n=all[(i+1)%all.length];else if(e.key==='ArrowLeft'||e.key==='ArrowUp')n=all[(i+all.length-1)%all.length];else if(e.key===' '||e.key==='Enter'){e.preventDefault();pick(b);return}if(n){e.preventDefault();n.focus();pick(n)}});
- window.pa414HexToHsl=h2hsl;window.pa414SyncSwatches();
+ /* Reusable swatch row + collapsible Custom (hue/sat/lightness) picker.
+    o: {input, mount, swatches:[[name,hex]], clear, autoOpen, ids:{det,hue,sat,lit,hex,prev}, label}  returns {sync} */
+ function create(o){
+  var input=o.input,ids=o.ids||{},clear=!!o.clear,P=[];
+  var row=document.createElement('div');row.className='pa414-sws';row.setAttribute('role','radiogroup');if(o.label)row.setAttribute('aria-label',o.label);
+  o.swatches.forEach(function(sw){var b=document.createElement('button');b.type='button';b.className='pa414-sw';b.setAttribute('role','radio');b.setAttribute('aria-checked','false');b.setAttribute('aria-label',sw[0]);b.dataset.color=sw[1];var i=document.createElement('i');i.style.background=sw[1];b.appendChild(i);row.appendChild(b)});
+  var cb=document.createElement('button');cb.type='button';cb.className='pa414-sw pa414-sw-custom';cb.setAttribute('role','radio');cb.setAttribute('aria-checked','false');cb.setAttribute('aria-label','Custom color');cb.dataset.custom='1';cb.appendChild(document.createElement('i'));row.appendChild(cb);
+  var det=document.createElement('details');det.className='pa414-custom';if(ids.det)det.id=ids.det;
+  det.innerHTML='<summary><span class="pa414-chip"></span>Custom color<span class="pa414-hexl"></span></summary><div class="pa414-cbody"><div class="pa414-prev"><i></i><span class="pa414-hx">#000000</span></div>'+
+   '<label class="pa414-sl">Hue<input type="range" min="0" max="360" value="180" aria-label="Hue"></label><label class="pa414-sl">Saturation<input type="range" min="0" max="100" value="80" aria-label="Saturation"></label><label class="pa414-sl">Lightness<input type="range" min="0" max="100" value="55" aria-label="Lightness"></label></div>';
+  o.mount.innerHTML='';o.mount.appendChild(row);o.mount.appendChild(det);
+  var rs=det.querySelectorAll('input[type=range]'),hue=rs[0],sat=rs[1],lit=rs[2],prev=det.querySelector('.pa414-prev i'),hx=det.querySelector('.pa414-hx'),chip=det.querySelector('.pa414-chip'),hexl=det.querySelector('.pa414-hexl');
+  if(ids.hue)hue.id=ids.hue;if(ids.sat)sat.id=ids.sat;if(ids.lit)lit.id=ids.lit;if(ids.hex)hx.id=ids.hex;if(ids.prev)prev.id=ids.prev;
+  function paint(h){prev.style.background=h;hx.textContent=h;chip.style.background=h;hexl.textContent=h;var H=+hue.value,S=+sat.value,L=+lit.value;
+   hue.style.setProperty('--bc-track','linear-gradient(90deg,'+[0,60,120,180,240,300,360].map(function(x){return hsl2h(x,Math.max(S,40),Math.min(Math.max(L,30),70))}).join(',')+')');
+   sat.style.setProperty('--bc-track','linear-gradient(90deg,'+hsl2h(H,0,L)+','+hsl2h(H,100,L)+')');
+   lit.style.setProperty('--bc-track','linear-gradient(90deg,'+hsl2h(H,S,0)+','+hsl2h(H,S,50)+','+hsl2h(H,S,100)+')')}
+  function setVal(v){input.value=v;try{input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}))}catch(_){}if(o.onChange)o.onChange(v)}
+  function loadSliders(v){var a=h2hsl(v);hue.value=a[0];sat.value=a[1];lit.value=a[2]}
+  function sync(open){var v=norm(input.value),pre=false;
+   P=Array.prototype.slice.call(row.querySelectorAll('.pa414-sw'));
+   P.forEach(function(b){if(b.dataset.custom)return;var on=!!v&&b.dataset.color.toLowerCase()===v;if(on)pre=true;b.setAttribute('aria-checked',on?'true':'false')});
+   var isC=!!v&&!pre;cb.setAttribute('aria-checked',isC?'true':'false');
+   if(isC){if(open!==false&&(open===true||o.autoOpen))det.open=true;if(open===true){loadSliders(v)}paint(v)}
+   else{if(open===true&&!o.keepOpen)det.open=false;paint(v||hsl2h(+hue.value,+sat.value,+lit.value));chip.style.background='transparent';hexl.textContent=''}
+   P.forEach(function(b){b.tabIndex=b.getAttribute('aria-checked')==='true'?0:-1});if(!P.some(function(b){return b.tabIndex===0}))P[0].tabIndex=0}
+  function fromSliders(){var h=hsl2h(+hue.value,+sat.value,+lit.value);setVal(h);paint(h);sync(false)}
+  function pick(b){var was=b.getAttribute('aria-checked')==='true';
+   if(b.dataset.custom){if(was){if(clear){setVal('');det.open=false;sync(true)}else det.open=!det.open;return}var cur=norm(input.value);if(cur)loadSliders(cur);det.open=true;fromSliders();return}
+   setVal(was&&clear?'':b.dataset.color);sync(true)}
+  row.addEventListener('click',function(e){var b=e.target.closest('.pa414-sw');if(b)pick(b)});
+  row.addEventListener('keydown',function(e){var b=e.target.closest('.pa414-sw');if(!b)return;var i=P.indexOf(b),n=null;if(e.key==='ArrowRight'||e.key==='ArrowDown')n=P[(i+1)%P.length];else if(e.key==='ArrowLeft'||e.key==='ArrowUp')n=P[(i+P.length-1)%P.length];else if(e.key===' '||e.key==='Enter'){e.preventDefault();pick(b);return}if(n){e.preventDefault();n.focus();pick(n)}});
+  [hue,sat,lit].forEach(function(r){r.addEventListener('input',fromSliders)});
+  sync(true);return {sync:sync,details:det};
+ }
+ window.PA414ColorPicker={create:create,norm:norm};
+ window.pa414NormalizeBillColor=norm;
+ /* Bill dialog */
+ var billPicker=null;
+ function initBill(){var m=document.getElementById('billColorMount414'),i=document.getElementById('color');if(!m||!i)return;
+  billPicker=create({input:i,mount:m,clear:true,autoOpen:true,label:'Bill color',ids:{det:'billColorCustom414',hue:'bcHue414',sat:'bcSat414',lit:'bcLit414',hex:'billColorHex414',prev:'billColorPrev414'},
+   swatches:[['Green','#3ddc97'],['Cyan','#16e4ea'],['Amber','#fbbf24'],['Red','#e5484d'],['Purple','#a78bfa'],['Slate','#7c98bd']]})}
+ window.pa414SyncSwatches=function(){if(billPicker)billPicker.sync(true)};
+ initBill();
+ /* App Colors (Settings): enhance each native color input; the input stays (hidden) so existing save/live code keeps working */
+ var SETS={
+  mb137Navy:[['Original navy','#0b234b'],['Blue','#1f4f86'],['Forest','#14532d'],['Plum','#4c1d95'],['Wine','#7f1d1d'],['Slate','#1e293b']],
+  mb137Surface:[['Original blue','#1f4f86'],['Navy','#0b234b'],['Teal','#115e59'],['Violet','#5b21b6'],['Maroon','#9f1239'],['Gray','#334155']],
+  mb137Cyan:[['Original cyan','#00f5ff'],['Green','#3ddc97'],['Amber','#fbbf24'],['Red','#e5484d'],['Purple','#a78bfa'],['Slate','#7c98bd']],
+  mb137Page:[['Original sky','#0c79bb'],['Deep navy','#07152e'],['Green','#0b4f3a'],['Purple','#3b1d7a'],['Brown','#5a2f12'],['Charcoal','#1f2937']],
+  mb137Text:[['White','#ffffff'],['Ice','#e6f2ff'],['Cream','#fef3c7'],['Mint','#dcfce7'],['Pink','#fce7f3'],['Silver','#cbd5e1']]};
+ var themePickers={};
+ function enhance(){var box=document.getElementById('mb137Appearance');if(!box)return;
+  Object.keys(SETS).forEach(function(id){var inp=document.getElementById(id);if(!inp||inp.dataset.pa414)return;var row=inp.closest('.mb137-color-row');if(!row)return;
+   inp.dataset.pa414='1';row.classList.add('pa414-themerow');row.style.setProperty('display','block','important');var l0=row.querySelector('label');if(l0){l0.style.setProperty('display','block','important');l0.style.setProperty('width','auto','important');l0.style.setProperty('margin','0 0 6px','important')}var m=document.createElement('div');m.className='pa414-themepick';row.appendChild(m);
+   var lab=row.querySelector('label');
+   themePickers[id]=inp.__pa414=create({input:inp,mount:m,clear:false,autoOpen:false,label:lab?lab.textContent:id,swatches:SETS[id],ids:{det:id+'Custom414'}})})}
+ function syncTheme(){Object.keys(SETS).forEach(function(k){var i=document.getElementById(k);if(i&&i.__pa414)i.__pa414.sync(false)})}
+ var t=null;new MutationObserver(function(){clearTimeout(t);t=setTimeout(enhance,30)}).observe(document.body,{childList:true,subtree:true});
+ document.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('#mb137ResetTheme'))setTimeout(function(){enhance();syncTheme()},250)});
+ window.PA414EnhanceAppColors=enhance;enhance();
 })();
 </script>
 </body>
