@@ -30,7 +30,8 @@ try:
     pg.click('#lockPrompt414On');check('Turn on lock calls bridge',pg.evaluate("window.__set")==[True])
     pg.evaluate("localStorage.setItem('payaviator_lock_prompt_last_v414','0')")
     pg.reload();pg.wait_for_timeout(8500)  # lock default false again in fake bridge
-    pg.evaluate("window.__lock=true;localStorage.setItem('payaviator_lock_prompt_last_v414','0')");pg.evaluate("window.PayAviatorLockPrompt414.maybeRemind()");check('no reminder when lock on',not op())
+    if op(): pg.click('#lockPrompt414Later');pg.wait_for_timeout(300)  # reminder from the reload is open; dismiss before testing lock-on
+    pg.evaluate("window.__lock=true;localStorage.setItem('payaviator_lock_prompt_last_v414','0')");pg.evaluate("window.PayAviatorLockPrompt414.maybeRemind()");pg.wait_for_timeout(500);check('no reminder when lock on',not op())
     pg.evaluate("window.__lock=false;document.getElementById('lockPrompt414Dlg').close();window.PayAviatorLockPrompt414.afterConnect()");pg.wait_for_timeout(1000)
     check('afterConnect shows connect prompt, no Dont-remind',op() and pg.evaluate("getComputedStyle(document.getElementById('lockPrompt414Never')).display==='none'"))
     pg.screenshot(path='/tmp/lock414.png')
