@@ -128,7 +128,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='4.1.3';
+  const BUNDLED_VERSION='4.1.4';
   const code=n=>{const p=String(n||'').replace(/^Version:\s*/i,'').trim().split('.').map(Number);return p.length===3&&p.every(Number.isFinite)?p[0]*10000+p[1]*100+p[2]:0};
   const S={name:BUNDLED_VERSION,code:code(BUNDLED_VERSION)};
   function paint(root=document){
@@ -25817,8 +25817,9 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
    <div class="onb-msg" data-onb-msg role="status" aria-live="polite"></div>
    <div class="onb-actions">
     <button type="button" class="onb-google" data-onb-act="google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg><span>Continue with Google</span></button>
-    <button type="button" class="onb-google onb-email" data-onb-go="signin"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#1f1f1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><span>Continue with email</span></button>
+    <button type="button" class="onb-google onb-email" data-onb-go="create"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#1f1f1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><span>Sign up with email</span></button>
     <button type="button" class="onb-google onb-phone" data-onb-act="phone"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#1f1f1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><span>Continue with phone</span></button>
+    <button type="button" class="onb-link" data-onb-go="signin">Already have an account? Sign in</button>
     <button type="button" class="onb-link" data-onb-act="guest">Continue as guest</button>
    </div>
   </section>
@@ -25837,7 +25838,7 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
    <div class="onb-or">or</div>
    <div class="onb-alt"><button type="button" class="onb-google" data-onb-act="google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg><span>Continue with Google</span></button>
    <button type="button" class="onb-google onb-phone" data-onb-act="phone"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#1f1f1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><span>Continue with phone</span></button></div>
-   <div class="onb-note"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><span><b>Check your inbox.</b> We'll email a link to verify your address. Verify it before you link a bank.</span></div>
+   <div class="onb-note"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><span><b>Check your inbox.</b> We'll email a link to verify your address (works with Gmail, Yahoo, AOL, Outlook, iCloud and more). If you don't see it, check Spam. Verify it before you link a bank.</span></div>
    <div class="onb-msg" data-onb-msg role="alert" aria-live="polite"></div>
    <div class="onb-foot">By creating an account you agree to our <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</div>
    <div class="onb-actions">

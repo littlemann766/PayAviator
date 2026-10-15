@@ -81,6 +81,7 @@ public class MainActivity extends Activity {
     private static final String SECURITY_PREFS = "payaviator_security";
     private static final String SECURITY_ENABLED_KEY = "app_lock_enabled";
     private static final String SECURITY_LAST_UNLOCK_KEY = "pin_lock_last_unlock_ms";
+    private static final String SECURITY_STORAGE_VERSION_KEY = "security_storage_version";
     private static final String SECURITY_REAL_ACCOUNTS_KEY = "real_accounts_connected";
     private static final long RELOCK_AFTER_MS = 5 * 60 * 1000L; // 5-minute grace period
     private static final int SAVE_TEXT_REQUEST = 1004;
@@ -114,6 +115,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        migrateAppLockDefaultOff();
 
         // Firebase sign-in only gates bank (Plaid) features; local bill tracking never needs it.
         signIn = new FirebaseSignIn(this, getString(com.payaviator.app.R.string.default_web_client_id));
@@ -1535,15 +1537,27 @@ public class MainActivity extends Activity {
 
 
     private boolean areRealAccountsConnected() {
+        // 4.1.4: App lock is never mandatory, so the UI treats this as false (flag is still stored).
+        if (true) return false;
         return getSharedPreferences(SECURITY_PREFS, MODE_PRIVATE)
                 .getBoolean(SECURITY_REAL_ACCOUNTS_KEY, false);
     }
 
+    /** 4.1.4: one-time reset so App lock is OFF after upgrading from any older version. */
+    private void migrateAppLockDefaultOff() {
+        SharedPreferences prefs = getSharedPreferences(SECURITY_PREFS, MODE_PRIVATE);
+        if (prefs.getInt(SECURITY_STORAGE_VERSION_KEY, 0) >= 414) return;
+        prefs.edit()
+                .putBoolean(SECURITY_ENABLED_KEY, false)
+                .remove(SECURITY_LAST_UNLOCK_KEY)
+                .putInt(SECURITY_STORAGE_VERSION_KEY, 414)
+                .apply();
+    }
+
     private boolean isAppLockEnabled() {
         SharedPreferences prefs = getSharedPreferences(SECURITY_PREFS, MODE_PRIVATE);
-        // Real financial accounts make device authentication mandatory.
-        return prefs.getBoolean(SECURITY_REAL_ACCOUNTS_KEY, false)
-                || prefs.getBoolean(SECURITY_ENABLED_KEY, false);
+        // 4.1.4: App lock is opt-in only. Connecting a bank no longer forces it on.
+        return prefs.getBoolean(SECURITY_ENABLED_KEY, false);
     }
 
     private boolean isWithinUnlockGracePeriod() {
@@ -1564,9 +1578,6 @@ public class MainActivity extends Activity {
     }
 
     private void setAppLockEnabledNative(boolean enabled) {
-        // A user may opt into app lock without banking, but cannot disable it while
-        // real financial accounts are connected.
-        if (!enabled && areRealAccountsConnected()) return;
         getSharedPreferences(SECURITY_PREFS, MODE_PRIVATE)
                 .edit()
                 .putBoolean(SECURITY_ENABLED_KEY, enabled)
@@ -1578,14 +1589,7 @@ public class MainActivity extends Activity {
         SharedPreferences prefs = getSharedPreferences(SECURITY_PREFS, MODE_PRIVATE);
         boolean wasConnected = prefs.getBoolean(SECURITY_REAL_ACCOUNTS_KEY, false);
         prefs.edit().putBoolean(SECURITY_REAL_ACCOUNTS_KEY, connected).apply();
-        if (connected && !wasConnected) {
-            // Require device authentication immediately after the first real account
-            // is attached; PayAviator never stores a separate PIN.
-            authenticatedForSession = false;
-            clearUnlockGracePeriod();
-            showLockedScreen();
-            authenticateUser();
-        }
+        // 4.1.4: no automatic lock when the first bank connects; the user turns App lock on in Settings.
     }
 
     private boolean isDeviceSecure() {

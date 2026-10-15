@@ -1,3 +1,8 @@
+## 4.1.4 — Any-email sign-up, App lock off by default
+- Sign-up works with any email provider (Gmail, Yahoo, AOL, Outlook, iCloud...). Welcome screen now offers "Sign up with email" next to Google, plus "Already have an account? Sign in". Verification note mentions Spam folder.
+- App lock (fingerprint / face / phone PIN) is OFF by default and opt-in only: a one-time migration (security storage version 414) turns it off for everyone upgrading, and connecting a bank no longer forces it on.
+- Version 4.1.4 everywhere; service-worker cache payaviator-4.1.4; Android versionCode floor 410400.
+
 ## 4.1.3 — Email-verify loop fix, large-text fit, new Upgrade + sign-in screens
 - Verify email: sends only on tap (60s resend cooldown, "use the newest email" hint); "I verified, continue" reloads and force-refreshes the sign-in token and retries Connect bank; silent refresh + retry on first 403 email_not_verified; re-check on resume.
 - Large text / small screens: heading wrap, Cash/Credit gauges scale (never stack), metric tiles, nav label ellipsis, system-bar insets, textZoom cap 130%.
