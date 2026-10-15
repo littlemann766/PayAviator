@@ -22042,6 +22042,8 @@ body.ppauth-open #mb119BottomNav,body.ppauth-open #pp925TipLauncher{visibility:h
 #ppAuthSheet .ppauth-foot{margin-top:12px!important;font-size:12.5px!important;color:var(--pa4-faint,rgba(255,255,255,.55))!important;line-height:1.4!important}
 #pp920AccountsModal .ppauth-account,#pp920AccountsModal .ppauth-needs{background:#173e76!important;border:1px solid rgba(24,226,235,.34)!important;border-radius:20px!important;margin:12px 0!important;padding:16px!important;color:#fff!important}
 #pp920AccountsModal .ppauth-needs{border-color:var(--pa4-warn,#fbbf24)!important}
+#pp920AccountsModal .pp414-paused{border-color:rgba(160,180,210,.5)!important}
+#pp920AccountsModal .pp414-pill{display:inline-block;margin-left:6px;padding:2px 9px;border-radius:999px;font-size:.72rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;background:rgba(160,180,210,.22);color:#dbe7f7;vertical-align:middle}
 #pp920AccountsModal .ppauth-danger{border-color:color-mix(in srgb,var(--pa4-bad,#fb7185) 55%,transparent)!important;color:#ffc2cb!important}
 </style>
 <div id="ppAuthSheet" role="dialog" aria-modal="true" aria-labelledby="ppAuthTitle">
@@ -22380,16 +22382,18 @@ setState(readNative());
     });
   }
   // Backend errors are {error, code, request_id}: show `error`, log `request_id`.
-  function pp920ApiError(status,j){
+  function pp920ApiError(status,j,quiet){
     const e=new Error(j.error||('Bank service returned HTTP '+status));
     e.code=j.code||('HTTP_'+status); e.status=status; e.requestId=j.request_id||null;
     if(e.requestId)console.warn('PayAviator bank service error',e.code,'request_id='+e.requestId);
     // 4.1.0: email-verify / one-free-bank gates open their in-app screens.
-    try{window.PayAviatorAccountGate&&window.PayAviatorAccountGate.handle(e,j)}catch(_){ }
+    if(!quiet){try{window.PayAviatorAccountGate&&window.PayAviatorAccountGate.handle(e,j)}catch(_){ }}
     return e;
   }
   function pp920SignInRequired(){const e=new Error('Sign in to use bank features.');e.code='SIGN_IN_REQUIRED';return e}
   async function pp920Api(path,options={}){
+    /* 4.1.4: background cloud sync passes {quiet:true} so its errors never open the verify/upgrade screens. */
+    const quiet=!!(options&&options.quiet); if(quiet){options=Object.assign({},options);delete options.quiet}
     // /api/plaid/* needs a signed-in Firebase user. The ID token is attached natively by
     // AndroidBridge.apiRequest and never enters the page.
     if(/^\/api\/(plaid|billing)\//.test(String(path)) && !(window.PayAviatorAuth&&window.PayAviatorAuth.isSignedIn())) throw pp920SignInRequired();
@@ -22402,7 +22406,7 @@ setState(readNative());
         const e=new Error('Bank connection is temporarily unavailable. '+(raw.error||'You can keep using PayAviator offline.'));
         e.code='BANK_SERVICE_UNREACHABLE'; throw e;
       }
-      if(raw.status<200 || raw.status>=300) throw pp920ApiError(raw.status,j);
+      if(raw.status<200 || raw.status>=300) throw pp920ApiError(raw.status,j,quiet);
       if(j&&j.skipped&&typeof j.skipped==='object'){try{pp920ApiError(Number(j.skipped.status)||402,j.skipped)}catch(_){ }}
       return j;
     }
@@ -22411,7 +22415,7 @@ setState(readNative());
     try{
       const r=await fetch(PP920_PLAID_API+path,Object.assign({},options,{signal:controller.signal,cache:'no-store'}));
       let j={}; try{j=await r.json()}catch(_){ }
-      if(!r.ok) throw pp920ApiError(r.status,j);
+      if(!r.ok) throw pp920ApiError(r.status,j,quiet);
       return j;
     }catch(err){
       if(err?.name==='AbortError'){const e=new Error('PayAviator bank service timed out. Please try again.');e.code='BANK_SERVICE_TIMEOUT';throw e;}
@@ -22458,10 +22462,10 @@ setState(readNative());
       if(prev&&prev.reason==='login')return;
       by.set(i.item_id,{id:String(i.item_id),name:nameFor(i),needsUpdate:true,reason});
     };
-    h.items.forEach(i=>{if(!i)return;
+    h.items.forEach(i=>{if(!i||i.paused)return;
       if(i.needs_update&&(i.error_code||!i.new_accounts_available))add(i,true);
       else if(i.new_accounts_available||i.needs_update)add(i,false)});
-    h.errors.forEach(e=>{if(e&&e.needs_update)add({item_id:e.item_id,institution_name:e.institution_name},true)});
+    h.errors.forEach(e=>{if(e&&e.needs_update&&!e.paused&&e.code!=='ITEM_PAUSED')add({item_id:e.item_id,institution_name:e.institution_name},true)});
     return [...by.values()];
   }
   function pp410FeedReconnect(){
@@ -22718,7 +22722,8 @@ setState(readNative());
       window.Plaid.create({token:tok.link_token,onSuccess:async()=>{try{await pp920Api('/api/plaid/update-complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item_id:itemId})});await pp920SyncPlaidAccounts();render();pp920Toast('Bank reconnected to PayAviator')}catch(err){pp920Toast('Could not finish reconnecting: '+(err?.message||err))}},onExit:()=>{}}).open();
     }catch(err){
       try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }
-      pp920Toast('Could not reconnect this bank: '+(err?.message||'Please try again.'));
+      if(err&&err.code==='ITEM_PAUSED'){pp920Toast('This bank is paused because Plus ended. Resubscribe to turn it back on.');try{pp920SaveItemHealth(Object.assign({},{items:pp920ItemHealth().items,errors:pp920ItemHealth().errors.concat([{code:'ITEM_PAUSED',paused:true,item_id:itemId}])}))}catch(_){ }}
+      else pp920Toast('Could not reconnect this bank: '+(err?.message||'Please try again.'));
     }finally{if(btn && document.body.contains(btn)){btn.disabled=false;btn.textContent=old||'Reconnect'}}
   }
   window.PayAviatorReconnectPlaidItem=pp920ReconnectItem;
@@ -22735,7 +22740,25 @@ setState(readNative());
       return `<section class="ppauth-account"><div class="pp920-title">Sign in for bank features</div><div class="pp920-sub">Connecting and syncing banks needs a PayAviator account. Bills, income and spending keep working without one.</div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-signin>Sign in</button></div></section>`;
     }
     const who=st.email||st.name||'Signed in';
-    return `<section class="ppauth-account"><div class="pp920-row"><div><div class="pp920-title">Signed in</div><div class="pp920-sub">${esc(who)}${st.provider==='google'?' • Google':''}</div></div></div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-signout>Sign out</button><button type="button" class="pp920-action ppauth-danger" data-ppauth-delete>Delete account</button></div></section>`;
+    return `<section class="ppauth-account"><div class="pp920-row"><div><div class="pp920-title">Signed in</div><div class="pp920-sub">${esc(who)}${st.provider==='google'?' • Google':''}</div><div class="pp920-sub" id="pp414SyncLine">${esc(window.PayAviatorSync?.statusLine?.()||'')}</div></div></div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-signout>Sign out</button><button type="button" class="pp920-action ppauth-danger" data-ppauth-delete>Delete account</button></div></section>`;
+  }
+  /* 4.1.4: banks paused because Plus ended (backend: items[].paused / errors[].code==='ITEM_PAUSED'). No reconnect prompt. */
+  function pp414PausedList(){
+    const h=pp920ItemHealth(),by=new Map();
+    const add=(id,name)=>{const k=String(id||name||('p'+by.size));if(!by.has(k))by.set(k,{id:id||'',name:name||'Extra bank'})};
+    h.items.forEach(i=>{if(i&&(i.paused||i.status==='paused'||i.pause_reason))add(i.item_id,i.institution_name)});
+    h.errors.forEach(e=>{if(e&&(e.paused||e.code==='ITEM_PAUSED'))add(e.item_id,e.institution_name)});
+    return [...by.values()];
+  }
+  function pp414PausedSection(){
+    if(!window.PayAviatorAuth?.isSignedIn?.())return '';
+    const list=pp414PausedList();
+    let n=0;try{n=Number(window.PayAviatorAccountGate?.billing?.pausedBanks)||0}catch(_){}
+    const live=!!(window.PayAviatorBillingLive&&window.PayAviatorBillingLive());
+    const msg='Extra banks pause when PayAviator Plus ends. Your first bank keeps working, and your bills and budget are not affected.';
+    const act=live?'<div class="pp920-actions"><button type="button" class="pp920-action" data-pp414-resub>Resubscribe</button></div>':'<div class="pp920-sub">Plus is coming soon.</div>';
+    if(!list.length&&n>0)return `<section class="ppauth-needs pp414-paused" data-paused-count="${n}"><div class="pp920-title">${n} bank${n===1?'':'s'} paused <span class="pp414-pill">Paused</span></div><div class="pp920-sub">${msg}</div>${act}</section>`;
+    return list.map(i=>`<section class="ppauth-needs pp414-paused" data-item="${esc(i.id)}"><div class="pp920-title">${esc(i.name)} <span class="pp414-pill">Paused</span></div><div class="pp920-sub">${msg} Resubscribe to Plus to turn it back on.</div>${act}</section>`).join('');
   }
   function pp920NeedsSection(){
     if(window.PayAviatorReconnect) return '';   // 4.1.0: the reconnect banner shows these (no duplicate cards)
@@ -22750,8 +22773,11 @@ setState(readNative());
     host.querySelector('[data-ppauth-signin]')?.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();if(await window.PayAviatorAuth.ensureSignedIn()){try{await pp920SyncPlaidAccounts()}catch(_){ }render()}});
     host.querySelector('[data-ppauth-signout]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{await window.PayAviatorAuth.signOut();render();pp920Toast('Signed out. Your bills and spending are still on this phone.')};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Sign out?',message:'Bank data will be removed from this phone until you sign in again. Your bills, income and spending stay.',confirmText:'Sign out'},go);else go()});
     host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{pp920Toast('Deleting your account…');const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.ok){render();pp920Toast('Your PayAviator account and bank connections were deleted.')}else if(r.code!=='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error||'Could not delete your account. Please try again.')}};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message:'This disconnects every bank from PayAviator and Plaid, deletes the bank data stored on our servers, and deletes your sign-in. Bills, income and spending you added stay on this phone.',confirmText:'Delete account'},go);else window.PayAviatorConfirm({title:'Delete account?',message:'Delete your PayAviator account and disconnect every bank?',confirmText:'Delete account',danger:true}).then(ok=>{if(ok)go()})});
+    host.querySelectorAll('[data-pp414-resub]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();try{window.PayAviatorAccountGate?.openUpgrade('plus_ended')}catch(_){ }}));
     host.querySelectorAll('[data-ppauth-reconnect]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();pp920ReconnectItem(b.getAttribute('data-ppauth-reconnect'),b)}));
   }
+  document.addEventListener('payaviator:billingchange',()=>{try{if($('pp920AccountsModal')?.classList.contains('show'))render()}catch(_){ }});
+  document.addEventListener('payaviator:sync-status',()=>{const l=$('pp414SyncLine');if(l)l.textContent=window.PayAviatorSync?.statusLine?.()||''});
   document.addEventListener('payaviator:authchange',e=>{
     const reason=e?.detail?.reason||'';
     if(reason==='signed_in'){
@@ -22803,7 +22829,7 @@ setState(readNative());
     const accts=loadAccounts(), used=accts.filter(isIncluded), total=used.reduce((s,a)=>s+balance(a),0);
     const groups={};accts.forEach(a=>(groups[institution(a)]||(groups[institution(a)]=[])).push(a));
     const names=Object.keys(groups);
-    host.innerHTML=pp920AuthSection()+pp920NeedsSection()+`<section class="pp920-summary"><div class="pp920-row"><div><div class="pp920-title">Connected banking</div><div class="pp920-sub">${names.length} institution${names.length===1?'':'s'} • ${accts.length} account${accts.length===1?'':'s'}</div></div><div style="text-align:right"><div class="pp920-sub">Bank available</div><div class="pp920-total">${money(total)}</div></div></div></section>`+
+    host.innerHTML=pp920AuthSection()+pp920NeedsSection()+pp414PausedSection()+`<section class="pp920-summary"><div class="pp920-row"><div><div class="pp920-title">Connected banking</div><div class="pp920-sub">${names.length} institution${names.length===1?'':'s'} • ${accts.length} account${accts.length===1?'':'s'}</div></div><div style="text-align:right"><div class="pp920-sub">Bank available</div><div class="pp920-total">${money(total)}</div></div></div></section>`+
     names.map(name=>{const rows=groups[name],bankUsed=rows.filter(isIncluded),opened=openBank===name;return `<section class="pp920-bank ${opened?'open':''}" data-bank="${encodeURIComponent(name)}"><button class="pp920-bankhead" type="button"><div><div class="pp920-title">${name}</div><div class="pp920-sub">${bankUsed.length} of ${rows.length} included in Available Now</div></div><span style="font-weight:900;font-size:1.35rem">${opened?'⌃':'⌄'}</span></button><div class="pp920-bankbody">${rows.map(a=>{const on=isIncluded(a);return `<div class="pp920-account" data-account="${encodeURIComponent(key(a))}"><div class="pp920-row"><div><div class="pp920-title">${a.name||a.subtype||a.type||'Account'}</div><div class="pp920-sub">${a.subtype||a.type||'account'}${a.mask?' •••• '+a.mask:''}</div></div><div style="text-align:right"><div class="pp920-total">${money(balance(a))}</div><div class="pp920-sub">available balance</div></div></div><div class="pp920-pill ${on?'':'off'}">${on?'Included in Available Now':(String(a.type||'').toLowerCase()==='credit'||String(a.type||'').toLowerCase()==='loan'?'Credit/loan — excluded':String(a.subtype||'').toLowerCase()==='savings'?'Savings — protected':'Not included')}</div><div class="pp920-actions"><button class="pp920-action" type="button" data-pp920-toggle="1">${on?'Exclude from Available Now':'Include in Available Now'}</button><button class="pp920-action" type="button" data-pp920-remove="1">Disconnect</button></div></div>`}).join('')}</div></section>`}).join('')+
     '<div class="pp920-actions"><button id="pp920ConnectBank" class="pp920-action" type="button">+ Connect another bank</button><button id="pp920SyncBank" class="pp920-action" type="button">↻ Sync all accounts</button></div><div class="pp920-note"><b>Multiple banks supported:</b> connect as many institutions and accounts as you authorize. Each account can be included or excluded from Available Now independently. PayAviator uses read-only Plaid access.</div>';
 
@@ -26208,6 +26234,7 @@ function setReason(reason){
 /* 4.1.3: prices always show. BILLING_LIVE=false keeps the main button disabled ("Upgrade"), the agree box off
    and shows "Plus is coming soon." Flip to true once Play Billing is wired. */
 const BILLING_LIVE=false;
+window.PayAviatorBillingLive=()=>BILLING_LIVE;   /* 4.1.4: Paused-bank card shows a Resubscribe button only when this is true */
 function applyNoSell(){
   const root=$('ppOnb'),sec=root&&root.querySelector('section[data-onb="upgrade"]');if(!sec)return;
   root.classList.toggle('pa410-nosell',!BILLING_LIVE);root.classList.toggle('pa413-live',BILLING_LIVE);
@@ -26943,6 +26970,7 @@ async function pp982SyncLiveBank(){
     // Recover from 3.1.4's oversized cache without breaking the sync/render path.
     try{localStorage.removeItem(TX_KEY);localStorage.removeItem('payaviator_imported_transactions_v1')}catch(_){}
   }
+  try{if(Array.isArray(td.errors)&&td.errors.some(e=>e&&(e.paused||e.code==='ITEM_PAUSED')))window.PayAviatorSavePlaidItemHealth?.({items:Array.isArray(ad.items)?ad.items:[],errors:[...(Array.isArray(ad.errors)?ad.errors:[]),...td.errors]})}catch(_){}
   try{localStorage.setItem('payaviator_transaction_sync_status_v313',JSON.stringify({at:new Date().toISOString(),count:tx.length,errors:Array.isArray(td.errors)?td.errors:[],sync:Array.isArray(td.sync)?td.sync:[]}))}catch(_){}
   localStorage.setItem(SYNC_KEY,String(Date.now()));
   try{window.dispatchEvent(new CustomEvent('payaviator:accounts-updated',{detail:{accounts:mapped,live:pp982LiveBankActive()}}))}catch(_){}
@@ -34453,5 +34481,210 @@ html:not(#pa413a):not(#pa413b):not(#pa413c):not(#pa413d):not(#pa413e).pa413-bigt
   }
   if(document.readyState!=='loading')check();else document.addEventListener('DOMContentLoaded',check);
   addEventListener('resize',check);addEventListener('pageshow',check);
+})();
+</script>
+<script id="pa414-cloud-sync">
+/* 4.1.4 cloud sync (client). Local-first: the app keeps reading and writing its own storage; this module
+   watches the synced collections, queues changes in a persistent outbox and exchanges them with
+   /api/sync/changes + /api/sync/push when a verified account is signed in. Signed-out use is untouched. */
+(function(){
+'use strict';
+if(window.PayAviatorSync)return;
+var KB='payaviator_sync_base_v414',KO='payaviator_sync_outbox_v414',KC='payaviator_sync_cursor_v414',KM='payaviator_sync_meta_v414';
+var ID_RE=/^[A-Za-z0-9_.:@-]{1,128}$/,MAX_BATCH=200,MAX_DATA=8000,MASS_MIN=5;
+function rd(k,d){try{var v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(_){return d}}
+function wr(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(_){return false}}
+function canon(v){if(v===null||typeof v!=='object')return JSON.stringify(v===undefined?null:v);if(Array.isArray(v))return '['+v.map(canon).join(',')+']';return '{'+Object.keys(v).sort().filter(function(k){return v[k]!==undefined}).map(function(k){return JSON.stringify(k)+':'+canon(v[k])}).join(',')+'}'}
+function hash(s){var h1=0xdeadbeef,h2=0x41c6ce57;for(var i=0,c;i<s.length;i++){c=s.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677)}h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return (4294967296*(2097151&h2)+(h1>>>0)).toString(36)}
+function sig(o){return hash(canon(o))}
+function safeId(raw){raw=String(raw);return ID_RE.test(raw)?raw:'h_'+hash(raw)}
+function isObj(x){return x&&typeof x==='object'&&!Array.isArray(x)}
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function call(fn){try{var f=window[fn];if(typeof f==='function')return f.apply(null,[].slice.call(arguments,1))}catch(e){console.warn('PayAviator sync refresh '+fn,e&&e.message||e)}}
+function setGlobal(name,v){try{switch(name){
+case 'bills':if(typeof bills!=='undefined')bills=v;break;
+case 'billOverrides':if(typeof billOverrides!=='undefined')billOverrides=v;break;
+case 'billPaidAmounts':if(typeof billPaidAmounts!=='undefined')billPaidAmounts=v;break;
+case 'paychecks':if(typeof paychecks!=='undefined')paychecks=v;break;
+case 'paycheckOverrides':if(typeof paycheckOverrides!=='undefined')paycheckOverrides=v;break;
+case 'hourlyWage':if(typeof hourlyWage!=='undefined')hourlyWage=v;break}}catch(_){}}
+var WATCH={};
+/* ---- collections: read() -> Map(id -> data object); write(upserts Map, deletes Set) ---- */
+function arrayColl(kind,key,idOf,after){
+  WATCH[key]=1;
+  function rows(){var a=rd(key,[]);return Array.isArray(a)?a:[]}
+  function ids(a){var seen={},out=[];a.forEach(function(x,i){if(!isObj(x)){out.push(null);return}var raw=idOf(x),id=raw!=null&&raw!==''?safeId(raw):'h_'+hash(canon(x));if(seen[id]){var n=seen[id]+1;seen[id]=n;id=safeId(id.slice(0,100)+'_'+n)}else seen[id]=1;out.push(id)});return out}
+  return{kind:kind,read:function(){var a=rows(),m=new Map(),ix=ids(a);a.forEach(function(x,i){if(ix[i])m.set(ix[i],x)});return m},
+    write:function(up,del){var a=rows(),ix=ids(a),out=[],used={};a.forEach(function(x,i){var id=ix[i];if(id&&del.has(id))return;if(id&&up.has(id)){out.push(up.get(id));used[id]=1}else out.push(x)});up.forEach(function(d,id){if(!used[id])out.push(d)});wr(key,out);if(after)after(out)}}
+}
+function mapColl(kind,key,prefix,toData,fromData,after){
+  WATCH[key]=1;
+  return{kind:kind,read:function(){var o=rd(key,{}),m=new Map();if(!isObj(o))return m;Object.keys(o).forEach(function(k){m.set(safeId(prefix+k),toData(k,o[k]))});return m},
+    write:function(up,del){var o=rd(key,{});if(!isObj(o))o={};var by={};Object.keys(o).forEach(function(k){by[safeId(prefix+k)]=k});del.forEach(function(id){if(by[id]!==undefined)delete o[by[id]]});up.forEach(function(d,id){var r=fromData(d);if(r)o[r.k]=r.v});wr(key,o);if(after)after(o)}}
+}
+var BILL_KEY='payAviator_v1',OV_KEY='payAviator_bill_overrides_v1',PA_KEY='payAviator_bill_paid_amounts_v1',MV_KEY='payAviator_instance_moves_v1',REV_KEY='payAviator_bills_rev_v1';
+var PC_KEY='payAviator_paychecks_v1',PCO_KEY='payAviator_paycheck_overrides_v1';
+[OV_KEY,PA_KEY,MV_KEY].forEach(function(k){WATCH[k]=1});WATCH[PCO_KEY]=1;
+['payAviator_income_type_v1','payAviator_hourly_wage_v1','payAviator_annual_salary_v1'].forEach(function(k){WATCH[k]=1});
+function pick(o,id){var r={},has=false;if(isObj(o))Object.keys(o).forEach(function(k){if(k.indexOf(id+'|')===0){r[k.slice(id.length+1)]=o[k];has=true}});return has?r:undefined}
+function dropKeys(o,id){Object.keys(o).forEach(function(k){if(k.indexOf(id+'|')===0)delete o[k]})}
+function putKeys(o,id,sub){if(isObj(sub))Object.keys(sub).forEach(function(k){o[id+'|'+k]=sub[k]})}
+var billColl={kind:'bill',read:function(){
+  var a=rd(BILL_KEY,[]),ov=rd(OV_KEY,{}),pa=rd(PA_KEY,{}),mv=rd(MV_KEY,{}),m=new Map();if(!Array.isArray(a))return m;
+  a.forEach(function(b){if(!isObj(b)||b.id==null||b.id==='')return;var id=safeId(b.id),d=clone(b);var x=pick(ov,String(b.id)),y=pick(pa,String(b.id)),z=pick(mv,String(b.id));if(x)d._ov=x;if(y)d._pa=y;if(z)d._mv=z;m.set(id,d)});return m},
+ write:function(up,del){
+  var a=rd(BILL_KEY,[]);if(!Array.isArray(a))a=[];var ov=rd(OV_KEY,{}),pa=rd(PA_KEY,{}),mv=rd(MV_KEY,{}),out=[],used={};
+  a.forEach(function(b){var id=isObj(b)&&b.id!=null?safeId(b.id):null;if(id&&del.has(id)){var r=String(b.id);dropKeys(ov,r);dropKeys(pa,r);dropKeys(mv,r);return}if(id&&up.has(id)){out.push(split(up.get(id)));used[id]=1}else out.push(b)});
+  up.forEach(function(d,id){if(!used[id])out.push(split(d))});
+  function split(d){d=clone(d);var r=String(d.id);dropKeys(ov,r);dropKeys(pa,r);dropKeys(mv,r);putKeys(ov,r,d._ov);putKeys(pa,r,d._pa);putKeys(mv,r,d._mv);delete d._ov;delete d._pa;delete d._mv;return d}
+  wr(BILL_KEY,out);wr(OV_KEY,ov);wr(PA_KEY,pa);wr(MV_KEY,mv);try{localStorage.setItem(REV_KEY,String(Math.max(Date.now(),Number(localStorage.getItem(REV_KEY)||0)+1)))}catch(_){}
+  setGlobal('bills',out);setGlobal('billOverrides',ov);setGlobal('billPaidAmounts',pa);
+  call('persistBills');call('render');call('renderCalendar');call('scheduleNativeNotifications')}};
+var incColl={kind:'income',read:function(){
+  var a=rd(PC_KEY,[]),ov=rd(PCO_KEY,{}),m=new Map();if(Array.isArray(a))a.forEach(function(p){if(!isObj(p)||p.id==null||p.id==='')return;var d=clone(p),x=pick(ov,String(p.id));if(x)d._ov=x;m.set(safeId(p.id),d)});
+  var t=localStorage.getItem('payAviator_income_type_v1'),w=localStorage.getItem('payAviator_hourly_wage_v1'),s=localStorage.getItem('payAviator_annual_salary_v1');
+  if(t!=null||w!=null||s!=null)m.set('profile',{profile:true,type:t,wage:w,salary:s});return m},
+ write:function(up,del){
+  var a=rd(PC_KEY,[]);if(!Array.isArray(a))a=[];var ov=rd(PCO_KEY,{}),out=[],used={};
+  function split(d){d=clone(d);var r=String(d.id);dropKeys(ov,r);putKeys(ov,r,d._ov);delete d._ov;return d}
+  a.forEach(function(p){var id=isObj(p)&&p.id!=null?safeId(p.id):null;if(id&&del.has(id)){dropKeys(ov,String(p.id));return}if(id&&up.has(id)){out.push(split(up.get(id)));used[id]=1}else out.push(p)});
+  up.forEach(function(d,id){if(id==='profile'){if(d.type!=null)localStorage.setItem('payAviator_income_type_v1',String(d.type));if(d.wage!=null)localStorage.setItem('payAviator_hourly_wage_v1',String(d.wage));if(d.salary!=null)localStorage.setItem('payAviator_annual_salary_v1',String(d.salary));if(d.wage!=null)setGlobal('hourlyWage',Number(d.wage)||0);return}if(!used[id]&&d&&d.id!=null)out.push(split(d))});
+  wr(PC_KEY,out);wr(PCO_KEY,ov);setGlobal('paychecks',out);setGlobal('paycheckOverrides',ov);
+  call('persistPaychecks');call('render');call('renderCalendar')}};
+var COLLS=[billColl,incColl,
+ arrayColl('spending','payAviator_budget_spending_v1',function(x){return x.id},function(){call('renderBudgetTracking');call('updateFinanceDashboard');call('render')}),
+ arrayColl('goal','payAviator_savings_goals_v1',function(x){return x.id},function(){call('renderSavingsGoals');call('updateFinanceDashboard')}),
+ mapColl('budget','payAviator_monthly_budgets_v1','month:',function(k,v){return{month:k,amount:v}},function(d){return isObj(d)&&d.month!=null?{k:String(d.month),v:d.amount}:null},function(){call('renderBudgetTracking');call('updateFinanceDashboard')}),
+ mapColl('category','payAviator_category_map_v86','c:',function(k,v){return{key:k,value:v}},function(d){return isObj(d)&&d.key!=null?{k:String(d.key),v:d.value}:null}),
+ (function(){var key='payaviator_payday_cushion_v2045';WATCH[key]=1;return{kind:'cushion',read:function(){var o=rd(key,null),m=new Map();if(isObj(o))m.set('payday',o);return m},write:function(up,del){if(del.has('payday'))localStorage.removeItem(key);up.forEach(function(d,id){if(id==='payday'&&isObj(d))wr(key,d)});call('updateFinanceDashboard');call('render')}}})()
+];
+var BYKIND={};COLLS.forEach(function(c){BYKIND[c.kind]=c});
+/* ---- persisted state ---- */
+function meta(){var m=rd(KM,{});return isObj(m)?m:{}}
+function saveMeta(m){wr(KM,m)}
+function resetState(uid){localStorage.removeItem(KB);localStorage.removeItem(KO);localStorage.removeItem(KC);saveMeta({uid:uid||'',migrated:false,tries:0,nextAt:0})}
+var running=false,timer=null,scanTimer=null,chunk=MAX_BATCH,st={state:'idle',detail:''};
+function setStatus(s,d){st={state:s,detail:d||'',at:Date.now()};var m=meta();m.status=s;saveMeta(m);try{document.dispatchEvent(new CustomEvent('payaviator:sync-status',{detail:st}))}catch(_){}}
+function auth(){return window.PayAviatorAuth||null}
+function me(){var a=auth();if(!a||!a.isSignedIn())return null;var s=a.getState();return{uid:s.uid||s.email||'user',verified:s.emailVerified!==false}}
+function apiFn(){return typeof window.PayAviatorBankApi==='function'?window.PayAviatorBankApi:null}
+function api(path,opt){var f=apiFn();opt=Object.assign({quiet:true},opt||{});return f(path,opt)}
+/* ---- scan: diff storage against the last-synced base, queue changes ---- */
+function scan(){
+  var base=rd(KB,{}),out=rd(KO,{}),now=Date.now(),held=0,queued=0;
+  COLLS.forEach(function(c){
+    var cur=c.read(),seen={};
+    cur.forEach(function(d,id){var key=c.kind+'|'+id;seen[key]=1;var h=sig(d),b=base[key];
+      if(b&&b.h===h)return;var o=out[key];if(o&&o.h===h&&!o.deleted)return;
+      out[key]={kind:c.kind,id:id,data:d,updatedAt:now,h:h};queued++});
+    var gone=Object.keys(base).filter(function(k){return k.indexOf(c.kind+'|')===0&&!seen[k]});
+    var total=Object.keys(base).filter(function(k){return k.indexOf(c.kind+'|')===0}).length;
+    if(gone.length>=MASS_MIN&&gone.length*2>=total&&!meta().confirmMass){held+=gone.length;return}
+    gone.forEach(function(k){var o=out[k];if(o&&o.deleted)return;out[k]={kind:c.kind,id:k.slice(c.kind.length+1),deleted:true,updatedAt:now,h:'del'};queued++});
+    /* items removed locally then re-added before push: cancel stale tombstones */
+    Object.keys(out).forEach(function(k){if(out[k].deleted&&seen[k])delete out[k]})
+  });
+  wr(KO,out);var m=meta();if(held)m.held=held;else delete m.held;delete m.confirmMass;saveMeta(m);return queued}
+/* ---- apply a remote item (from pull or an adopted stale winner) ---- */
+function applyRemote(items){
+  var base=rd(KB,{}),out=rd(KO,{}),by={};
+  items.forEach(function(it){var c=BYKIND[it&&it.kind];if(!c||!it.id)return;var key=c.kind+'|'+it.id,o=out[key];
+    if(o&&Number(o.updatedAt)>Number(it.updatedAt))return;           /* local pending edit is newer: server resolves on push */
+    var del=!!it.deleted||it.data==null;
+    if(!del&&!isObj(it.data))return;
+    if(base[key]&&!del&&base[key].h===sig(it.data)){delete out[key];return}
+    if(del&&!base[key]&&!(c.read().has(it.id))){delete out[key];return}
+    (by[c.kind]||(by[c.kind]={up:new Map(),del:new Set()}));
+    if(del)by[c.kind].del.add(it.id);else by[c.kind].up.set(it.id,it.data);
+    delete out[key]});
+  Object.keys(by).forEach(function(k){var c=BYKIND[k],x=by[k];try{c.write(x.up,x.del)}catch(e){console.warn('PayAviator sync apply '+k,e&&e.message||e);return}
+    var cur=c.read();x.up.forEach(function(d,id){var d2=cur.get(id);base[k+'|'+id]={h:d2?sig(d2):sig(d)}});x.del.forEach(function(id){delete base[k+'|'+id]})});
+  wr(KB,base);wr(KO,out)}
+/* ---- network ---- */
+async function pull(){
+  var cur=Number(localStorage.getItem(KC)||0)||0,pages=0,n=0;
+  for(;;){
+    var r=await api('/api/sync/changes?since='+encodeURIComponent(cur)+'&limit=500');
+    var items=Array.isArray(r&&r.items)?r.items:[];applyRemote(items);n+=items.length;
+    var next=Number(r&&r.next);if(Number.isFinite(next)&&next>=cur){cur=next;localStorage.setItem(KC,String(cur))}
+    if(!(r&&r.more)||++pages>200)break}
+  return n}
+async function push(){
+  var pushed=0;
+  for(var guard=0;guard<500;guard++){
+    var out=rd(KO,{}),keys=Object.keys(out);if(!keys.length)break;
+    keys.sort(function(a,b){return out[a].updatedAt-out[b].updatedAt});
+    var ks=keys.slice(0,chunk),items=ks.map(function(k){var o=out[k],it={kind:o.kind,id:o.id,updatedAt:Math.floor(o.updatedAt)};if(o.deleted)it.deleted=true;else it.data=o.data;return it});
+    var res;
+    try{res=await api('/api/sync/push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items})})}
+    catch(e){
+      if((e.status===413||e.code==='TOO_MANY_ITEMS'||e.code==='INVALID_BODY')&&ks.length>1){chunk=Math.max(1,Math.floor(ks.length/2));continue}
+      if((e.status===413||e.code==='INVALID_BODY')&&ks.length===1){var o1=rd(KO,{});delete o1[ks[0]];wr(KO,o1);var mm=meta();mm.rejected=(mm.rejected||0)+1;mm.lastReject='too_large';saveMeta(mm);continue}
+      throw e}
+    var results=Array.isArray(res&&res.results)?res.results:[],cur=rd(KO,{}),base=rd(KB,{}),adopt=[],mm2=meta();
+    ks.forEach(function(k,i){var r=results[i],o=out[k],now=cur[k];if(!r)return;
+      var same=now&&now.updatedAt===o.updatedAt&&now.h===o.h;
+      if(r.status==='accepted'){pushed++;if(same){delete cur[k];if(o.deleted)delete base[k];else base[k]={h:o.h}}}
+      else if(r.reason==='stale'&&r.winner){if(same){delete cur[k];adopt.push(r.winner)}}
+      else{ if(same)delete cur[k];if(o.deleted)delete base[k];else base[k]={h:o.h};mm2.rejected=(mm2.rejected||0)+1;mm2.lastReject=r.reason||'rejected';if(r.reason==='item_limit')mm2.limit=true}});
+    wr(KO,cur);wr(KB,base);saveMeta(mm2);
+    if(adopt.length){
+      /* adopting a winner: its base is not set yet, so force the write even if local content differs */
+      var b2=rd(KB,{});adopt.forEach(function(w){if(w&&w.kind&&w.id)delete b2[w.kind+'|'+w.id]});wr(KB,b2);applyRemote(adopt)}
+    if(results.length&&results.every(function(r){return r.status!=='accepted'&&r.reason!=='stale'})&&ks.length===keys.length&&!pushed){/* all dropped */}
+  }
+  return pushed}
+function backoffMs(t){var b=Math.min(900000,5000*Math.pow(2,Math.max(0,t-1)));return Math.round(b*(0.75+Math.random()*0.5))}
+function schedule(ms){clearTimeout(timer);if(ms==null)return;timer=setTimeout(function(){run('timer')},Math.max(500,ms))}
+async function run(reason){
+  if(running)return{skipped:'busy'};
+  var who=me();if(!who||!apiFn()){return{skipped:'signed-out'}}
+  var m=meta();if(m.disabled)return{skipped:'disabled'};
+  if(!who.verified){setStatus('needs_verify','Verify your email to sync');return{skipped:'unverified'}}
+  if(navigator.onLine===false){setStatus('offline','Waiting for a connection');return{skipped:'offline'}}
+  var urgent={resume:1,online:1,signin:1,manual:1,verified:1}[reason];
+  if(!urgent&&m.nextAt&&m.nextAt>Date.now()){schedule(m.nextAt-Date.now());return{skipped:'backoff'}}
+  if(m.uid!==who.uid)resetState(who.uid);
+  running=true;setStatus('syncing');
+  try{
+    var firstTime=!meta().migrated;
+    if(!firstTime)scan();
+    await pull();
+    if(firstTime){scan();var mm=meta();mm.migrated=true;saveMeta(mm)}   /* cloud wins ties on first run; only local-only items are queued */
+    var pushed=await push();
+    if(pushed)await pull();
+    var f=meta();f.tries=0;f.nextAt=0;f.lastSyncAt=Date.now();delete f.lastError;saveMeta(f);
+    setStatus(f.held?'held':'synced',f.held?'Large local deletion held back':'');
+    return{ok:true,pushed:pushed}
+  }catch(e){
+    var f2=meta(),code=String(e&&e.code||'').toUpperCase();
+    if(code==='EMAIL_NOT_VERIFIED'){setStatus('needs_verify','Verify your email to sync');return{error:code}}
+    if(e&&(e.status===401||code==='SIGN_IN_REQUIRED')){setStatus('needs_signin','Sign in again to sync');return{error:code}}
+    f2.tries=(f2.tries||0)+1;f2.nextAt=Date.now()+backoffMs(f2.tries);f2.lastError=code||String(e&&e.message||e);saveMeta(f2);
+    setStatus(navigator.onLine===false?'offline':'retrying',f2.lastError);schedule(f2.nextAt-Date.now());
+    return{error:f2.lastError}
+  }finally{running=false}
+}
+function queueScan(ms){if(!me())return;clearTimeout(scanTimer);scanTimer=setTimeout(function(){if(!meta().migrated)return run('edit');var q=scan();if(q)return run('edit')},ms==null?1500:ms)}
+/* storage writes to watched keys trigger a debounced scan */
+try{var SP=Storage.prototype,si=SP.setItem,ri=SP.removeItem;
+  SP.setItem=function(k){var r=si.apply(this,arguments);if(this===window.localStorage&&WATCH[k])queueScan();return r};
+  SP.removeItem=function(k){var r=ri.apply(this,arguments);if(this===window.localStorage&&WATCH[k])queueScan();return r}}catch(_){}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')run('resume')});
+window.addEventListener('online',function(){run('online')});
+window.addEventListener('pageshow',function(){run('resume')});
+setInterval(function(){if(document.visibilityState!=='hidden')run('interval')},90000);
+document.addEventListener('payaviator:authchange',function(e){var r=e&&e.detail&&e.detail.reason||'',s=e&&e.detail&&e.detail.state||{};
+  if(r==='account_deleted'){resetState('');clearTimeout(timer);return}
+  if(s.signedIn){run(r==='signed_in'?'signin':'verified')}else{clearTimeout(timer)}});
+setTimeout(function(){run('start')},4000);
+function line(){var m=meta(),s=m.status||st.state;
+  if(!me())return '';
+  var t=m.lastSyncAt?new Date(m.lastSyncAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'';
+  var q=Object.keys(rd(KO,{})).length;
+  return s==='synced'?'Cloud sync: up to date'+(t?' ('+t+')':''):s==='syncing'?'Cloud sync: syncing…':s==='offline'?'Cloud sync: waiting for a connection'+(q?' ('+q+' change'+(q===1?'':'s')+' queued)':''):s==='needs_verify'?'Cloud sync: verify your email to start':s==='retrying'?'Cloud sync: will retry shortly'+(q?' ('+q+' queued)':''):s==='held'?'Cloud sync: large deletion held back':'Cloud sync: on'}
+async function wipeCloudCopy(){await api('/api/sync/all',{method:'DELETE'});resetState(me()&&me().uid||'');var m=meta();m.disabled=true;saveMeta(m);setStatus('disabled','Cloud copy deleted; sync is off on this phone');return{ok:true}}
+function enable(){var m=meta();delete m.disabled;m.migrated=false;saveMeta(m);return run('manual')}
+window.PayAviatorSync={sync:function(r){return run(r||'manual')},scan:scan,status:function(){var m=meta();return Object.assign({},m,{queued:Object.keys(rd(KO,{})).length,state:m.status||st.state})},statusLine:line,wipeCloudCopy:wipeCloudCopy,enable:enable,confirmMassDelete:function(){var m=meta();m.confirmMass=true;saveMeta(m);return run('manual')},_hash:sig};
 })();
 </script>
