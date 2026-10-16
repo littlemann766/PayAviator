@@ -23259,6 +23259,7 @@ body.pp-help-off #pp925TipLauncher{display:none!important}
  }
  function hide(){ $('pp925TipPopup')?.classList.remove('pp-show') }
  function show(key,manual){ensure();if(localStorage.getItem(HELP_KEY)==='false')return;const t=tips[key]||tips.home,d=$('pp925TipPopup');$('pp925TipTitle').textContent=t[0];$('pp925TipText').textContent=t[1];$('pp925TipAction').textContent=t[2];d.dataset.key=t[3];d.classList.add('pp-show');if(!manual)localStorage.setItem(SEEN,'true')}
+ window.ppOpenTip=function(){try{ensure();show(current(),true);return true}catch(_){return false}};
  function maybeFirst(){ensure();if(localStorage.getItem(HELP_KEY)==='false')return;if(localStorage.getItem(SEEN)!=='true')setTimeout(()=>show(current(),false),1200)}
  function boot(){maybeFirst();document.addEventListener('payaviator:viewchange',()=>{hide();ensure()});document.addEventListener('click',e=>{if(!e.target.closest('#pp925TipPopup,#pp925TipLauncher'))hide()},true)}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
@@ -34583,6 +34584,40 @@ body.pp-help-off .pa412-hometip{display:none!important}
   }
   document.addEventListener('visibilitychange',function(){if(!document.hidden){mergeNative();badge()}});
   if(document.readyState==='complete')boot();else window.addEventListener('load',function(){setTimeout(boot,60)});
+})();
+</script>
+<script id="pa421-header-buttons-js">
+/* 4.2.1: Home header buttons (💡 tip, 🔔 Alerts, ? help). The three buttons also work through one delegated, capture-phase handler,
+   so a tap opens the right screen even if another script replaced a button's own handler or an invisible layer sits over it. */
+(function(){
+  var last=0;
+  var TARGETS=[
+    ['pa412HomeTip',function(){return typeof window.ppOpenTip==='function'?window.ppOpenTip():((document.getElementById('pp925TipLauncher')||{click:function(){}}).click(),true)}],
+    ['pa412Bell',function(){if(window.PayAviatorAlerts&&window.PayAviatorAlerts.open){window.PayAviatorAlerts.open();return true}return false}],
+    ['help',function(){if(typeof window.ppOpenHelp==='function'){window.ppOpenHelp('home');return true}return false}]
+  ];
+  function el(id){return id==='help'?document.querySelector('#mb119Home > .pp-help-btn'):document.getElementById(id)}
+  function homeActive(){var h=document.getElementById('mb119Home');return !!h&&h.classList.contains('active')}
+  function blocked(){return !!document.querySelector('dialog[open]')||document.body.classList.contains('pa412-alerts-open')}
+  function hit(x,y){
+    for(var i=0;i<TARGETS.length;i++){var e=el(TARGETS[i][0]);if(!e)continue;var cs=getComputedStyle(e);if(cs.display==='none'||cs.visibility==='hidden')continue;
+      var r=e.getBoundingClientRect();if(r.width&&x>=r.left-2&&x<=r.right+2&&y>=r.top-2&&y<=r.bottom+2)return TARGETS[i]}
+    return null}
+  function handle(ev){
+    if(!homeActive()||blocked())return;
+    var t=null,pt=ev.changedTouches&&ev.changedTouches[0]?ev.changedTouches[0]:ev;
+    var b=ev.target&&ev.target.closest?ev.target.closest('#pa412HomeTip,#pa412Bell,#mb119Home > .pp-help-btn'):null;
+    if(b){t=TARGETS[b.id==='pa412HomeTip'?0:b.id==='pa412Bell'?1:2]}
+    else if(typeof pt.clientX==='number')t=hit(pt.clientX,pt.clientY);
+    if(!t)return;
+    var now=Date.now();ev.stopPropagation();
+    if(ev.type==='click'){ev.preventDefault&&ev.preventDefault();if(now-last<450)return;last=now;setTimeout(function(){try{t[1]()}catch(_){}},0)}
+  }
+  document.addEventListener('click',handle,true);
+  // Make sure the three buttons are always on top of the header and take taps.
+  var st=document.createElement('style');st.id='pa421-header-buttons-css';
+  st.textContent='#mb119Home>#pa412HomeTip,#mb119Home>#pa412Bell,#mb119Home>.pp-help-btn{pointer-events:auto!important;touch-action:manipulation!important;z-index:60!important;-webkit-tap-highlight-color:transparent}';
+  document.head.appendChild(st);
 })();
 </script>
 <style id="pa413-fit-css">
