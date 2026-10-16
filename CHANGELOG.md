@@ -1,3 +1,6 @@
+## 4.2.2 — Rebuild of 4.2.1
+- Rebuild of 4.2.1 with no feature changes.
+
 ## 4.2.1 — Aviator Elite and Founder plans, notification bell, compact headers
 - New: Aviator Elite (complimentary plan for testers; cyan seal with a star) and Founder (free forever; amber outlined pill with a crown). Badge sits beside the Connected Accounts heading and on a "Your plan" card. Both have every feature and no bank limit; neither appears on the Free / Plus pricing screen.
 - Plan comes from /api/billing/status: plan or source 'comp' shows Aviator Elite; tier 'founder' shows Founder. Nothing in the app identifies the owner.
