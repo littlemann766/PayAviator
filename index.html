@@ -17321,6 +17321,7 @@ body.pp-help-off .pp-help-btn{display:none!important}
 (function(){
   const HELP_KEY='payaviator_context_help_v1';
   const MONEY_KEY='payaviator_money_tips_v1';
+  const SHOWHELP_KEY='payaviator_show_help_btn_v1', SHOWBELL_KEY='payaviator_show_bell_btn_v1';
   const $=id=>document.getElementById(id);
   const enabled=(key,def=true)=>{const v=localStorage.getItem(key);return v===null?def:v!=='false'};
   const setEnabled=(key,v)=>localStorage.setItem(key,v?'true':'false');
@@ -17358,13 +17359,14 @@ body.pp-help-off .pp-help-btn{display:none!important}
   function injectHelp(){
     [['mb119Home','home'],['mb119Calendar','calendar'],['mb119Bills','bills'],['mb119Spending','spending'],['mb119Budget','budget'],['mb119Settings','settings']]
       .forEach(([id,k])=>addHelpButton($(id),k));
-    document.body.classList.toggle('pp-help-off',!enabled(HELP_KEY,true));
+    document.body.classList.toggle('pp-help-off',!enabled(SHOWHELP_KEY,true));document.body.classList.toggle('pp-bell-off',!enabled(SHOWBELL_KEY,true));
   }
 
   function settingsBlock(){
     return '<div id="pp20516TipSettings" class="settings-section pp-help-card">'+
       '<h3>Tips & Help</h3>'+
-      '<div class="settings-row pp-help-setting"><div><strong>Tips & Tricks</strong><div class="settings-help">Show the 💡 tips button and the ? help on each tab.</div></div><label class="pp-mini-switch"><input id="ppTipsToggle" type="checkbox"><span></span></label></div>'+
+      '<div class="settings-row pp-help-setting"><div><strong>Show notification bell</strong><div class="settings-help">Show the bell at the top right of Home.</div></div><label class="pp-mini-switch"><input id="ppBellToggle" type="checkbox"><span></span></label></div>'+
+      '<div class="settings-row pp-help-setting"><div><strong>Show help (?) button</strong><div class="settings-help">Show the ? Help and Tips button at the top right of every tab.</div></div><label class="pp-mini-switch"><input id="ppTipsToggle" type="checkbox"><span></span></label></div>'+
       '<div class="settings-row pp-help-setting"><div><strong>Money Tips</strong><div class="settings-help">Keep rotating financial tips on the Home page.</div></div><label class="pp-mini-switch"><input id="ppMoneyTipsToggle" type="checkbox"><span></span></label></div>'+
       '</div>';
   }
@@ -17373,9 +17375,10 @@ body.pp-help-off .pp-help-btn{display:none!important}
     const settings=$('mb119Settings'), panel=$('mb123SettingsPanel');
     if(!settings || !panel || $('pp20516TipSettings'))return;
     panel.insertAdjacentHTML('beforebegin',settingsBlock());
-    const ht=$('ppTipsToggle'),mt=$('ppMoneyTipsToggle');
-    ht.checked=enabled(HELP_KEY,true); mt.checked=enabled(MONEY_KEY,true);
-    ht.onchange=()=>{setEnabled(HELP_KEY,ht.checked);document.body.classList.toggle('pp-help-off',!ht.checked)};
+    const ht=$('ppTipsToggle'),bt=$('ppBellToggle'),mt=$('ppMoneyTipsToggle');
+    ht.checked=enabled(SHOWHELP_KEY,true); bt.checked=enabled(SHOWBELL_KEY,true); mt.checked=enabled(MONEY_KEY,true);
+    ht.onchange=()=>{setEnabled(SHOWHELP_KEY,ht.checked);document.body.classList.toggle('pp-help-off',!ht.checked)};
+    bt.onchange=()=>{setEnabled(SHOWBELL_KEY,bt.checked);document.body.classList.toggle('pp-bell-off',!bt.checked)};
     mt.onchange=()=>{setEnabled(MONEY_KEY,mt.checked);applyMoneyTipVisibility()};
   }
 
@@ -23259,7 +23262,8 @@ body.pp-help-off #pp925TipLauncher{display:none!important}
  }
  function hide(){ $('pp925TipPopup')?.classList.remove('pp-show') }
  function show(key,manual){ensure();if(localStorage.getItem(HELP_KEY)==='false')return;const t=tips[key]||tips.home,d=$('pp925TipPopup');$('pp925TipTitle').textContent=t[0];$('pp925TipText').textContent=t[1];$('pp925TipAction').textContent=t[2];d.dataset.key=t[3];d.classList.add('pp-show');if(!manual)localStorage.setItem(SEEN,'true')}
- window.ppOpenTip=function(){try{ensure();show(current(),true);return true}catch(_){return false}};
+ window.ppTipFor=function(k){return tips[k]||tips.home};
+ window.ppOpenTip=function(){try{if(typeof window.ppOpenHelp==='function'){window.ppOpenHelp(current());return true}ensure();show(current(),true);return true}catch(_){return false}};
  function maybeFirst(){ensure();if(localStorage.getItem(HELP_KEY)==='false')return;if(localStorage.getItem(SEEN)!=='true')setTimeout(()=>show(current(),false),1200)}
  function boot(){maybeFirst();document.addEventListener('payaviator:viewchange',()=>{hide();ensure()});document.addEventListener('click',e=>{if(!e.target.closest('#pp925TipPopup,#pp925TipLauncher'))hide()},true)}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
@@ -34505,10 +34509,7 @@ body.pp-help-off .pa412-hometip{display:none!important}
     b.onclick=function(e){e.preventDefault();e.stopPropagation();openCenter()};
     home.classList.add('pp-help-view');home.appendChild(b);badge();
     // Home: the floating 💡 covered the Credit gauge, so on Home it lives in the header (left of the bell).
-    var tip=document.createElement('button');tip.type='button';tip.id='pa412HomeTip';tip.className='pa412-bell pa412-hometip';tip.textContent='💡';tip.setAttribute('aria-label','Open a PayAviator tip');
-    tip.onclick=function(e){e.preventDefault();e.stopPropagation();var l=$('pp925TipLauncher');if(l)l.click()};
-    home.appendChild(tip);
-    var sync=function(){document.body.classList.toggle('pa412-on-home',home.classList.contains('active'))};
+        var sync=function(){document.body.classList.toggle('pa412-on-home',home.classList.contains('active'))};
     new MutationObserver(sync).observe(home,{attributes:true,attributeFilter:['class']});sync();
   }
   function ensureCenter(){
@@ -34536,6 +34537,7 @@ body.pp-help-off .pa412-hometip{display:none!important}
       h+='<div class="pa412-foot">Swipe an alert left to clear it · kept for 30 days</div>';
     }
     body.innerHTML=h;
+    try{if(window.ppAddAlertsNote)window.ppAddAlertsNote()}catch(_){}
     $('pa412Back').onclick=closeCenter;
     var ra=$('pa412ReadAll');if(ra)ra.onclick=function(){store(load().map(function(a){a.read=true;return a}));draw()};
     var ca=$('pa412ClearAll');if(ca)ca.onclick=function(){store([]);draw()};
@@ -34963,3 +34965,87 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home #pa412Bell .pa412-badge
 @keyframes pa420-ring{0%,8%,100%{transform:rotate(0)}2%{transform:rotate(14deg)}4%{transform:rotate(-12deg)}6%{transform:rotate(8deg)}}
 @media (prefers-reduced-motion:reduce){html body #mb119Home #pa412Bell.pa420-unread svg,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home #pa412Bell.pa420-unread::before{animation:none}}
 </style>
+
+<style id="pa421b-css">
+/* 4.2.1b: no floating bulb; tips live inside the ? Help and Tips screen; ? (and bell on Home) in a top-right row on every tab; slimmer bottom nav */
+#pp925TipLauncher,body #pp925TipLauncher,#pa412HomeTip,.pa412-hometip{display:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body #mb119Shell .mb119-view > .pp-help-btn{
+  position:absolute!important;top:0!important;right:6px!important;left:auto!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;
+  padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important;border-radius:50%!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;overflow:visible!important;isolation:isolate;
+  color:var(--pa4-text,#fff)!important;font-size:17px!important;font-weight:700!important;line-height:1!important;
+  pointer-events:auto!important;touch-action:manipulation!important;z-index:60!important;-webkit-tap-highlight-color:transparent
+}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body #mb119Shell .mb119-view > .pp-help-btn::before{content:"";position:absolute;width:34px;height:34px;left:5px;top:5px;border-radius:50%;background:var(--pa4-raised,#14376b);border:1.5px solid var(--pa4-line2,#16e4ea);box-sizing:border-box;z-index:-1}
+/* titles never run under the button row: 1 button off Home, 2 on Home */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body #mb119Shell .mb119-view:not(#mb119Home) .mb119-title,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body #mb119Shell .mb119-view:not(#mb119Home) .mb119-sub{padding-right:56px!important;box-sizing:border-box!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body #mb119Shell #mb119Home .mb119-title,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body #mb119Shell #mb119Home .mb119-sub{padding-right:100px!important;box-sizing:border-box!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off #mb119Shell .mb119-view .mb119-sub,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off #mb119Shell .mb119-view .mb119-title{padding-right:0!important}
+/* settings note in Alerts and Help & Tips pop-ups */
+.pa421-setnote{margin:12px 0 0;font-size:13px;opacity:.85;line-height:1.35}
+.pa421-setnote button{background:none;border:0;padding:0 0 0 2px;color:#16e4ea;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;min-height:32px}
+#pa412Body .pa421-setnote{padding:0 20px 16px}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off #mb119Shell .mb119-view:not(#mb119Home) .mb119-title,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off #mb119Shell .mb119-view:not(#mb119Home) .mb119-sub{padding-right:0!important}
+#ppHelpBody .pa421-tipcard{border:1px solid var(--pa4-line2,#16e4ea)}
+/* slimmer bottom nav: ~52px + safe area, 44px touch targets, smaller icons/labels */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body #mb119BottomNav,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp821-theme-live #mb119BottomNav{
+  min-height:calc(52px + env(safe-area-inset-bottom,0px))!important;padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px))!important;left:0!important;right:0!important;width:100%!important;box-sizing:border-box!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body #mb119BottomNav .mb119-nav{
+  min-height:44px!important;padding:2px 0!important;gap:1px!important;font-size:10px!important;font-weight:600!important;line-height:1.1!important;border-radius:12px!important;min-width:0!important;overflow:hidden!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body #mb119BottomNav .mb119-nav .ico{width:36px!important;height:22px!important;font-size:1rem!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body #mb119BottomNav .mb119-nav .ico svg{width:17px!important;height:17px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body #mb119BottomNav .mb119-nav span:not(.ico){white-space:nowrap;overflow:hidden;text-overflow:clip;max-width:100%}
+#mb119Home #pa412Bell{}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-bell-off #mb119Shell #mb119Home #pa412Bell{display:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off #mb119Shell #mb119Home #pa412Bell{right:6px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off #mb119Shell .mb119-view > .pp-help-btn.pp-help-btn{display:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-bell-off:not(.pp-help-off) #mb119Shell #mb119Home .mb119-title,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-bell-off:not(.pp-help-off) #mb119Shell #mb119Home .mb119-sub{padding-right:56px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off:not(.pp-bell-off) #mb119Shell #mb119Home .mb119-title,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off:not(.pp-bell-off) #mb119Shell #mb119Home .mb119-sub{padding-right:56px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-off #mb119Shell #mb119Home .mb119-title,
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-off #mb119Shell #mb119Home .mb119-sub{padding-right:0!important}
+</style>
+<script id="pa421b-js">
+(function(){
+  try{var g=function(k){return localStorage.getItem(k)!=='false'};var ap=function(){document.body.classList.toggle('pp-help-off',!g('payaviator_show_help_btn_v1'));document.body.classList.toggle('pp-bell-off',!g('payaviator_show_bell_btn_v1'))};ap();document.addEventListener('DOMContentLoaded',ap);setTimeout(ap,500)}catch(_){}
+  /* One combined Help and Tips screen: the tab's tip goes first, then the existing help sections. */
+  var orig=window.ppOpenHelp;if(typeof orig!=='function'||orig.pa421)return;
+  function wrapped(key){
+    orig(key);
+    try{
+      var t=typeof window.ppTipFor==='function'?window.ppTipFor(key):null,body=document.getElementById('ppHelpBody'),h=document.getElementById('ppHelpTitle');
+      if(h)h.textContent=h.textContent.replace(/Tips & Tricks$/,'Help & Tips');
+      if(t&&body&&!body.querySelector('.pa421-tipcard')){
+        var c=document.createElement('div');c.className='pp-help-card pa421-tipcard';
+        c.innerHTML='<h3>\uD83D\uDCA1 Tip</h3>';var p=document.createElement('p');p.textContent=t[1];c.appendChild(p);body.insertBefore(c,body.firstChild);
+      }
+      if(body&&!body.querySelector('.pa421-setnote'))body.appendChild(note('help','Show help (?) button \u203A'));
+    }catch(_){}
+  }
+  wrapped.pa421=true;window.ppOpenHelp=wrapped;
+  /* "You can turn this button on or off in Settings." + link to the right switch, in the Alerts and Help & Tips pop-ups */
+  function goSwitch(which){
+    try{document.querySelectorAll('dialog[open]').forEach(function(d){d.close()})}catch(_){}
+    try{if(window.PayAviatorAlerts&&document.body.classList.contains('pa412-alerts-open')){var bk=document.getElementById('pa412Back');if(bk)bk.click()}}catch(_){}
+    var nav=document.querySelector('.mb119-nav[data-view=settings]');if(nav)nav.click();
+    var n=0;(function f(){var i=document.getElementById(which==='bell'?'ppBellToggle':'ppTipsToggle');
+      if(!i&&n++<20){setTimeout(f,150);return}if(!i)return;
+      var row=i.closest('.settings-row')||i;row.scrollIntoView({block:'center'});row.style.transition='box-shadow .3s';row.style.boxShadow='0 0 0 2px #16e4ea';row.style.borderRadius='12px';
+      setTimeout(function(){row.style.boxShadow=''},2200)})();
+  }
+  window.ppGoToHeaderSwitch=goSwitch;
+  function note(which,label){
+    var p=document.createElement('p');p.className='pa421-setnote';p.setAttribute('data-switch',which);
+    p.appendChild(document.createTextNode('You can turn this button on or off in Settings. '));
+    var b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=function(e){e.preventDefault();e.stopPropagation();goSwitch(which)};p.appendChild(b);return p;
+  }
+  window.ppAddAlertsNote=function(){var body=document.getElementById('pa412Body');if(body&&!body.querySelector('.pa421-setnote'))body.appendChild(note('bell','Show notification bell \u203A'))};
+
+})();
+</script>

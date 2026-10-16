@@ -22,16 +22,20 @@ with sync_playwright() as p:
         pg.evaluate("PayAviatorAlerts.add({id:'t1',type:'bill',title:'Rent due tomorrow',text:'Rent is due',ts:Date.now(),open:'bills'});PayAviatorAlerts.add({id:'t2',type:'bill',title:'Electric',text:'Electric due',ts:Date.now()-1000,open:'bills'})")
         pg.evaluate("document.querySelector('.mb119-nav[data-view=home]').click()"); pg.wait_for_timeout(300)
         # 1 plain taps
-        for name,sel,key in [('lightbulb','#pa412HomeTip','tip'),('bell','#pa412Bell','alerts'),('help ?','#mb119Home > .pp-help-btn','help')]:
+        for name,sel,key in [('bell','#pa412Bell','alerts'),('help ?','#mb119Home > .pp-help-btn','help')]:
             tap(pg,sel); check(f'{vw}: tapping {name} opens its screen',pg.evaluate(STATE[key]))
-            if vw==390: pg.screenshot(path=(SH or 'shots/header-buttons-421')+'/'+{'tip':'lightbulb','alerts':'bell','help':'help'}[key]+f'-{vw}.png')
+            if vw==390: pg.screenshot(path=(SH or 'shots/header-buttons-421')+'/'+{'alerts':'bell','help':'help'}[key]+f'-{vw}.png')
+            if key=='help':
+                check(f'{vw}: help screen is combined Help & Tips (tip card + sections)',pg.evaluate("!!document.querySelector('#ppHelpBody .pa421-tipcard') && document.querySelectorAll('#ppHelpBody .pp-help-section').length>0 && /Help & Tips/.test(document.getElementById('ppHelpTitle').textContent)"))
+                if vw==390: pg.screenshot(path='shots/nav-width/help-tips-390.png')
             if key=='alerts':
                 check(f'{vw}: Alerts screen lists the alerts',pg.evaluate("document.querySelectorAll('.pa412-item').length")>=2)
             pg.evaluate(CLEAN); pg.wait_for_timeout(300)
+        check(f'{vw}: no floating lightbulb and no header lightbulb',pg.evaluate("[...document.querySelectorAll('#pp925TipLauncher,#pa412HomeTip')].every(e=>getComputedStyle(e).display==='none')"))
         check(f'{vw}: bell badge shows unread count',pg.evaluate("document.getElementById('pa412BellBadge').textContent")=='2' and not pg.evaluate("document.getElementById('pa412BellBadge').hidden"))
         # 2 button's own handlers stripped + invisible overlay on top of the header (worst case): delegated handler still opens each
-        pg.evaluate("['pa412HomeTip','pa412Bell'].forEach(i=>{document.getElementById(i).onclick=null});document.querySelector('#mb119Home > .pp-help-btn').onclick=null;const o=document.createElement('div');o.id='ovl';o.style.cssText='position:fixed;left:0;top:0;width:100%;height:90px;z-index:2147483000;background:transparent';document.body.appendChild(o)")
-        for name,sel,key in [('lightbulb','#pa412HomeTip','tip'),('bell','#pa412Bell','alerts'),('help ?','#mb119Home > .pp-help-btn','help')]:
+        pg.evaluate("['pa412Bell'].forEach(i=>{document.getElementById(i).onclick=null});document.querySelector('#mb119Home > .pp-help-btn').onclick=null;const o=document.createElement('div');o.id='ovl';o.style.cssText='position:fixed;left:0;top:0;width:100%;height:90px;z-index:2147483000;background:transparent';document.body.appendChild(o)")
+        for name,sel,key in [('bell','#pa412Bell','alerts'),('help ?','#mb119Home > .pp-help-btn','help')]:
             tap(pg,sel); check(f'{vw}: {name} still opens with stripped handler + overlay',pg.evaluate(STATE[key]))
             pg.evaluate(CLEAN); pg.wait_for_timeout(300)
         check(f'{vw}: exactly one screen per tap (no double open)',not pg.evaluate(STATE['tip']) and not pg.evaluate(STATE['alerts']))
