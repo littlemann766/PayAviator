@@ -34816,7 +34816,9 @@ try{var SP=Storage.prototype,si=SP.setItem,ri=SP.removeItem;
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')run('resume')});
 window.addEventListener('online',function(){run('online')});
 window.addEventListener('pageshow',function(){run('resume')});
-setInterval(function(){if(document.visibilityState!=='hidden')run('interval')},90000);
+/* 4.1.9: event-driven. Edits push after a 1.5 s debounce (queueScan); pulls happen on start, sign-in, resume/visibility, focus, online and manual. The timer is only a slow safety net (5 min). */
+var lastFocusRun=0;window.addEventListener('focus',function(){if(Date.now()-lastFocusRun>15000){lastFocusRun=Date.now();run('resume')}});
+setInterval(function(){if(document.visibilityState!=='hidden')run('interval')},300000);
 document.addEventListener('payaviator:authchange',function(e){var r=e&&e.detail&&e.detail.reason||'',s=e&&e.detail&&e.detail.state||{};
   if(r==='account_deleted'){resetState('');clearTimeout(timer);return}
   if(s.signedIn){run(r==='signed_in'?'signin':'verified')}else{clearTimeout(timer)}});
