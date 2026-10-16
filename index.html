@@ -34474,7 +34474,7 @@ body.pp-help-off .pa412-hometip{display:none!important}
 
   /* ---------- bell + center UI ---------- */
   function unread(){return load().filter(function(a){return !a.read}).length}
-  function badge(){var b=$('pa412BellBadge');if(!b)return;var n=unread();b.hidden=!n;b.textContent=n>9?'9+':String(n);var bt=$('pa412Bell');if(bt)bt.setAttribute('aria-label',n?('Alerts, '+n+' unread'):'Alerts')}
+  function badge(){var b=$('pa412BellBadge');if(!b)return;var n=unread();b.hidden=!n;b.textContent=n>9?'9+':String(n);var bt=$('pa412Bell');if(bt)bt.classList.toggle('pa420-unread',!!n);if(bt)bt.setAttribute('aria-label',n?('Alerts, '+n+' unread'):'Alerts')}
   function ensureBell(){
     var home=$('mb119Home');if(!home||$('pa412Bell'))return;
     var b=document.createElement('button');b.type='button';b.id='pa412Bell';b.className='pa412-bell';
@@ -34870,3 +34870,25 @@ if(document.readyState!=='loading')render();else document.addEventListener('DOMC
 setTimeout(render,2000);setInterval(function(){var h=$('mb119Settings');if(h&&h.offsetParent!==null)render()},5000);
 })();
 </script>
+<style id="pa420-ui-css">
+/* 4.2.0 UI polish: compact page headers + clearer notification bell (last-wins overrides, CSS only) */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Shell .mb123-sticky-header,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Shell .mb119-view>.mb123-sticky-header{padding:8px 12px 6px 16px!important;min-height:0!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Shell .mb123-sticky-header .mb119-title,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Shell .mb119-view .mb119-title{font-size:24px!important;line-height:1.1!important;margin:0!important;letter-spacing:-.01em!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Shell .mb123-sticky-header .mb119-sub,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Shell .mb119-view .mb119-sub{font-size:14px!important;line-height:1.3!important;margin:5px 0 0!important;padding-right:0!important;max-width:none!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa412) body #mb119Home .mb119-title{padding-right:150px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa412) body #mb119Home .mb119-sub,html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa412) body.pp-help-off #mb119Home .mb119-sub{padding-right:0!important}
+/* 44px tap targets; visible circle is the ::before (34px) so the header stays short */
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home .pa412-bell,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home .pp-help-btn{position:absolute!important;top:0!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important;border-radius:50%!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:visible!important;-webkit-tap-highlight-color:transparent}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home .pp-help-btn{right:6px!important;left:auto!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home #pa412Bell{right:50px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home #pa412HomeTip{right:94px!important;font-size:17px!important}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home .pa412-bell::before,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home .pp-help-btn::before{content:"";position:absolute;width:34px;height:34px;left:5px;top:5px;border-radius:50%;background:var(--pa4-raised,#14376b);border:1.5px solid var(--pa4-line2,#16e4ea);box-sizing:border-box;z-index:-1}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home .pa412-bell,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home .pp-help-btn{isolation:isolate}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home .pa412-bell svg{width:22px;height:22px;stroke-width:2.2}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home #pa412Bell.pa420-unread svg{fill:currentColor;fill-opacity:.28;color:#fff;transform-origin:50% 8%;animation:pa420-ring 4s ease-in-out 1s infinite}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home #pa412Bell.pa420-unread::before{border-color:#16e4ea;animation:pa420-pulse 2.4s ease-out infinite}
+html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home #pa412Bell .pa412-badge{top:2px;right:0;min-width:20px;height:20px;line-height:16px;padding:0 5px;border-radius:10px;background:#e5484d;color:#fff;border:2px solid #0b234b;font:800 12px/16px system-ui,sans-serif;z-index:2}
+@keyframes pa420-pulse{0%{box-shadow:0 0 0 0 rgba(22,228,234,.55)}70%,100%{box-shadow:0 0 0 9px rgba(22,228,234,0)}}
+@keyframes pa420-ring{0%,8%,100%{transform:rotate(0)}2%{transform:rotate(14deg)}4%{transform:rotate(-12deg)}6%{transform:rotate(8deg)}}
+@media (prefers-reduced-motion:reduce){html body #mb119Home #pa412Bell.pa420-unread svg,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Home #pa412Bell.pa420-unread::before{animation:none}}
+</style>
