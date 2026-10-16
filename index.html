@@ -140,7 +140,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='4.2.0';
+  const BUNDLED_VERSION='4.2.1';
   const code=n=>{const p=String(n||'').replace(/^Version:\s*/i,'').trim().split('.').map(Number);return p.length===3&&p.every(Number.isFinite)?p[0]*10000+p[1]*100+p[2]:0};
   const S={name:BUNDLED_VERSION,code:code(BUNDLED_VERSION)};
   function paint(root=document){
@@ -22754,7 +22754,8 @@ setState(readNative());
       return `<section class="ppauth-account"><div class="pp920-title">Sign in for bank features</div><div class="pp920-sub">Connecting and syncing banks needs a PayAviator account. Bills, income and spending keep working without one.</div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-signin>Sign in</button></div></section>`;
     }
     const who=st.email||st.name||'Signed in';
-    return `<section class="ppauth-account"><div class="pp920-row"><div><div class="pp920-title">Signed in</div><div class="pp920-sub">${esc(who)}${st.provider==='google'?' • Google':''}</div><div class="pp920-sub" id="pp414SyncLine">${esc(window.PayAviatorSync?.statusLine?.()||'')}</div></div></div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-signout>Sign out</button><button type="button" class="pp920-action ppauth-danger" data-ppauth-delete>Delete account</button></div></section>`;
+    let plan421='';try{plan421=window.PayAviatorPlans?.planCardHtml(window.PayAviatorAccountGate?.billing)||''}catch(_){}
+    return plan421+`<section class="ppauth-account"><div class="pp920-row"><div><div class="pp920-title">Signed in</div><div class="pp920-sub">${esc(who)}${st.provider==='google'?' • Google':''}</div><div class="pp920-sub" id="pp414SyncLine">${esc(window.PayAviatorSync?.statusLine?.()||'')}</div></div></div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-signout>Sign out</button><button type="button" class="pp920-action ppauth-danger" data-ppauth-delete>Delete account</button></div></section>`;
   }
   /* 4.1.4: banks paused because Plus ended (backend: items[].paused / errors[].code==='ITEM_PAUSED'). No reconnect prompt. */
   function pp414PausedList(){
@@ -22843,6 +22844,7 @@ setState(readNative());
     const accts=loadAccounts(), used=accts.filter(isIncluded), total=used.reduce((s,a)=>s+balance(a),0);
     const groups={};accts.forEach(a=>(groups[institution(a)]||(groups[institution(a)]=[])).push(a));
     const names=Object.keys(groups);
+    try{const h2=m.querySelector('.pp920-head h2');if(h2){h2.querySelectorAll('[data-pa421-badge]').forEach(n=>n.remove());if(window.PayAviatorAuth?.isSignedIn?.())h2.insertAdjacentHTML('beforeend',window.PayAviatorPlans?.planBadgeHtml(window.PayAviatorAccountGate?.billing)||'')}}catch(_){}
     host.innerHTML=pp920AuthSection()+pp920NeedsSection()+pp414PausedSection()+`<section class="pp920-summary"><div class="pp920-row"><div><div class="pp920-title">Connected banking</div><div class="pp920-sub">${names.length} institution${names.length===1?'':'s'} • ${accts.length} account${accts.length===1?'':'s'}</div></div><div style="text-align:right"><div class="pp920-sub">Bank available</div><div class="pp920-total">${money(total)}</div></div></div></section>`+
     names.map(name=>{const rows=groups[name],bankUsed=rows.filter(isIncluded),opened=openBank===name;return `<section class="pp920-bank ${opened?'open':''}" data-bank="${encodeURIComponent(name)}"><button class="pp920-bankhead" type="button"><div><div class="pp920-title">${name}</div><div class="pp920-sub">${bankUsed.length} of ${rows.length} included in Available Now</div></div><span style="font-weight:900;font-size:1.35rem">${opened?'⌃':'⌄'}</span></button><div class="pp920-bankbody">${rows.map(a=>{const on=isIncluded(a);return `<div class="pp920-account" data-account="${encodeURIComponent(key(a))}"><div class="pp920-row"><div><div class="pp920-title">${a.name||a.subtype||a.type||'Account'}</div><div class="pp920-sub">${a.subtype||a.type||'account'}${a.mask?' •••• '+a.mask:''}</div></div><div style="text-align:right"><div class="pp920-total">${money(balance(a))}</div><div class="pp920-sub">available balance</div></div></div><div class="pp920-pill ${on?'':'off'}">${on?'Included in Available Now':(String(a.type||'').toLowerCase()==='credit'||String(a.type||'').toLowerCase()==='loan'?'Credit/loan — excluded':String(a.subtype||'').toLowerCase()==='savings'?'Savings — protected':'Not included')}</div><div class="pp920-actions"><button class="pp920-action" type="button" data-pp920-toggle="1">${on?'Exclude from Available Now':'Include in Available Now'}</button><button class="pp920-action" type="button" data-pp920-remove="1">Disconnect</button></div></div>`}).join('')}</div></section>`}).join('')+
     '<div class="pp920-actions"><button id="pp920ConnectBank" class="pp920-action" type="button">+ Connect another bank</button><button id="pp920SyncBank" class="pp920-action" type="button">↻ Sync all accounts</button></div><div class="pp920-note"><b>Multiple banks supported:</b> connect as many institutions and accounts as you authorize. Each account can be included or excluded from Available Now independently. PayAviator uses read-only Plaid access.</div>';
@@ -26258,7 +26260,27 @@ function applyNoSell(){
   if(fine&&!BILLING_LIVE)fine.textContent='Plus is coming soon.';
 }
 /* 'premium' and 'comp' (complimentary) are both full access: no bank limit, no upgrade button. */
-const isPaid=b=>!!b&&(b.plan==='premium'||b.plan==='comp');
+/* 4.2.1: Aviator Elite (testers) and Founder (owner) are full-access plans too. Backend today sends plan/source 'comp' (= Aviator Elite);
+   Founder shows only when the backend sends tier:'founder' (or plan/source 'founder'). Nothing identifies the owner client-side. */
+const PLAN_T=v=>String(v==null?'':v).toLowerCase();
+const planKey=b=>{if(!b)return'free';const t=PLAN_T(b.tier),p=PLAN_T(b.plan),s=PLAN_T(b.source);
+  if(t==='founder'||p==='founder'||s==='founder')return'founder';
+  if(t==='elite'||p==='elite'||s==='elite'||p==='comp'||s==='comp')return'elite';
+  return p==='premium'?'plus':'free'};
+const isPaid=b=>planKey(b)!=='free';
+const PLAN_INFO={
+  elite:{key:'elite',name:'Aviator Elite',sub:'Complimentary',title:'Aviator Elite - Complimentary',msg:'Thank you for helping us test PayAviator.',banks:'Unlimited while testing'},
+  founder:{key:'founder',name:'Founder',sub:'Free forever',title:'Founder - Free forever',msg:'Every feature included.',banks:'No limit'}};
+const SVG_STAR='<svg class="pa421-pg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2l3 6.9 7.5.7-5.7 5 1.7 7.4L12 18l-6.5 4 1.7-7.4-5.7-5 7.5-.7z"/></svg>';
+const SVG_CROWN='<svg class="pa421-pg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 8l5 4 4-7 4 7 5-4-2 11H5z"/></svg>';
+/* Founder = outlined pill (style A); Aviator Elite = round seal (style B). Empty string for Free / Plus. */
+function planBadgeHtml(b){const k=planKey(b);
+  if(k==='founder')return '<span class="pa421-badge pa421-pill founder" data-pa421-badge="founder">'+SVG_CROWN+'<span>Founder</span></span>';
+  if(k==='elite')return '<span class="pa421-badge pa421-seal elite" data-pa421-badge="elite"><i>'+SVG_STAR+'</i><span>Aviator Elite</span></span>';
+  return''}
+function planCardHtml(b){const p=PLAN_INFO[planKey(b)];if(!p)return'';
+  return '<section class="ppauth-account pa421-plan '+p.key+'" data-pa421-plan="'+p.key+'"><div class="pp920-sub pa421-kicker">Your plan</div><div class="pa421-cardbadge">'+planBadgeHtml(b)+'</div><div class="pp920-title" data-pa421-title>'+p.title+'</div><div class="pp920-sub">'+p.msg+'</div><div class="pp920-sub">Linked banks: <b data-pa421-banks>'+p.banks+'</b></div></section>'}
+window.PayAviatorPlans={planKey,planBadgeHtml,planCardHtml,info:b=>PLAN_INFO[planKey(b)]||null,get billing(){return billing}};
 function applyPaid(){
   const sec=document.querySelector('#ppOnb section[data-onb="upgrade"]');if(!sec||!isPaid(billing))return;
   const btn=sec.querySelector('[data-onb-act="subscribe"]');if(btn)btn.hidden=true;
@@ -34870,6 +34892,20 @@ if(document.readyState!=='loading')render();else document.addEventListener('DOMC
 setTimeout(render,2000);setInterval(function(){var h=$('mb119Settings');if(h&&h.offsetParent!==null)render()},5000);
 })();
 </script>
+<style id="pa421-plans-css">
+#pp920AccountsModal h2{display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:10px!important}
+.pa421-badge{display:inline-flex;align-items:center;gap:6px;font:800 .8rem/1 system-ui,sans-serif;white-space:nowrap;letter-spacing:.02em}
+.pa421-pg{width:15px;height:15px;flex:none}
+.pa421-pill{text-transform:uppercase;padding:6px 12px;border-radius:999px}
+.pa421-pill.founder{color:#fbbf24;border:1px solid #fbbf24;background:rgba(251,191,36,.15)}
+.pa421-seal{padding:4px 14px 4px 4px;border-radius:12px;background:#0a2150;font-size:.9rem}
+.pa421-seal i{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-style:normal;color:#042049}
+.pa421-seal.elite{color:#16e4ea;border:1px solid #16e4ea}.pa421-seal.elite i{background:#16e4ea}
+#pp920AccountsModal .pa421-plan{border-left:6px solid #16e4ea!important}
+#pp920AccountsModal .pa421-plan.founder{border-left-color:#fbbf24!important}
+.pa421-kicker{text-transform:uppercase;letter-spacing:.08em;font-size:.78rem!important;font-weight:700}
+.pa421-cardbadge{margin:8px 0 10px}
+</style>
 <style id="pa420-ui-css">
 /* 4.2.0 UI polish: compact page headers + clearer notification bell (last-wins overrides, CSS only) */
 html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Shell .mb123-sticky-header,html:not(#pa4-a):not(#pa4-b):not(#pa4-c) body #mb119Shell .mb119-view>.mb123-sticky-header{padding:8px 12px 6px 16px!important;min-height:0!important}

@@ -1,3 +1,8 @@
+## 4.2.1 — Aviator Elite and Founder plans, notification bell, compact headers
+- New: Aviator Elite (complimentary plan for testers; cyan seal with a star) and Founder (free forever; amber outlined pill with a crown). Badge sits beside the Connected Accounts heading and on a "Your plan" card. Both have every feature and no bank limit; neither appears on the Free / Plus pricing screen.
+- Plan comes from /api/billing/status: plan or source 'comp' shows Aviator Elite; tier 'founder' shows Founder. Nothing in the app identifies the owner.
+- Clearer notification bell (unread badge, pulse, 44 px tap target) and smaller page headers on every tab.
+
 ## 4.2.0 — Sync only on change
 - Sync: pushes on change (1.5 s debounce), pulls on open, sign-in, resume, focus, reconnect and manual refresh. The background timer is now a 5-minute safety net (was 90 s).
 
