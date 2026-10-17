@@ -140,7 +140,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='4.2.5';
+  const BUNDLED_VERSION='4.2.6';
   window.PAYAVIATOR_BUNDLED_VERSION=BUNDLED_VERSION;
   /* 4.2.5: inside the Android app the screens always come from the APK; drop any service worker or cache a previous build may have left behind. */
   try{if(window.AndroidBridge&&navigator.serviceWorker&&navigator.serviceWorker.getRegistrations){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})}).catch(function(){});if(window.caches&&caches.keys)caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})}).catch(function(){})}}catch(_){}
@@ -11507,6 +11507,8 @@ function openAvailableNowSpendingV88(){
       localStorage.setItem(THEME_KEY,JSON.stringify(DEFAULTS));
       applyTheme137();showAppearance137();forceVisual137();
     };
+    /* 4.2.6: tell the late enhancers (Surface row, color swatches/wheels) the dialog now exists. Event driven, so a busy page can never starve them. */
+    try{document.dispatchEvent(new CustomEvent('pa:appearance-open'))}catch(e){}
   }
 
   window.PayAviatorShowAppearance137=showAppearance137;
@@ -13100,6 +13102,29 @@ body.mb-high-contrast textarea{border-width:2px!important}
     window.mb2034CloseSettings=close;
   }
 
+  /* 4.2.6: safety net for the four Settings dialogs. Older code can re-point a button after our wire() timers (slow phones), which leaves an older, partial
+     dialog on screen. After every tap we check that the real dialog (marker control present) is showing and, if not, open it. Nothing is blocked or
+     replaced when everything is fine. Fixed timers from the tap, never reset by page changes. */
+  const MARK={appearance:'#mb137Appearance .pa414-themepick',reminders:'#m312DefaultNotify',bills:'#m312DefaultNotify',calendar:'#m312CalendarRange',backup:'#m312Save'};
+  let lastReq='';
+  document.addEventListener('click',function(ev){
+    const b=ev.target&&ev.target.closest&&ev.target.closest('[data-mb123-settings]');
+    if(!b) return;
+    const n=b.dataset.mb123Settings;
+    if(!MARK[n]) return;
+    const req=n+':'+Date.now(); lastReq=req;
+    [350,1000,2200].forEach(ms=>setTimeout(function(){
+      if(lastReq!==req) return;
+      const p=panel();
+      if(!p||!document.body.classList.contains('mb2034-settings-open')) return;
+      if(p.querySelector(MARK[n])) return;
+      if(n==='appearance'&&p.querySelector('#mb137Appearance')){try{document.dispatchEvent(new CustomEvent('pa:appearance-open'))}catch(e){} return;}
+      if(n==='appearance'){ if(typeof window.PayAviatorShowAppearance137==='function') window.PayAviatorShowAppearance137(); }
+      else route(n);
+      try{document.dispatchEvent(new CustomEvent('pa:settings-open'))}catch(e){}
+    },ms));
+  },true);
+
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',wire);
   else wire();
 
@@ -13267,6 +13292,8 @@ document.addEventListener('scroll',e=>{const t=e.target;if(t&&t.classList&&t.cla
     let hc=false;try{hc=localStorage.getItem(HC)==='1'}catch(e){}
     applyHighContrast(hc);
 
+    // 4.2.6: also upgrade as soon as the App Colors dialog says it is open (event driven), not only after a fixed 80ms timer.
+    document.addEventListener('pa:appearance-open',()=>{try{upgradeAppearance()}catch(e){}});
     // Appearance is dynamically rendered, so upgrade it after settings clicks.
     document.addEventListener('click',e=>{
       if(e.target.closest?.('[data-mb123-settings="appearance"]'))setTimeout(upgradeAppearance,80);
@@ -16149,6 +16176,7 @@ dialog textarea{
     }
   }
 
+  document.addEventListener('pa:settings-open',function(){const panel=$('mb123SettingsPanel');if(panel){delete panel.dataset.pp51;panel.classList.remove('pp51-settings')}structureSettings();setTimeout(structureSettings,80)});
   function wireSettingsButtons(){
     document.querySelectorAll('[data-mb123-settings]').forEach(btn=>{
       if(btn.dataset.pp51Wired)return;
@@ -19786,11 +19814,9 @@ body.pp821-theme-live [data-bill-color]{
   function relabelAppearance(){
     const box=$('mb137Appearance');
     if(!box)return;
-    const labels=box.querySelectorAll('.mb137-color-row label');
-    if(labels[0])labels[0].textContent='Primary — Tabs, Cards & Headers';
-    if(labels[1])labels[1].textContent='Accent — Borders & Active Icons';
-    if(labels[2])labels[2].textContent='Background — Behind Cards & Tabs';
-    if(labels[3])labels[3].textContent='Text — Primary Text';
+    /* 4.2.6: label rows by input id and touch only the row's own heading label (never the Hue/Saturation/Lightness labels inside the color picker, whose text swap also deleted the sliders). */
+    const NAMES={mb137Navy:'Primary — Tabs, Cards & Headers',mb137Cyan:'Accent — Borders & Active Icons',mb137Page:'Background — Behind Cards & Tabs',mb137Text:'Text — Primary Text'};
+    Object.keys(NAMES).forEach(id=>{const inp=$(id),row=inp&&inp.closest('.mb137-color-row'),l=row&&(row.querySelector(':scope > label.pa414-thead')||row.querySelector(':scope > label'));if(l&&l.firstChild&&l.firstChild.nodeType===3)l.firstChild.nodeValue=NAMES[id];else if(l&&!l.querySelector('input,i'))l.textContent=NAMES[id]});
     const reset=$('mb137ResetTheme');
     if(reset)reset.textContent='Restore Original Colors';
 
@@ -20146,6 +20172,7 @@ body.pp821-theme-live .mb137-color-row{
 
   function init823(){
     upgradeStoredTheme823();
+    document.addEventListener('pa:appearance-open',()=>{addSurfaceControl823();applySurface823()});
     document.addEventListener('click',e=>{
       if(e.target?.closest?.('[data-mb123-settings="appearance"]')){
         requestAnimationFrame(()=>{
@@ -26605,7 +26632,7 @@ body.mb-home-easy #pp967Advanced,body.mb-home-easy #pp959MiniCash .pp1200-foot,b
       const x=nextBill();const h=x?`<span>Next up: ${e(x.b.name||'Bill')} due ${e(day(x.s))}</span><b>${e(m(x.rem))}</b>`:'<span>No bills due soon. Add one from Bills.</span>';
       if(n.innerHTML!==h)n.innerHTML=h}
   }catch(_){}finally{busy=false}}
-  let t=0;function soon(){clearTimeout(t);t=setTimeout(render,150)}
+  let t=0;function soon(){if(t)return;t=setTimeout(()=>{t=0;render()},150)}  /* 4.2.6: throttle */
   function boot(){soon();
     ['payaviator:viewchange','payaviator:gaugechange','visibilitychange'].forEach(n=>document.addEventListener(n,soon));
     window.addEventListener('storage',soon);document.addEventListener('click',soon,true);
@@ -26796,7 +26823,10 @@ html body .pa414-themerow details.pa414-custom>summary{min-height:36px}
  var THV={mb137Navy:'--mb137-navy',mb137Surface:'--mb137-surface',mb137Cyan:'--mb137-cyan',mb137Page:'--mb137-page',mb137Text:'--mb137-text'};
  var themePickers={};
  function enhance(){var box=document.getElementById('mb137Appearance');if(!box)return;
-  Object.keys(SETS).forEach(function(id){var inp=document.getElementById(id);if(inp&&inp.__pa414dot)inp.__pa414dot();if(!inp||inp.dataset.pa414)return;var row=inp.closest('.mb137-color-row');if(!row)return;
+  Object.keys(SETS).forEach(function(id){var inp=document.getElementById(id);if(inp&&inp.__pa414dot)inp.__pa414dot();if(!inp)return;var row=inp.closest('.mb137-color-row');if(!row)return;
+   /* 4.2.6: a row counts as done only when its picker really exists (a re-render can clone the flag without the picker) */
+   if(inp.dataset.pa414&&row.querySelector(':scope > .pa414-themepick details.pa414-custom'))return;
+   row.querySelectorAll(':scope > .pa414-themepick').forEach(function(x){x.remove()});
    inp.dataset.pa414='1';row.classList.add('pa414-themerow');row.style.setProperty('display','block','important');var m=document.createElement('div');m.className='pa414-themepick';row.appendChild(m);
    var lab=row.querySelector('label');
    if(lab&&!lab.querySelector('.pa414-tdot')){lab.classList.add('pa414-thead');lab.removeAttribute('for');var dot=document.createElement('i');dot.className='pa414-tdot';var ch=document.createElement('i');ch.className='pa414-tchev';lab.appendChild(dot);lab.appendChild(ch);
@@ -26807,7 +26837,9 @@ html body .pa414-themerow details.pa414-custom>summary{min-height:36px}
     ['input','change'].forEach(function(ev){inp.addEventListener(ev,upd)});row.addEventListener('click',function(){setTimeout(upd,60)});inp.__pa414dot=upd}
    themePickers[id]=inp.__pa414=create({input:inp,mount:m,clear:false,autoOpen:false,label:lab?lab.textContent:id,swatches:SETS[id],ids:{det:id+'Custom414'}})})}
  function syncTheme(){Object.keys(SETS).forEach(function(k){var i=document.getElementById(k);if(i&&i.__pa414){i.__pa414.sync(false);if(i.__pa414dot)i.__pa414dot()}})}
- var t=null;new MutationObserver(function(){clearTimeout(t);t=setTimeout(enhance,30)}).observe(document.body,{childList:true,subtree:true});
+ var t=0;function soon(){if(t)return;t=setTimeout(function(){t=0;enhance()},30)}  /* 4.2.6: throttle (never reset by new mutations), plus dialog-open event with retries */
+ new MutationObserver(soon).observe(document.body,{childList:true,subtree:true});
+ document.addEventListener('pa:appearance-open',function(){enhance();[60,250,800].forEach(function(ms){setTimeout(enhance,ms)})});
  document.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('#mb137ResetTheme'))setTimeout(function(){enhance();syncTheme()},250)});
  window.PA414EnhanceAppColors=enhance;enhance();
 })();
@@ -27556,7 +27588,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  function connected(){document.querySelectorAll('#pp920AccountsBody .pp920-account').forEach(row=>{const txt=row.textContent||'';if(!/credit card|credit/i.test(txt))return;const mask=(txt.match(/••••\s*(\d{2,4})/)||[])[1],a=cards().find(x=>!mask||String(x.mask||'')===mask)||cards()[0];if(!a)return;const l=limit(a),u=used(a),av=l?Math.max(0,l-u):Math.max(0,n(a?.available??a?.balances?.available));const total=row.querySelector('.pp920-total'),label=total?.nextElementSibling;const tv=l?money(av):'—',lv=l?'available credit':'credit limit unavailable';if(total&&total.textContent!==tv)total.textContent=tv;if(label&&label.textContent!==lv)label.textContent=lv;});}
  function popup(){const m=document.querySelector('#pp1200Credit');if(!m?.classList.contains('show'))return;/* authoritative popup renderer already uses the same limit/current fields; force a refresh by reopening only when visible */}
  function run(){mini();connected();popup()}
- let q=0;const queue=()=>{clearTimeout(q);q=setTimeout(run,20)};
+ let q=0;const queue=()=>{if(q)return;q=setTimeout(()=>{q=0;run()},20)};  /* 4.2.6: throttle, not reset-on-mutation */
  document.addEventListener('click',()=>setTimeout(run,30),true);
  const obs=new MutationObserver(()=>queue());if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{obs.observe(document.body,{childList:true,subtree:true});run()},{once:true});else{obs.observe(document.body,{childList:true,subtree:true});run()}
 })();

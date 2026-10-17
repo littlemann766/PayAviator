@@ -1,3 +1,10 @@
+## 4.2.6 — Settings dialogs always complete
+- Fixed Settings > App Colors missing its color swatches and Hue / Saturation / Lightness color wheels on some phones. They are now added when the dialog opens, not by a delayed page scan that a busy screen could keep postponing.
+- Fixed the real cause of the missing Hue / Saturation / Lightness wheels: an old relabel step overwrote the wheel labels (and removed the sliders). It now only renames each row heading.
+- The four Settings entries (App Colors, Bills & Reminders, Calendar & Defaults, Backup & App) now open through one fixed tap handler, so older code can no longer swap in a partial, older version of a dialog.
+- Home "Next up" and credit-card summaries refresh on a steady timer instead of waiting for the page to go quiet.
+- New automatic check compares every control in each Settings dialog against the 4.2.2 build on idle, busy and slow-phone simulations.
+
 ## 4.2.5 — Import entry always shown, small fixes
 - The Import from spreadsheet section is now built directly into Settings > Backup & App (and Bills), no longer depending on a late page scan that could be skipped on some phones.
 - Settings > Backup & App > App Version now also shows which screens are loaded ("Screens 4.2.5"), to make a stale copy obvious.

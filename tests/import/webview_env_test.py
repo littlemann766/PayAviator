@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""4.2.5 regression: load the APK's real index.html the way Android WebView does (appassets origin, wv user agent, AndroidBridge JS
+"""4.2.6 regression: load the APK's real index.html the way Android WebView does (appassets origin, wv user agent, AndroidBridge JS
 interface present) and check the spreadsheet import entry points exist, even when the page is mutating constantly.
 Usage: python3 tests/import/webview_env_test.py [shotdir]"""
 import os, sys, re
