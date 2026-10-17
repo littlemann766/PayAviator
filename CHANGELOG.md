@@ -1,3 +1,9 @@
+## 4.2.5 — Import entry always shown, small fixes
+- The Import from spreadsheet section is now built directly into Settings > Backup & App (and Bills), no longer depending on a late page scan that could be skipped on some phones.
+- Settings > Backup & App > App Version now also shows which screens are loaded ("Screens 4.2.5"), to make a stale copy obvious.
+- The app clears any old service worker or cached pages left behind by earlier builds.
+- Fixed a stray "Show -143 more" button on the import preview.
+
 ## 4.2.4 — Bottom nav no longer too tall
 - Bottom navigation bar no longer grows tall on phones that report a large bottom inset; it stays slim (about 48px plus a small capped inset) on every phone, tablet and desktop, with 44px tap targets.
 
