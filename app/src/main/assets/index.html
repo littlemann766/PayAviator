@@ -35509,12 +35509,12 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
     for (var i = 0; i < existing.length; i++) {
       var e = existing[i], en = normName(e.name); if (!en) continue;
       var ea = Number(e.amount) || 0, edate = e.due || e.date || '';
-      if (en === n) return { name: e.name, amount: ea, due: edate };
+      if (en === n) return { id: e.id, name: e.name, amount: ea, due: edate };
       var short = n.length < en.length ? n : en, long = n.length < en.length ? en : n;
       var sameDay = edate && item.due && edate.slice(8, 10) === item.due.slice(8, 10);
       if (near(ea, item.amount) || sameDay) {
-        if (short.length >= 4 && long.indexOf(short) >= 0) return { name: e.name, amount: ea, due: edate };
-        if (short.length >= 5 && lev(n, en) <= 1) return { name: e.name, amount: ea, due: edate };
+        if (short.length >= 4 && long.indexOf(short) >= 0) return { id: e.id, name: e.name, amount: ea, due: edate };
+        if (short.length >= 5 && lev(n, en) <= 1) return { id: e.id, name: e.name, amount: ea, due: edate };
       }
     }
     return null;
@@ -35535,7 +35535,7 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
       var r = rows[i], any = r.some(function (x) { return x !== '' && x != null; });
       if (!any) { skippedEmpty++; continue; }
       var name = cleanName(cell(r, 'name')), amt = parseAmount(cell(r, 'amount')), dt = parseDate(cell(r, 'due'), now);
-      var it = { row: i + 1, name: name, amount: isFinite(amt) ? amt : '', due: '', fq: null, category: '', paid: false, autopay: false, notes: '', dest: 'bills', checked: false, note: '', dup: null, errors: [], rawDue: str(cell(r, 'due')), rawAmount: str(cell(r, 'amount')) };
+      var it = { row: i + 1, name: name, amount: isFinite(amt) ? amt : '', due: '', fq: null, category: '', paid: false, autopay: false, notes: '', dest: 'bills', checked: false, note: '', dup: null, errors: [], rawDue: str(cell(r, 'due')), rawAmount: str(cell(r, 'amount')), has: { freq: mp.freq != null, category: mp.category != null, notes: mp.notes != null, autopay: mp.autopay != null, paid: mp.paid != null }, dupAction: 'keep' };
       var fq = parseFreq(cell(r, 'freq')); it.fq = fq ? fq.v : null; if (fq && fq.note) it.note = fq.note;
       if (dt.iso) it.due = dt.iso; else if (dt.day) { it.due = dayToISO(dt.day, now); if (!fq) it.fq = 'monthly'; }
       if (mp.freq == null || !fq) { if (!it.fq) it.fq = 'monthly'; }
@@ -35564,16 +35564,51 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
   function refreshItems(items, ex) {
     var seen = {};
     items.forEach(function (it) {
-      it.errors = it.dest === 'skip' ? [] : checkItem(it); it.dup = null; it.dupWhy = '';
+      it.errors = it.dest === 'skip' ? [] : checkItem(it); it.dup = null; it.dupWhy = ''; it.canOverwrite = false; if (it.dupAction !== 'overwrite') it.dupAction = 'keep';
       if (it.dest === 'skip' || !it.name) return;
       var d = findDuplicate(it, it.dest === 'income' ? ex.income : ex.bills);
-      if (d) { it.dup = d; it.dupWhy = 'Looks like \u201c' + d.name + '\u201d (' + fmtMoney(d.amount) + ') already in ' + (it.dest === 'income' ? 'Income' : 'Bills') + '.'; return; }
+      if (d) { it.dup = d; it.canOverwrite = it.dest === 'bills' && d.id != null; it.dupWhy = 'Looks like \u201c' + d.name + '\u201d (' + fmtMoney(d.amount) + ') already in ' + (it.dest === 'income' ? 'Income' : 'Bills') + '.'; return; }
       var key = it.dest + '|' + normName(it.name) + '|' + it.amount;
       if (seen[key]) { it.dup = { name: it.name, amount: it.amount, inFile: true }; it.dupWhy = 'Appears more than once in this file.'; } else seen[key] = 1;
     });
+    items.forEach(function (it) { if (!it.canOverwrite) it.dupAction = 'keep'; });
+  }
+  /* Overwrite support. rec = the existing bill record. Returns { patch, changes:[{key,label,from,to}], markPaid }.
+     Only values the spreadsheet actually provides are applied; everything else (id, colour, paid history, notes when the cell is blank...) is untouched. */
+  var FQ_LABEL = { never: 'Never', weekly: 'Weekly', biweekly: 'Every 2 weeks', monthly: 'Monthly' };
+  function recurLabel(recurring, recurrence) { return recurring ? (FQ_LABEL[recurrence] || recurrence || 'Monthly') : 'Never'; }
+  /* A repeating bill's due date is its first date: moving it forward to this month would hide earlier paid months.
+     So a date in the same schedule (same day of month / whole weeks apart) counts as unchanged; a new day of month keeps the existing month. */
+  function dueForOverwrite(it, rec) {
+    var nd = it.due, old = rec.due; if (!/^\d{4}-\d{2}-\d{2}$/.test(old || '')) return nd;
+    var willRecur = it.has && it.has.freq && it.fq ? (it.fq !== 'never' && it.fq !== 'one-time') : !!rec.recurring, rr = it.has && it.has.freq && it.fq && willRecur ? it.fq : rec.recurrence;
+    if (!rec.recurring || !willRecur) return nd;
+    if (rr === 'weekly' || rr === 'biweekly') { var days = Math.round((Date.UTC(+nd.slice(0, 4), +nd.slice(5, 7) - 1, +nd.slice(8, 10)) - Date.UTC(+old.slice(0, 4), +old.slice(5, 7) - 1, +old.slice(8, 10))) / 864e5); return days % (rr === 'weekly' ? 7 : 14) === 0 ? old : nd; }
+    if (nd.slice(8, 10) === old.slice(8, 10)) return old;
+    var last = new Date(+old.slice(0, 4), +old.slice(5, 7), 0).getDate(), day = Math.min(+nd.slice(8, 10), last);
+    return old.slice(0, 8) + (day < 10 ? '0' : '') + day;
+  }
+  function overwriteChanges(it, rec) {
+    var patch = {}, changes = [], has = it.has || {};
+    function chg(key, label, from, to, val) { patch[key] = val === undefined ? to : val; changes.push({ key: key, label: label, from: from, to: to }); }
+    var nm = String(it.name || '').slice(0, 80); if (nm && nm !== rec.name) chg('name', 'Name', rec.name, nm);
+    if (it.amount > 0 && Math.round(it.amount * 100) !== Math.round((Number(rec.amount) || 0) * 100)) chg('amount', 'Amount', fmtMoney(rec.amount), fmtMoney(it.amount), it.amount);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(it.due || '') && it.due !== rec.due) {
+      var nd = dueForOverwrite(it, rec); if (nd && nd !== rec.due) chg('due', 'Due', rec.due || 'none', nd);
+    }
+    if (has.freq && it.fq) {
+      var recur = it.fq !== 'never' && it.fq !== 'one-time', rr = recur ? it.fq : (rec.recurrence || 'weekly');
+      if (recur !== !!rec.recurring || (recur && rr !== rec.recurrence)) { chg('recurring', 'Repeats', recurLabel(rec.recurring, rec.recurrence), recurLabel(recur, rr), recur); patch.recurrence = rr; }
+    }
+    if (has.category && it.category && it.category !== (rec.category || '')) chg('category', 'Category', rec.category || 'none', it.category);
+    if (has.notes && it.notes && it.notes !== (rec.notes || '')) chg('notes', 'Notes', rec.notes || 'none', it.notes);
+    if (has.autopay && !!it.autopay !== !!rec.autopay) chg('autopay', 'Autopay', rec.autopay ? 'On' : 'Off', it.autopay ? 'On' : 'Off', !!it.autopay);
+    var markPaid = !!(has.paid && it.paid);
+    if (markPaid) changes.push({ key: 'paid', label: 'Paid', from: '', to: 'Mark paid' });
+    return { patch: patch, changes: changes, markPaid: markPaid };
   }
   function fmtMoney(n) { n = Math.round(Number(n || 0) * 100) / 100; return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
-  var api = { LIMITS: LIMITS, readFile: readFile, parseXlsx: parseXlsx, parseCsv: parseCsv, analyze: analyze, buildItems: buildItems, refreshItems: refreshItems, parseAmount: parseAmount, parseDate: parseDate, parseFreq: parseFreq, parsePaid: parsePaid, findDuplicate: findDuplicate, normName: normName, guessCategory: guessCategory, checkItem: checkItem, dayToISO: dayToISO, fmtMoney: fmtMoney, ROLES: ROLES, _inflate: inflate, _destOf: destOf };
+  var api = { LIMITS: LIMITS, readFile: readFile, parseXlsx: parseXlsx, parseCsv: parseCsv, analyze: analyze, buildItems: buildItems, refreshItems: refreshItems, parseAmount: parseAmount, parseDate: parseDate, parseFreq: parseFreq, parsePaid: parsePaid, findDuplicate: findDuplicate, overwriteChanges: overwriteChanges, normName: normName, guessCategory: guessCategory, checkItem: checkItem, dayToISO: dayToISO, fmtMoney: fmtMoney, ROLES: ROLES, _inflate: inflate, _destOf: destOf };
   root.PAImport = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
@@ -35621,7 +35656,7 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
   }
   function existing() {
     var b = G('bills'), p = G('paychecks');
-    return { bills: (Array.isArray(b) ? b : []).map(function (x) { return { name: x.name, amount: x.amount, due: x.due }; }),
+    return { bills: (Array.isArray(b) ? b : []).map(function (x) { return { id: x.id, name: x.name, amount: x.amount, due: x.due }; }),
       income: (Array.isArray(p) ? p : []).map(function (x) { return { name: x.name || 'Paycheck', amount: x.amount, date: x.date }; }) };
   }
   function categories() { var b = G('bills'), s = {}, out = []; CATS.concat((Array.isArray(b) ? b : []).map(function (x) { return String(x.category || '').trim(); })).forEach(function (c) { if (c && !s[c.toLowerCase()]) { s[c.toLowerCase()] = 1; out.push(c); } }); return out; }
@@ -35651,6 +35686,10 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
       + '#paImportDlg .pai-chk{display:flex;align-items:center;gap:10px;margin:8px 0}#paImportDlg .pai-chk input{width:22px;height:22px;margin:0}'
       + '#paImportDlg .pai-done{text-align:center;padding:10px 0}#paImportDlg .pai-done h3{font-size:19px;margin:10px 0 4px}'
       + '#paImportDlg .pai-how{border:1px solid rgba(127,127,127,.35);border-radius:14px;padding:10px 12px;font-size:13.5px;margin:8px 0}#paImportDlg .pai-how ol{margin:4px 0 0;padding-left:20px}'
+      + '#paImportDlg .pai-act{display:inline-flex;border:1px solid rgba(127,127,127,.5);border-radius:999px;overflow:hidden}#paImportDlg .pai-seg{width:auto;margin:0;border:0;border-radius:0;background:transparent;color:inherit;opacity:.75;font-weight:700;font-size:13.5px;padding:6px 14px;min-height:38px}'
+      + '#paImportDlg .pai-seg.on{opacity:1;background:rgba(251,191,36,.2);color:#fbbf24}#paImportDlg .pai-seg[data-r=act-keep].on{background:rgba(22,228,234,.16);color:#16e4ea}'
+      + '#paImportDlg .pai-diff{grid-column:1/-1;font-size:13px;display:grid;gap:2px;opacity:.95}#paImportDlg .pai-drow{display:flex;flex-wrap:wrap;gap:0 8px;align-items:baseline}#paImportDlg .pai-drow>span:first-child{min-width:64px;font-weight:700}'
+      + '#paImportDlg .pai-drow .from{text-decoration:line-through;opacity:.7}#paImportDlg .pai-drow .to{color:#3ddc97;font-weight:700}#paImportDlg .pai-row.pai-upd{border-color:rgba(251,191,36,.7)}'
       + '#paImportDlg .form-actions{position:sticky;bottom:0}';
     document.head.appendChild(st);
   }
@@ -35728,7 +35767,10 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
   /* ---- 3 preview */
   function repOpts(dest) { return dest === 'income' ? INCOME_FREQ : REPEATS; }
   function fixFreq(it) { var ok = repOpts(it.dest).some(function (r) { return r[0] === it.fq; }); if (!ok) it.fq = it.dest === 'income' ? (it.fq === 'never' ? 'one-time' : 'monthly') : (it.fq === 'one-time' ? 'never' : 'monthly'); }
-  function counts() { var c = { bills: 0, income: 0, sel: 0 }; S.items.forEach(function (it) { if (it.checked && it.dest !== 'skip') { c.sel++; c[it.dest]++; } }); return c; }
+  function isUpd(it) { return !!it.canOverwrite && !!it.dup && !it.dup.inFile && it.dest === 'bills'; }
+  function syncDups() { S.items.forEach(function (i) { if (isUpd(i)) { i.checked = i.dupAction === 'overwrite'; i._upd = true; } else { if (i._upd) { i.checked = false; i._upd = false; } if (i.dupAction === 'overwrite') i.dupAction = 'keep'; } }); }
+  function existingRec(it) { var b = G('bills'); return it.dup && Array.isArray(b) ? b.filter(function (x) { return x.id === it.dup.id; })[0] : null; }
+  function counts() { var c = { bills: 0, income: 0, upd: 0, sel: 0 }; S.items.forEach(function (it) { if (it.checked && it.dest !== 'skip') { c.sel++; if (isUpd(it)) c.upd++; else c[it.dest]++; } }); return c; }
   function preview() {
     S.step = 'preview';
     var cats = categories(), summary = el('div', { class: 'pai-sum', 'data-pai-summary': '', role: 'status' }), list = el('div', { 'data-pai-list': '' });
@@ -35736,17 +35778,26 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
     var more = btn('', 'ghost', function () { S.shown += CHUNK; paintRows(); }, { 'data-pai-more': '' });
     function paintSummary() {
       var c = counts(), dups = S.items.filter(function (i) { return i.dup; }).length, bad = S.items.filter(function (i) { return i.checked && i.dest !== 'skip' && i.errors.length; }).length;
-      summary.textContent = S.items.length + ' row' + (S.items.length === 1 ? '' : 's') + ' read \u00b7 ' + c.sel + ' selected' + (dups ? ' \u00b7 ' + dups + ' look like ones you already have' : '') + (bad ? ' \u00b7 ' + bad + ' need fixing' : '');
+      summary.textContent = S.items.length + ' row' + (S.items.length === 1 ? '' : 's') + ' read \u00b7 ' + c.sel + ' selected' + (dups ? ' \u00b7 ' + dups + ' look like ones you already have' : '') + (c.upd ? ' \u00b7 ' + c.upd + ' will overwrite' : '') + (bad ? ' \u00b7 ' + bad + ' need fixing' : '');
       var parts = []; if (c.bills) parts.push(c.bills + ' bill' + (c.bills === 1 ? '' : 's')); if (c.income) parts.push(c.income + ' income');
-      addBtn.textContent = c.sel ? 'Add ' + parts.join(' and ') : 'Nothing selected'; addBtn.disabled = !c.sel;
+      addBtn.textContent = c.sel ? (parts.length ? 'Add ' + parts.join(' and ') : '') + (c.upd ? (parts.length ? ', ' : '') + 'Overwrite ' + c.upd : '') : 'Nothing selected'; addBtn.disabled = !c.sel;
     }
-    function reflag() { P.refreshItems(S.items, existing()); S.items.forEach(function (x) { var n = list.querySelector('[data-row="' + x.row + '"]'); if (n) paintRow(x, n); }); paintSummary(); }
+    function reflag() { P.refreshItems(S.items, existing()); syncDups(); S.items.forEach(function (x) { var n = list.querySelector('[data-row="' + x.row + '"]'); if (n) paintRow(x, n); }); paintSummary(); }
     function paintRow(it, node) {
       var errs = it.dest === 'skip' ? [] : it.errors;
-      node.classList.toggle('pai-skip', it.dest === 'skip'); node.classList.toggle('pai-dup', !!it.dup); node.classList.toggle('pai-bad', !!errs.length && it.checked);
+      node.classList.toggle('pai-skip', it.dest === 'skip'); node.classList.toggle('pai-dup', !!it.dup); node.classList.toggle('pai-bad', !!errs.length && it.checked); node.classList.remove('pai-upd');
       node.querySelector('[data-r=chk]').checked = it.checked;
       var flag = node.querySelector('[data-r=flag]'); flag.replaceChildren();
-      if (it.dup) { flag.appendChild(el('span', { class: 'pai-tag', 'data-dup': '', text: it.dup.inFile ? 'Repeated in file' : 'Possible duplicate' })); flag.appendChild(el('span', { text: it.dupWhy })); }
+      if (isUpd(it)) {
+        it.checked = it.dupAction === 'overwrite'; it._upd = true; node.querySelector('[data-r=chk]').checked = it.checked; node.classList.add('pai-upd');
+        flag.appendChild(el('span', { class: 'pai-tag', 'data-dup': '', text: 'Already in Bills' })); flag.appendChild(el('span', { text: it.dupWhy }));
+        flag.appendChild(el('div', { class: 'pai-act', role: 'group', 'aria-label': 'If this bill already exists' }, [['keep', 'Keep mine'], ['overwrite', 'Overwrite']].map(function (a) {
+          return el('button', { type: 'button', class: 'pai-seg' + (it.dupAction === a[0] ? ' on' : ''), 'data-r': 'act-' + a[0], 'aria-pressed': String(it.dupAction === a[0]), text: a[1], onclick: function () { it.dupAction = a[0]; it.checked = a[0] === 'overwrite'; paintRow(it, node); paintSummary(); } });
+        })));
+        var rec = existingRec(it), ch = rec ? P.overwriteChanges(it, rec).changes : [];
+        flag.appendChild(el('div', { class: 'pai-diff', 'data-r': 'diff' }, el('b', { text: it.dupAction === 'overwrite' ? 'Overwrite will change:' : 'Your bill stays as is. Overwrite would change:' }),
+          ch.length ? ch.map(function (c) { var p = c.key === 'paid'; return el('div', { class: 'pai-drow' }, el('span', { text: c.label }), p ? null : el('span', { class: 'from', text: c.from }), p ? null : el('span', { text: '\u2192' }), el('span', { class: 'to', text: c.to })); }) : el('div', { class: 'pai-drow', text: 'Same values as yours. Nothing would change.' })));
+      } else if (it.dup) { flag.appendChild(el('span', { class: 'pai-tag', 'data-dup': '', text: it.dup.inFile ? 'Repeated in file' : 'Possible duplicate' })); flag.appendChild(el('span', { text: it.dupWhy })); }
       if (errs.length) flag.appendChild(el('span', { class: 'pai-tag bad', 'data-needs': '', text: 'Needs: ' + errs.map(function (e) { return { name: 'a name', amount: 'an amount', due: 'a due date' }[e]; }).join(', ') }));
       if (it.note) flag.appendChild(el('span', { text: it.note }));
       ['name', 'amount', 'due'].forEach(function (k) { var f = node.querySelector('[data-r=' + k + ']'); f.classList.toggle('pai-inv', errs.indexOf(k) >= 0 && it.checked); });
@@ -35755,7 +35806,7 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
     function buildRow(it) {
       var node = el('div', { class: 'pai-row', 'data-row': String(it.row) });
       var chk = el('input', { type: 'checkbox', 'data-r': 'chk', 'aria-label': 'Import ' + (it.name || 'row ' + it.row), checked: it.checked });
-      chk.addEventListener('change', function () { it.checked = chk.checked; paintRow(it, node); paintSummary(); });
+      chk.addEventListener('change', function () { it.checked = chk.checked; if (isUpd(it)) it.dupAction = it.checked ? 'overwrite' : 'keep'; paintRow(it, node); paintSummary(); });
       var name = el('input', { type: 'text', 'data-r': 'name', 'class': 'pai-wide', maxlength: 80, value: it.name, placeholder: 'Name', 'aria-label': 'Name' });
       var amount = el('input', { type: 'text', inputmode: 'decimal', 'data-r': 'amount', value: it.amount === '' ? '' : String(it.amount), placeholder: '0.00', 'aria-label': 'Amount' });
       var due = el('input', { type: 'date', 'data-r': 'due', value: isISO(it.due) ? it.due : '', 'aria-label': 'Due date' });
@@ -35769,7 +35820,7 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
       due.addEventListener('input', function () { it.due = due.value; reflag(); });
       rep.addEventListener('change', function () { it.fq = rep.value; });
       cat.addEventListener('change', function () { it.category = cat.value; });
-      dest.addEventListener('change', function () { var was = it.dest; it.dest = dest.value; fillRep(); if (it.dest === 'skip') it.checked = false; else if (was === 'skip') { P.refreshItems(S.items, existing()); it.checked = !it.dup && !it.errors.length; } reflag(); chk.checked = it.checked; });
+      dest.addEventListener('change', function () { var was = it.dest; it.dest = dest.value; fillRep(); if (it.dest === 'skip') it.checked = false; else if (was === 'skip') { P.refreshItems(S.items, existing()); syncDups(); it.checked = !it.dup && !it.errors.length; } reflag(); chk.checked = it.checked; });
       fillRep();
       node.appendChild(chk); node.appendChild(el('div', { class: 'pai-f' }, name, amount, due, dest, rep, cat)); node.appendChild(el('div', { class: 'pai-flag', 'data-r': 'flag' }));
       paintRow(it, node); return node;
@@ -35779,11 +35830,13 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
       var left = S.items.length - S.shown; more.hidden = left <= 0; more.textContent = 'Show ' + Math.min(CHUNK, left) + ' more of ' + left + ' remaining rows'; paintSummary();
     }
     if (!S.items.length) { frame('No bill rows found', S.file, el('div', { class: 'pai-note', text: 'We could not find any rows under the column titles. Check the file, or change which columns we read.' }), [btn('Choose another file', 'ghost', function () { pick(); }), btn('Change columns', 'primary', function () { map(); })]); return; }
-    var notes = []; if (S.overflow) notes.push('Only the first ' + P.LIMITS.maxRows.toLocaleString() + ' rows are shown. Split a bigger file to bring in the rest.'); if (S.truncated) notes.push('This file is very long, so we stopped reading it partway.');
+    var nUpd = S.items.filter(isUpd).length, notes = []; if (S.overflow) notes.push('Only the first ' + P.LIMITS.maxRows.toLocaleString() + ' rows are shown. Split a bigger file to bring in the rest.'); if (S.truncated) notes.push('This file is very long, so we stopped reading it partway.');
     frame('Choose what to bring in', S.file + (S.sheets.length > 1 ? ' \u00b7 ' + S.sheets[S.sheetIdx].name : ''), [
       S.sheets.length > 1 ? sheetSelect(preview) : null, summary, notes.map(function (n) { return el('div', { class: 'pai-warn', text: n }); }),
-      el('div', { class: 'pai-tools' }, btn('Select all', 'ghost', function () { S.items.forEach(function (i) { if (i.dest !== 'skip') i.checked = true; }); paintRows(); }, { 'data-pai-all': '' }), btn('Select none', 'ghost', function () { S.items.forEach(function (i) { i.checked = false; }); paintRows(); }, { 'data-pai-none': '' }), btn('Change columns', 'ghost', function () { map(); }, { 'data-pai-cols': '' })),
-      el('div', { class: 'pai-note', text: 'Rows that look like bills you already have are not ticked. Tick them if you want them anyway.' }), list, more, msg
+      el('div', { class: 'pai-tools' }, btn('Select all', 'ghost', function () { S.items.forEach(function (i) { if (i.dest !== 'skip' && !isUpd(i)) i.checked = true; }); paintRows(); }, { 'data-pai-all': '' }), btn('Select none', 'ghost', function () { S.items.forEach(function (i) { i.checked = false; i.dupAction = 'keep'; }); paintRows(); }, { 'data-pai-none': '' }), btn('Change columns', 'ghost', function () { map(); }, { 'data-pai-cols': '' }),
+        nUpd ? btn('Overwrite all duplicates (' + nUpd + ')', 'ghost', function () { S.items.forEach(function (i) { if (isUpd(i)) { i.dupAction = 'overwrite'; i.checked = true; } }); paintRows(); }, { 'data-pai-overwrite-all': '' }) : null,
+        nUpd ? btn('Keep all mine', 'ghost', function () { S.items.forEach(function (i) { if (isUpd(i)) { i.dupAction = 'keep'; i.checked = false; } }); paintRows(); }, { 'data-pai-keep-all': '' }) : null),
+      el('div', { class: 'pai-note', text: nUpd ? 'Bills you already have are kept as you entered them. Choose Overwrite on a row to update that bill with the spreadsheet values (nothing new is added, and its paid history stays).' : 'Rows that look like bills you already have are not ticked. Tick them if you want them anyway.' }), list, more, msg
     ], [btn('Back', 'ghost', function () { pick(); }), addBtn]);
     paintRows();
 
@@ -35801,10 +35854,15 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
 
   /* ---- add rows the same way the Add Bill / Add Check forms do */
   async function commit(chosen) {
-    var nb = 0, ni = 0, failed = 0, newBills = [], newChecks = [], paidMarks = [];
+    var nb = 0, ni = 0, nu = 0, same = 0, failed = 0, newBills = [], newChecks = [], paidMarks = [], kept = S.items.filter(function (i) { return isUpd(i) && i.dupAction !== 'overwrite'; }).length;
     chosen.forEach(function (it) {
       try {
-        if (it.dest === 'bills') {
+        var rec = isUpd(it) ? existingRec(it) : null;
+        if (rec) {
+          /* Overwrite = edit the existing bill in place (same id, paid history and every field the file does not provide stay) */
+          var o = P.overwriteChanges(it, rec);
+          if (!o.changes.length) same++; else { Object.assign(rec, o.patch); if (o.markPaid) paidMarks.push([rec, rec.due, rec.amount]); nu++; }
+        } else if (it.dest === 'bills') {
           var recur = it.fq !== 'never' && it.fq !== 'one-time', s = G('appSettings') || {}, id = uuid();
           var days = s.defaultBillDays != null ? s.defaultBillDays : (s.notificationDays != null ? s.notificationDays : 0);
           var b = { id: id, name: it.name.slice(0, 80), amount: it.amount, due: it.due, dateMoves: {}, recurring: recur, recurrence: recur ? it.fq : 'weekly', paid: false, color: BILL_COLOR,
@@ -35817,7 +35875,7 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
       } catch (e) { failed++; console.warn('[PayAviator import]', e); }
     });
     try {
-      if (newBills.length) {
+      if (newBills.length || nu) {
         var list = G('bills'); if (!Array.isArray(list)) throw new Error('bills unavailable');
         newBills.forEach(function (b) { list.push(b); });
         if (paidMarks.length) {
@@ -35835,16 +35893,16 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
     } catch (e) { failed += newBills.length + newChecks.length; nb = 0; ni = 0; console.warn('[PayAviator import]', e); }
     try { setUnsaved(); } catch (_) { }
     ['render', 'renderCalendar', 'renderPaycheckList', 'scheduleNativeNotifications'].forEach(function (fn) { try { var f = G(fn); if (f) f(); } catch (e) { console.warn('[PayAviator import] ' + fn, e); } });
-    return { nb: nb, ni: ni, failed: failed, skipped: S.items.length - chosen.length };
+    return { nb: nb, ni: ni, nu: nu, same: same, kept: kept, failed: failed, skipped: S.items.length - chosen.length - kept };
   }
 
   /* ---- 4 result */
   function result(r) {
     S.step = 'result'; var parts = [];
     if (r.nb) parts.push(r.nb + ' bill' + (r.nb === 1 ? '' : 's')); if (r.ni) parts.push(r.ni + ' income item' + (r.ni === 1 ? '' : 's'));
-    frame('Import finished', S.file, el('div', { class: 'pai-done', 'data-pai-result': '' }, el('div', { class: 'pai-ico', 'aria-hidden': 'true', text: '\u2705' }), el('h3', { text: parts.length ? 'Added ' + parts.join(' and ') : 'Nothing was added' }),
+    frame('Import finished', S.file, el('div', { class: 'pai-done', 'data-pai-result': '' }, el('div', { class: 'pai-ico', 'aria-hidden': 'true', text: '\u2705' }), el('h3', { text: (parts.length || r.nu) ? [parts.length ? 'Added ' + parts.join(' and ') : '', r.nu ? (parts.length ? 'updated ' : 'Updated ') + r.nu + ' existing bill' + (r.nu === 1 ? '' : 's') : ''].filter(Boolean).join(' and ') : 'Nothing was added' }),
       el('div', { class: 'pai-note', text: 'They are saved on this phone. If you are signed in, they sync to the website too.' }),
-      el('div', { class: 'pai-note', text: r.skipped + ' row' + (r.skipped === 1 ? '' : 's') + ' left out' + (r.failed ? ' \u00b7 ' + r.failed + ' could not be saved' : '') })),
+      el('div', { class: 'pai-note', text: r.skipped + ' row' + (r.skipped === 1 ? '' : 's') + ' left out' + (r.kept ? ' \u00b7 ' + r.kept + ' of your bills kept as you entered them' : '') + (r.same ? ' \u00b7 ' + r.same + ' already matched, so nothing changed' : '') + (r.failed ? ' \u00b7 ' + r.failed + ' could not be saved' : '') })),
       [btn('Import another file', 'ghost', function () { pick(); }), btn('Done', 'primary', function () { close(); try { var n = document.querySelector('.mb119-nav[data-view="bills"]'); if (n && r.nb) n.click(); } catch (_) { } }, { 'data-pai-done': '' })]);
   }
 
