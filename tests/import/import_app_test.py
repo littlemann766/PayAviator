@@ -83,7 +83,7 @@ def run():
         check('nothing left the phone while reading the file', hosts <= {f'localhost:{PORT}'} and not posts, str((hosts, posts)))
 
         print('[edit, add]')
-        row('Gym').locator('[data-r=name]').fill('Gym membership'); row('Gym').locator('[data-r=amount]').fill('29.99'); row('Gym').locator('[data-r=due]').fill(dd(11).isoformat())
+        row('Gym').locator('[data-r=name]').fill('Pool pass'); row('Gym').locator('[data-r=amount]').fill('29.99'); row('Gym').locator('[data-r=due]').fill(dd(11).isoformat())
         row('Old loan').locator('[data-r=chk]').uncheck()
         check('Add button reflects the selection', 'Add 1 bill and 1 income' in pg.inner_text('[data-pai-add]'), pg.inner_text('[data-pai-add]'))
         t = row('Total'); t.locator('[data-r=dest]').select_option('bills'); t.locator('[data-r=chk]').check()
@@ -91,8 +91,8 @@ def run():
         t.locator('[data-r=chk]').uncheck(); t.locator('[data-r=dest]').select_option('skip')
         pg.click('[data-pai-add]'); pg.wait_for_selector('[data-pai-result]'); pg.wait_for_timeout(500)
         check('result screen says what was added', 'Added 1 bill and 1 income item' in pg.inner_text('[data-pai-result]'), pg.inner_text('[data-pai-result]'))
-        st = pg.evaluate("""()=>{const g=bills.find(b=>b.name==='Gym membership'),pc=paychecks.find(p=>p.name==='Dog walking income');
-          let stored=null;try{for(const k of Object.keys(localStorage)){const v=localStorage.getItem(k);if(v&&v.includes('Gym membership')&&v.startsWith('['))stored=k}}catch(e){}
+        st = pg.evaluate("""()=>{const g=bills.find(b=>b.name==='Pool pass'),pc=paychecks.find(p=>p.name==='Dog walking income');
+          let stored=null;try{for(const k of Object.keys(localStorage)){const v=localStorage.getItem(k);if(v&&v.includes('Pool pass')&&v.startsWith('['))stored=k}}catch(e){}
           return {g:g&&{amount:g.amount,due:g.due,recurring:g.recurring,recurrence:g.recurrence,category:g.category,color:g.color,id:typeof g.id,notify:g.notify,paidAmt:billPaidAmounts[g.id+'|'+g.due],ov:billOverrides[g.id+'|'+g.due]},pc:pc&&{amount:pc.amount,date:pc.date,frequency:pc.frequency,incomeType:pc.incomeType},n:bills.length,np:paychecks.length,stored,
             onlyOnce:bills.filter(b=>/Rent/.test(b.name)).length,hasOld:bills.some(b=>b.name==='Old loan'||b.name==='Total'),pcStored:(localStorage.getItem('payAviator_paychecks_v1')||'').includes('Dog walking income')}}""")
         check('bill added through the normal bills list with the edited values', st['g'] and st['g']['amount'] == 29.99 and st['g']['due'] == dd(11).isoformat() and st['g']['recurring'] and st['g']['recurrence'] == 'monthly' and st['g']['category'] == 'Subscriptions' and st['n'] == n_bills0 + 1, str(st))
@@ -104,7 +104,7 @@ def run():
         pg.click('[data-pai-done]'); pg.wait_for_timeout(900)
         check('Done returns to the Bills tab (the imported bill is paid, so it sits under Show paid bills)', pg.locator('#mb119Bills').is_visible() and 'Import from spreadsheet' in pg.locator('#pa401BillsActions').inner_text())
         pg.reload(); pg.wait_for_timeout(3000)
-        check('imported bill survives an app restart (reload)', pg.evaluate("bills.some(b=>b.name==='Gym membership')") and pg.evaluate("paychecks.some(p=>p.name==='Dog walking income')"))
+        check('imported bill survives an app restart (reload)', pg.evaluate("bills.some(b=>b.name==='Pool pass')") and pg.evaluate("paychecks.some(p=>p.name==='Dog walking income')"))
         pg.evaluate("document.querySelectorAll('dialog[open]').forEach(d=>d.close())")
 
         print('[mapping, sheets, huge]')
