@@ -1,3 +1,9 @@
+## 4.2.3 — Spreadsheet import, cloud loading screen, slimmer nav
+- New: import bills and income from .xlsx or .csv files. Review every row, choose Bills, Income or Skip, edit name, amount and due date, and add only the rows you check. Read on the device; nothing is uploaded.
+- New: matched bills offer Overwrite or Keep mine (default Keep mine), with Overwrite all and Keep all shortcuts. Overwrites update in place and sync like any edit.
+- New: calmer layered cloud loading screen that scales to any screen and respects reduced motion.
+- Slimmer bottom navigation bar.
+
 ## 4.2.2 — Rebuild of 4.2.1
 - Rebuild of 4.2.1 with no feature changes.
 
