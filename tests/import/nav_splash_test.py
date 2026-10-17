@@ -20,6 +20,11 @@ check('splash keeps original navy + sky-blue gradient', 'Color.rgb(5, 19, 40)' i
 check('splash honors reduced motion (animator scale 0)', 'ANIMATOR_DURATION_SCALE' in j and 'still' in j)
 check('splash scales with screen (shortSide)', 'shortSide' in j)
 check('playful splash copy removed', 'taking off' not in j and 'Loading debts' not in j)
+check('splash: five parallax cloud layers with shaded radial-gradient puffs (no external assets)', 'CLOUD_PUFFS' in j and 'CLOUD_LAYERS' in j and 'RadialGradient' in j and j.count('{') > 0 and j.count('// far') == 1 and j.count('// front') == 1)
+check('splash: cloud tiles painted once, only translated per frame', 'renderTile' in j and 'drawBitmap(bm, null, dst' in j)
+check('splash: logo emerges from a clearing veil', 'setVeilAnchor' in j and 'veilPaint' in j and 'scaleX(1f)' in j)
+check('splash: reduced motion shows static clouds, no veil', 'still ? 0.3f' in j and '!still && veilAnchor' in j)
+check('splash: no network/asset loads in splash code', 'http' not in j[j.index('class CloudSplashLayout'):j.index('class SplashBar')])
 check('splash logo no longer 230dp', 'dp(230)' not in j)
 with sync_playwright() as p:
     b = p.chromium.launch(args=['--no-sandbox'])
