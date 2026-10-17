@@ -355,20 +355,34 @@ public class MainActivity extends Activity {
         splashView.setPadding(dp(28), dp(32), dp(28), dp(32));
         splashView.setBackgroundColor(Color.rgb(5, 19, 40));
 
+        // Redesigned splash: calm sky, one compact mark, wordmark, thin progress line.
+        // Everything scales with the shorter screen side so phones, tablets and landscape all fit.
+        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        int shortSide = Math.min(dm.widthPixels, dm.heightPixels);
+        int logoPx = Math.max(dp(84), Math.min(dp(132), Math.round(shortSide * 0.26f)));
+
         ImageView logo = new ImageView(this);
         logo.setImageResource(com.payaviator.app.R.drawable.payaviator_app_icon);
         logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        LinearLayout.LayoutParams logoParams =
-                new LinearLayout.LayoutParams(dp(230), dp(230));
-        logoParams.bottomMargin = dp(22);
+        final float logoRadius = logoPx * 0.22f;
+        logo.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override
+            public void getOutline(View v, android.graphics.Outline o) {
+                o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), logoRadius);
+            }
+        });
+        logo.setClipToOutline(true);
+        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(logoPx, logoPx);
+        logoParams.bottomMargin = dp(18);
         splashView.addView(logo, logoParams);
 
         TextView title = new TextView(this);
         title.setText("PayAviator");
         title.setTextColor(Color.WHITE);
-        title.setTextSize(32);
+        title.setTextSize(26);
         title.setGravity(Gravity.CENTER);
-        title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        title.setLetterSpacing(0.02f);
+        title.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
         splashView.addView(title, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -377,33 +391,46 @@ public class MainActivity extends Activity {
         TextView subtitle = new TextView(this);
         subtitle.setText("TAKE CONTROL OF YOUR MONEY");
         subtitle.setTextColor(Color.rgb(22, 228, 234));
-        subtitle.setTextSize(13);
+        subtitle.setTextSize(11);
         subtitle.setGravity(Gravity.CENTER);
-        subtitle.setLetterSpacing(0.10f);
+        subtitle.setLetterSpacing(0.14f);
         LinearLayout.LayoutParams subParams =
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT);
-        subParams.topMargin = dp(10);
+        subParams.topMargin = dp(8);
         splashView.addView(subtitle, subParams);
 
+        SplashBar bar = new SplashBar(this);
+        LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(
+                Math.max(dp(120), Math.min(dp(200), Math.round(shortSide * 0.42f))), dp(3));
+        barParams.topMargin = dp(36);
+        splashView.addView(bar, barParams);
+
         splashStatus = new TextView(this);
-        splashStatus.setText("Starting PayAviator…");
-        splashStatus.setTextColor(Color.rgb(170, 197, 222));
-        splashStatus.setTextSize(14);
+        splashStatus.setText("Getting things ready");
+        splashStatus.setTextColor(Color.argb(210, 214, 232, 248));
+        splashStatus.setTextSize(13);
         splashStatus.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams loadParams =
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT);
-        loadParams.topMargin = dp(30);
+        loadParams.topMargin = dp(14);
         splashView.addView(splashStatus, loadParams);
 
-        splashStatus.postDelayed(() -> setSplashStatus("Loading bills…"), 500);
-        splashStatus.postDelayed(() -> setSplashStatus("Loading debts…"), 1350);
-        splashStatus.postDelayed(() -> setSplashStatus("Loading funds…"), 2200);
-        splashStatus.postDelayed(() -> setSplashStatus("Preparing PayAviator Gauge…"), 3100);
-        splashStatus.postDelayed(() -> setSplashStatus("PayAviator is taking off… ✈"), 4250);
+        if (!CloudSplashLayout.reducedMotion(this)) {
+            for (int i = 0; i < splashView.getChildCount(); i++) {
+                View c = splashView.getChildAt(i);
+                c.setAlpha(0f);
+                c.setTranslationY(dp(6));
+                c.animate().alpha(1f).translationY(0f).setStartDelay(60L * i).setDuration(380).start();
+            }
+        }
+
+        splashStatus.postDelayed(() -> setSplashStatus("Loading your bills"), 700);
+        splashStatus.postDelayed(() -> setSplashStatus("Preparing your gauge"), 2000);
+        splashStatus.postDelayed(() -> setSplashStatus("Almost ready"), 3600);
 
         rootView.addView(splashView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -416,40 +443,66 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * Splash-only cloud layer. The clouds are painted inside the splash itself,
-     * so they can never sit over the WebView or block taps after startup.
+     * Splash-only sky layer: a navy-to-sky gradient (the app's original navy and light blue) with
+     * three soft parallax cloud layers. Painted inside the splash itself, so it can never sit over
+     * the WebView or block taps after startup. Honors the system "remove animations" setting.
      */
     private static class CloudSplashLayout extends LinearLayout {
         private final Paint cloudPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private long cloudStart;
+        private final Paint skyPaint = new Paint();
+        private final long cloudStart;
+        private final boolean still;
+
+        static boolean reducedMotion(Context c) {
+            try {
+                return android.provider.Settings.Global.getFloat(c.getContentResolver(),
+                        android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f;
+            } catch (Exception e) {
+                return false;
+            }
+        }
 
         CloudSplashLayout(Context context) {
             super(context);
             setWillNotDraw(false);
             cloudPaint.setColor(Color.WHITE);
             cloudStart = SystemClock.uptimeMillis();
+            still = reducedMotion(context);
+        }
+
+        @Override
+        protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+            super.onSizeChanged(w, h, oldw, oldh);
+            skyPaint.setShader(new android.graphics.LinearGradient(0, 0, 0, h,
+                    new int[]{Color.rgb(5, 19, 40), Color.rgb(11, 35, 75), Color.rgb(12, 121, 187)},
+                    new float[]{0f, 0.55f, 1f}, android.graphics.Shader.TileMode.CLAMP));
         }
 
         @Override
         protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
             final float w = getWidth();
             final float h = getHeight();
             if (w <= 0 || h <= 0) return;
+            canvas.drawRect(0, 0, w, h, skyPaint);
 
-            float t = ((SystemClock.uptimeMillis() - cloudStart) % 12000L) / 12000f;
-            drawCloud(canvas, wrap(w * (0.04f + t * 0.22f), w), h * 0.10f, w * 0.20f, 0.16f);
-            drawCloud(canvas, wrap(w * (0.72f + t * 0.16f), w), h * 0.22f, w * 0.15f, 0.11f);
-            drawCloud(canvas, wrap(w * (-0.08f + t * 0.19f), w), h * 0.43f, w * 0.18f, 0.12f);
-            drawCloud(canvas, wrap(w * (0.78f + t * 0.13f), w), h * 0.66f, w * 0.13f, 0.09f);
-            drawCloud(canvas, wrap(w * (0.12f + t * 0.17f), w), h * 0.82f, w * 0.17f, 0.10f);
-            postInvalidateOnAnimation();
+            long el = still ? 4000L : (SystemClock.uptimeMillis() - cloudStart);
+            // far layer: small, faint, slow. mid and near layers drift faster and sit lower.
+            float far = (el % 90000L) / 90000f, mid = (el % 60000L) / 60000f, near = (el % 42000L) / 42000f;
+            float u = Math.min(w, h * 0.62f); // size unit that keeps clouds proportionate on tablets
+            drawCloud(canvas, wrap(w * (0.10f + far), w), h * 0.12f, u * 0.30f, 0.10f);
+            drawCloud(canvas, wrap(w * (0.68f + far), w), h * 0.20f, u * 0.24f, 0.08f);
+            drawCloud(canvas, wrap(w * (0.30f + mid), w), h * 0.70f, u * 0.38f, 0.14f);
+            drawCloud(canvas, wrap(w * (0.85f + mid), w), h * 0.58f, u * 0.28f, 0.11f);
+            drawCloud(canvas, wrap(w * (0.05f + near), w), h * 0.84f, u * 0.50f, 0.20f);
+            drawCloud(canvas, wrap(w * (0.62f + near), w), h * 0.90f, u * 0.44f, 0.17f);
+            if (!still) postInvalidateOnAnimation();
+            super.onDraw(canvas);
         }
 
         private float wrap(float x, float w) {
-            float margin = w * 0.25f;
+            float margin = w * 0.30f;
             float span = w + margin * 2f;
-            return ((x + margin) % span) - margin;
+            return (((x + margin) % span) + span) % span - margin;
         }
 
         private void drawCloud(Canvas c, float x, float y, float width, float alpha) {
@@ -461,6 +514,40 @@ public class MainActivity extends Activity {
             c.drawCircle(x + width * 0.77f, y + ch * 0.62f, ch * 0.18f, cloudPaint);
             c.drawRoundRect(x + width * 0.16f, y + ch * 0.57f,
                     x + width * 0.85f, y + ch * 0.82f, ch * 0.13f, ch * 0.13f, cloudPaint);
+        }
+    }
+
+    /** Thin indeterminate progress line for the splash (static fill when animations are off). */
+    private static class SplashBar extends View {
+        private final Paint track = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final long start = SystemClock.uptimeMillis();
+        private final boolean still;
+
+        SplashBar(Context c) {
+            super(c);
+            track.setColor(Color.argb(60, 255, 255, 255));
+            fill.setColor(Color.rgb(22, 228, 234));
+            still = CloudSplashLayout.reducedMotion(c);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            float w = getWidth(), h = getHeight(), r = h / 2f;
+            canvas.drawRoundRect(0, 0, w, h, r, r, track);
+            float seg = w * 0.38f, x;
+            if (still) {
+                x = (w - seg) / 2f;
+            } else {
+                float t = ((SystemClock.uptimeMillis() - start) % 1500L) / 1500f;
+                float e = t * t * (3f - 2f * t);
+                x = -seg + (w + seg) * e;
+            }
+            canvas.save();
+            canvas.clipRect(0, 0, w, h);
+            canvas.drawRoundRect(x, 0, x + seg, h, r, r, fill);
+            canvas.restore();
+            if (!still) postInvalidateOnAnimation();
         }
     }
 
@@ -515,7 +602,7 @@ public class MainActivity extends Activity {
                     long remaining = Math.max(0L, 5000L - elapsed);
                     webView.postDelayed(() -> {
                         if (splashDismissed) return;
-                        setSplashStatus("PayAviator is taking off… ✈");
+                        setSplashStatus("Almost ready");
                         webView.postDelayed(this::forceRevealApp, 250);
                     }, remaining);
                 }
