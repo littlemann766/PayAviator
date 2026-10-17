@@ -287,9 +287,26 @@ public class MainActivity extends Activity {
 
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("application/json");
-                intent.putExtra(Intent.EXTRA_MIME_TYPES,
-                        new String[]{"application/json", "text/json", "text/plain"});
+                // 4.2.x: the same picker also serves "Import from spreadsheet" (.xlsx / .csv). The page asks for it
+                // through the input's accept list; everything else keeps the original JSON-backup picker.
+                boolean sheetPicker = false;
+                String[] accept = params != null ? params.getAcceptTypes() : null;
+                if (accept != null) {
+                    for (String a : accept) {
+                        if (a != null && (a.contains("xlsx") || a.contains("csv") || a.contains("spreadsheetml"))) sheetPicker = true;
+                    }
+                }
+                if (sheetPicker) {
+                    intent.setType("*/*");
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            "text/csv", "text/comma-separated-values", "application/csv",
+                            "application/vnd.ms-excel", "text/plain", "application/octet-stream"});
+                } else {
+                    intent.setType("application/json");
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES,
+                            new String[]{"application/json", "text/json", "text/plain"});
+                }
 
                 try {
                     externalActivityInProgress = true;
