@@ -1,3 +1,6 @@
+## 4.2.4 — Bottom nav no longer too tall
+- Bottom navigation bar no longer grows tall on phones that report a large bottom inset; it stays slim (about 48px plus a small capped inset) on every phone, tablet and desktop, with 44px tap targets.
+
 ## 4.2.3 — Spreadsheet import, cloud loading screen, slimmer nav
 - New: import bills and income from .xlsx or .csv files. Review every row, choose Bills, Income or Skip, edit name, amount and due date, and add only the rows you check. Read on the device; nothing is uploaded.
 - New: matched bills offer Overwrite or Keep mine (default Keep mine), with Overwrite all and Keep all shortcuts. Overwrites update in place and sync like any edit.

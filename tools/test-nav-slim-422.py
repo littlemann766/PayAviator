@@ -37,7 +37,7 @@ check('splash: calm copy, no emoji status',not re.search(r'setSplashStatus\("[^"
 check('splash: honors system remove-animations setting','ANIMATOR_DURATION_SCALE' in J and 'reducedMotion' in J)
 check('splash: logo scales with screen (no fixed 230dp)','dp(230)' not in J and 'shortSide' in J)
 check('splash: original navy + cyan + sky blue kept','Color.rgb(5, 19, 40)' in J and 'Color.rgb(22, 228, 234)' in J and 'Color.rgb(12, 121, 187)' in J)
-check('splash: five parallax cloud layers with shaded radial-gradient puffs (no external assets)', 'CLOUD_PUFFS' in J and 'CLOUD_LAYERS' in J and 'RadialGradient' in J and j.count('{') > 0 and J.count('// far') == 1 and J.count('// front') == 1)
+check('splash: five parallax cloud layers with shaded radial-gradient puffs (no external assets)', 'CLOUD_PUFFS' in J and 'CLOUD_LAYERS' in J and 'RadialGradient' in J and J.count('// far') == 1 and J.count('// front') == 1)
 check('splash: cloud tiles painted once, only translated per frame', 'renderTile' in J and 'drawBitmap(bm, null, dst' in J)
 check('splash: logo emerges from a clearing veil', 'setVeilAnchor' in J and 'veilPaint' in J and 'scaleX(1f)' in J)
 check('splash: reduced motion shows static clouds, no veil', 'still ? 0.3f' in J and '!still && veilAnchor' in J)
