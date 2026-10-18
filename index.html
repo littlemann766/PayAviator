@@ -140,7 +140,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='4.2.6';
+  const BUNDLED_VERSION='4.2.7';
   window.PAYAVIATOR_BUNDLED_VERSION=BUNDLED_VERSION;
   /* 4.2.5: inside the Android app the screens always come from the APK; drop any service worker or cache a previous build may have left behind. */
   try{if(window.AndroidBridge&&navigator.serviceWorker&&navigator.serviceWorker.getRegistrations){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})}).catch(function(){});if(window.caches&&caches.keys)caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})}).catch(function(){})}}catch(_){}

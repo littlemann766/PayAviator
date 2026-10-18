@@ -1,3 +1,7 @@
+## 4.2.7 — Smaller, faster app and Android 15 screen fit
+- Release build now uses code shrinking and optimization (R8), which makes the app smaller and addresses the Play Console code optimization notice.
+- Explicit Android 15 edge-to-edge handling: the app draws behind the status and navigation bars and keeps content, the slim bottom nav and the keyboard clear of them, including on the app lock screen.
+
 ## 4.2.6 — Settings dialogs always complete
 - Fixed Settings > App Colors missing its color swatches and Hue / Saturation / Lightness color wheels on some phones. They are now added when the dialog opens, not by a delayed page scan that a busy screen could keep postponing.
 - Fixed the real cause of the missing Hue / Saturation / Lightness wheels: an old relabel step overwrote the wheel labels (and removed the sliders). It now only renames each row heading.

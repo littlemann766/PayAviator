@@ -330,23 +330,37 @@ public class MainActivity extends Activity {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
-    private void createLoadingShell() {
-        rootView = new FrameLayout(this);
-        rootView.setBackgroundColor(Color.rgb(5, 19, 40));
-        // 4.1.3: targetSdk 36 is always edge-to-edge, so keep the page out from under
-        // the status bar, navigation bar and camera cutout.
-        rootView.setOnApplyWindowInsetsListener((v, insets) -> {
+    /**
+     * 4.2.7: explicit Android 15+ edge-to-edge handling (Play Console notice). The window draws behind the
+     * system bars; the root view pads itself by status bar + navigation bar + display cutout (+ keyboard)
+     * so the web page and the trimmed bottom nav sit exactly between them.
+     */
+    private void applyEdgeToEdgeInsets(View root) {
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            getWindow().setDecorFitsSystemWindows(false);
+        }
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
             if (android.os.Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets bars = insets.getInsets(
                         android.view.WindowInsets.Type.systemBars()
                                 | android.view.WindowInsets.Type.displayCutout());
-                v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                android.graphics.Insets ime = insets.getInsets(android.view.WindowInsets.Type.ime());
+                v.setPadding(bars.left, bars.top, bars.right, Math.max(bars.bottom, ime.bottom));
             } else {
                 v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
                         insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
             }
             return insets;
         });
+        root.requestApplyInsets();
+    }
+
+    private void createLoadingShell() {
+        rootView = new FrameLayout(this);
+        rootView.setBackgroundColor(Color.rgb(5, 19, 40));
+        // 4.1.3: targetSdk 36 is always edge-to-edge, so keep the page out from under
+        // the status bar, navigation bar and camera cutout.
+        applyEdgeToEdgeInsets(rootView);
         setContentView(rootView);
 
         splashView = new CloudSplashLayout(this);
@@ -2092,6 +2106,7 @@ public class MainActivity extends Activity {
             if (webView != null) webView.setVisibility(View.VISIBLE);
             setContentView(rootView);
         } else {
+            applyEdgeToEdgeInsets(lockView);
             setContentView(lockView);
         }
     }
