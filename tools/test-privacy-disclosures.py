@@ -23,7 +23,8 @@ def check(name, cond):
     ok = ok and cond
 
 check('root index.html matches packaged asset copy', INDEX == ASSETS)
-check('policy version recorded as 2026-10g', "const POLICY_VERSION='2026-10g';" in INDEX)
+check('policy version recorded as live 2026-10g', "const POLICY_VERSION='2026-10g';" in INDEX)
+check('unpublished 2026-11a-draft is not the recorded consent version', "POLICY_VERSION='2026-11a" not in INDEX)
 check('privacy URL present', 'https://payaviator.app/privacy.html' in INDEX)
 check('terms URL present', 'https://payaviator.app/terms.html' in INDEX)
 check('Plaid end-user policy linked from consent', 'https://plaid.com/legal/#end-user-privacy-policy' in INDEX)
@@ -36,7 +37,12 @@ check('settings lists privacy and terms', 'data-pa397-privacy' in INDEX and 'dat
 check('account creation links both documents', 'By creating an account you agree to our' in INDEX and 'Terms of Service' in INDEX)
 check('upgrade agreement uses two real links', 'I agree to the <a href="https://payaviator.app/terms.html"' in INDEX and 'Privacy Policy</a>' in INDEX)
 check('delete copy does not promise every server record is erased', 'Some technical records can remain' in INDEX)
-check('delete copy says a failed bank removal keeps the account', 'If a bank cannot be removed, the account is not deleted' in INDEX)
+check('delete copy says a failed bank removal keeps the sign-in', 'If a bank cannot be removed, the sign-in is not deleted' in INDEX)
+check('delete copy does not cancel Plus or ask for a reason', 'does not cancel a Plus subscription' in INDEX and 'You do not need to give a reason' in INDEX)
+check('bank removal waits for server disconnected:true', 'body.disconnected!==true' in INDEX)
+check('live accounts sheet removes a connection, not one account row', 'data-pp920-remove-item' in INDEX and 'data-pp920-remove="1"' not in INDEX)
+check('credit-card control uses the connection remover', 'PayAviatorBankRemoval.ask(itemId)' in INDEX)
+check('recent-login deletion does not sign out first', "await call('authSignOut')" not in INDEX.split('async deleteAccount()')[1].split('takeReconnectNotice')[0])
 check('delete copy says typed data stays on the phone', 'stay on this phone' in INDEX)
 check('safe to spend described as an estimate', 'It is an estimate from what is in the app' in INDEX)
 check('reminders are not promised', 'not a guarantee that a bill will be paid on time' in INDEX)

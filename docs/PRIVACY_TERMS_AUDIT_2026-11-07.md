@@ -18,6 +18,29 @@ Nothing in this review was deployed. The website repository and the backend repo
 
 **Play binary:** this repo does not contain a Play Console artifact, and no Play Console API was available. Do not treat `main` (4.2.6) or the 4.2.7 test tag as the binary people have installed until someone checks Play Console. The findings below are about this source and the backend source, not about an unverified store APK.
 
+## Policy version handoff
+
+Checked read-only on 2026-11-07. This app was not pointed at the draft.
+
+- Live policy: https://payaviator.app/privacy.html still prints **2026-10g**. `POLICY_VERSION` in `index.html` is `2026-10g`.
+- Website commit `0e6cf2cc376c9fc42ec23099d74bb779d26fbec4` (2026-11-07) adds an unpublished copy. `privacy.html` on that commit says draft **2026-11a-draft**, prepared from app `cf672f8`, and says it is **not effective** and not deployed. The same notice says a later approved publication would print **2026-11a** and that both Android `index.html` copies must set `POLICY_VERSION` to `2026-11a` in that same release.
+- **Launch prerequisite, not done here:** owner approval, then one release where the public website prints `2026-11a` (the draft notice removed) and this app records `POLICY_VERSION='2026-11a'`. Do not ship the app against `2026-11a-draft`, and do not describe `2026-11a-draft` as accepted or live.
+- Support timing belongs on the website. That same website commit's `support.html` draft says the aim is a first response within 72 elapsed hours, not a promise the issue will be resolved, and not an automatic reply. It does not delay self-service bank removal or account deletion. This app does not wait 72 hours and does not make support a gate. The website writer owns that support wording. It is not copied into the app here.
+
+## Per-bank removal (verified, then changed in the app)
+
+Backend `a91ab31`, read-only. No production deletion was run.
+
+`DELETE /api/plaid/items/:itemId` (`src/app.js` around lines 676-686) loads items for the signed-in user only. If that Item exists, it calls Plaid `/item/remove`, then `store.deleteItem` (`src/store.js` around lines 354-365), which deletes that Item's access token, its transactions, its exchanged-token hashes, a pending update link for it, its cached balance, and its push-dedupe row. Other Items stay. The handler does not delete the Firebase user, `sync_items` (cloud bills and the other synced collections), or `billing_entitlements`. A Plaid failure returns an error and keeps the Item (`test/plaidflow.test.js`: "DELETE keeps the item if /item/remove fails" and "DELETE one item also deletes its public-token hash rows... leaving other banks intact"). One Item can include checking, savings, and a card; the route has no per-account unlink.
+
+Wrong owner: `DELETE /api/plaid/items/:otherUserId/:itemId` with a mismatched user id returns **403** and leaves the other user's Item (`test/auth.test.js`, "valid token is scoped to its own sub"). `DELETE /api/plaid/items/:itemId` with no user id in the path, for an Item that is not in the caller's rows, returns **200** `{disconnected:true}` and does not delete another user's row, because `getItems` is scoped to the caller (`src/app.js` line 677-678). There is no separate per-account delete route.
+
+App `cf672f8` before this fix: Connected Accounts put **Disconnect** on each account row. That removed the local row immediately and called `DELETE /api/plaid/items/:itemId` only when no local account with that Item id remained. A later sync could put the account back while the Item still existed. The credit-card control (`pp9164`) removed one local card and did not call the server.
+
+This branch now waits for `{disconnected:true}` before it drops local accounts, transactions, or choices for that Item. The confirm names the institution connection and the accounts on it. Other institutions, the PayAviator sign-in, and typed bills are left in place. A non-success response, including 401, 403, and a 200 body that is not `{disconnected:true}`, does not purge. 401 asks the person to sign in again and does not sign them out. The removed Item id is remembered only for the signed-in user id, so a stale sync or reconnect payload for that user does not paint the connection back; a different user id on the same phone is not filtered by that list. There is still no per-account backend unlink. Hiding one card or one checking row is not treated as an unlink. Full account deletion still does not ask for a reason, does not require a survey, and does not require cancelling Plus first. A fresh sign-in is still required when Firebase says the last sign-in is older than about 4 minutes; that path no longer signs the person out before they authenticate again.
+
+Still unsupported, and not claimed as done: removing one account inside an Item while keeping the others; closing an account at the bank; cancelling Plus as part of unlink or account deletion; a 72-hour support wait; treating website draft `2026-11a-draft` as the live policy.
+
 ## What the current app actually does
 
 Checked in this repo unless a backend path is named.
@@ -93,7 +116,7 @@ Do not treat the list as a rewrite. It is the set of sentences that should chang
 
 | Published claim (website `1ca81c4` / live page) | Evidence | What to do |
 |---|---|---|
-| Privacy version **2026-10g**, effective 2026-10-17 | App previously stored consent as `2026-10e` while linking the live page. This branch stores `2026-10g`. | When you publish a corrected policy, change the printed version and tell the app repo to bump `POLICY_VERSION` in the same release. |
+| Privacy version **2026-10g**, effective 2026-10-17 | App consent records `2026-10g`. Website commit `0e6cf2cc376c9fc42ec23099d74bb779d26fbec4` is an unpublished draft marked **2026-11a-draft** and **not effective**. The live page remains 2026-10g. | Do not point the app at `2026-11a-draft`. The later approved release, if the owner publishes it, prints **2026-11a** on the website and sets Android `POLICY_VERSION` to `2026-11a` in that same release. Until that publication is approved, consent stays `2026-10g`. |
 | FCM sends bill reminders and reconnect alerts | FCM path is reconnect only. Bill reminders are local alarms. | Say FCM is for bank-reconnect alerts. Say bill reminders are on-device and can be delayed or skipped. |
 | Play Integrity checks the device for the free bank | App project number is 0, so no token is sent. Enforcement is a server flag that was not read. | Say the check exists in code and is off in this app build until configured. Or leave it out until it is on. |
 | You can subscribe in the Android app through Google Play | This source cannot start a purchase (`BILLING_LIVE=false`, no BillingClient). | Say the app shows $3.99/mo and $29.99/yr and that buying in the app is not available in the current source. Re-check the Play binary before saying otherwise. |

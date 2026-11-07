@@ -22305,8 +22305,7 @@ window.PayAviatorAuth={
   async deleteAccount(){
     const r=await call('authDeleteAccount');
     if(r.code==='REQUIRES_RECENT_LOGIN'){
-      await call('authSignOut');
-      openSheet({notice:'For your security, sign in again, then tap Delete account once more.'});
+      openSheet({notice:'For your security, sign in again with the same account. Your banks stay on this phone. Then tap Delete account once more. You do not need to give a reason.'});
     }
     return r;
   },
@@ -22497,7 +22496,10 @@ setState(readNative());
   }
   const PP920_ITEMS_KEY='payaviator_plaid_items_v1';
   function pp920SaveItemHealth(data){
-    try{localStorage.setItem(PP920_ITEMS_KEY,JSON.stringify({items:Array.isArray(data?.items)?data.items:[],errors:Array.isArray(data?.errors)?data.errors:[],at:Date.now()}))}catch(_){ }
+    const dead=removedItemSet();
+    const items=(Array.isArray(data?.items)?data.items:[]).filter(i=>!dead.has(String(i?.item_id||'')));
+    const errors=(Array.isArray(data?.errors)?data.errors:[]).filter(e=>!dead.has(String(e?.item_id||'')));
+    try{localStorage.setItem(PP920_ITEMS_KEY,JSON.stringify({items,errors,at:Date.now()}))}catch(_){ }
     try{pp410FeedReconnect()}catch(_){ }
   }
   window.PayAviatorSavePlaidItemHealth=pp920SaveItemHealth;
@@ -22538,11 +22540,13 @@ setState(readNative());
     // The backend identifies the user from the Firebase token; never send a user id.
     const data=await pp920Api('/api/plaid/accounts');
     pp920SaveItemHealth(data);
-    const rows=Array.isArray(data.accounts)?data.accounts:[];
+    const rows=(Array.isArray(data.accounts)?data.accounts:[]).filter(a=>!removedItemSet().has(String(a?.item_id||a?.itemId||'')));
     // Plaid Items can remain linked when accountsGet temporarily fails (bank outage,
     // token refresh or an institution requiring update mode). Never wipe their last
     // local balance cards merely because this particular refresh has zero rows.
-    const existing=loadAccounts();
+    const existingAll=loadAccounts();
+    const existing=existingAll.filter(a=>!removedItemSet().has(itemIdOf(a)));
+    if(existing.length!==existingAll.length) saveAccounts(existing);
     if(!rows.length && Array.isArray(data.items) && data.items.length){
       const n=(Array.isArray(data.errors)?data.errors:[]).length;
       if(existing.length){
@@ -22567,8 +22571,8 @@ setState(readNative());
     // Keep previously linked accounts belonging to an Item whose live refresh
     // failed. Other Items may still return fresh data in the same response.
     const unavailableItems=new Set((Array.isArray(data.errors)?data.errors:[]).map(e=>String(e.item_id||'')));
-    const preserved=old.filter(a=>unavailableItems.has(String(a.itemId||''))&&!mapped.some(m=>String(m.id)===String(a.id)));
-    const merged=[...mapped.map(a=>Object.assign({},byId.get(String(a.id))||{},a)),...preserved];
+    const preserved=old.filter(a=>unavailableItems.has(String(a.itemId||''))&&!mapped.some(m=>String(m.id)===String(a.id))&&!removedItemSet().has(itemIdOf(a)));
+    const merged=[...mapped.map(a=>Object.assign({},byId.get(String(a.id))||{},a)),...preserved].filter(a=>!removedItemSet().has(itemIdOf(a)));
     saveAccounts(merged); ensureChoices(); refreshGauge();
     return merged;
   }
@@ -22780,10 +22784,128 @@ setState(readNative());
     }finally{if(btn && document.body.contains(btn)){btn.disabled=false;btn.textContent=old||'Reconnect'}}
   }
   window.PayAviatorReconnectPlaidItem=pp920ReconnectItem;
+  const REMOVED_ITEMS_KEY='payaviator_removed_plaid_items_v1';
+  function removalUid(){try{return String(window.PayAviatorAuth?.getState?.().uid||'')}catch(_){return ''}}
+  function removedItemSet(){
+    const uid=removalUid(); if(!uid)return new Set();
+    try{
+      const all=JSON.parse(localStorage.getItem(REMOVED_ITEMS_KEY)||'{}');
+      const a=all&&typeof all==='object'&&!Array.isArray(all)?all[uid]:[];
+      return new Set((Array.isArray(a)?a:[]).map(x=>String(x||'')).filter(Boolean));
+    }catch(_){return new Set()}
+  }
+  function rememberRemovedItem(itemId){
+    const uid=removalUid(); const id=String(itemId||''); if(!uid||!id)return;
+    let all={};
+    try{const parsed=JSON.parse(localStorage.getItem(REMOVED_ITEMS_KEY)||'{}'); if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))all=parsed}catch(_){all={}}
+    const a=Array.isArray(all[uid])?all[uid].map(String):[];
+    if(!a.includes(id)) a.push(id);
+    all[uid]=a.slice(-50);
+    try{localStorage.setItem(REMOVED_ITEMS_KEY,JSON.stringify(all))}catch(_){}
+  }
+  function itemIdOf(a){return String(a?.itemId||a?.item_id||'')}
+  function accountsForItem(itemId){const id=String(itemId||'');return loadAccounts().filter(a=>itemIdOf(a)===id)}
+  function stripItemTransactions(itemId, accountIds){
+    const id=String(itemId||'');
+    ['payaviator_bank_transactions_v954','payaviator_imported_transactions_v1'].forEach(k=>{
+      try{
+        const tx=JSON.parse(localStorage.getItem(k)||'[]');
+        if(!Array.isArray(tx))return;
+        localStorage.setItem(k,JSON.stringify(tx.filter(t=>{
+          const tid=String(t?.item_id||t?.itemId||'');
+          const aid=String(t?.account_id||t?.accountId||'');
+          return tid!==id && !accountIds.has(aid);
+        })));
+      }catch(_){}
+    });
+  }
+  function forgetItemLocally(itemId){
+    const id=String(itemId||'');
+    if(!id) return 0;
+    const before=loadAccounts();
+    const gone=before.filter(a=>itemIdOf(a)===id);
+    const rest=before.filter(a=>itemIdOf(a)!==id);
+    saveAccounts(rest);
+    const c=ensureChoices();
+    gone.forEach(a=>{delete c[key(a)]});
+    saveChoices(c);
+    const ids=new Set(gone.map(a=>String(a.id||a.account_id||'')).filter(Boolean));
+    stripItemTransactions(id, ids);
+    try{
+      const h=pp920ItemHealth();
+      pp920SaveItemHealth({items:(h.items||[]).filter(i=>String(i?.item_id||'')!==id),errors:(h.errors||[]).filter(e=>String(e?.item_id||'')!==id)});
+    }catch(_){}
+    rememberRemovedItem(id);
+    refreshGauge();
+    return gone.length;
+  }
+  function removalScopeText(name, rows, mode){
+    const bits=(rows||[]).map(a=>(a.name||a.subtype||a.type||'Account')+(a.mask?' •••• '+a.mask:''));
+    const list=bits.length?bits.join(', '):'the accounts on that connection';
+    const head=rows&&rows.length>1
+      ? 'This removes the '+name+' connection. That connection includes '+rows.length+' accounts: '+list+'.'
+      : 'This removes the '+name+' connection ('+list+'). One connection can include more than one account at the same bank, such as checking and savings.';
+    if(mode==='local') return head+' This phone has no Plaid connection id for it, so nothing is sent to Plaid and the saved row is not hidden as if the bank were unlinked. It does not close the account at the bank.';
+    return head+' PayAviator will ask the server to unlink that connection at Plaid and delete the stored token, transactions and balance for it. Other banks stay. Your sign-in stays. Bills, income and spending you entered stay. This does not close the account at the bank and does not cancel a subscription. If removal fails, this bank stays connected and you can try again. Some technical records described in the Privacy Policy can remain.';
+  }
+  async function removeBankItem(itemId){
+    const id=String(itemId||'');
+    if(!id) return {ok:false, code:'MISSING_ITEM', kept:true};
+    if(!window.PayAviatorAuth?.isSignedIn?.()) return {ok:false, code:'SIGN_IN_REQUIRED', error:'Sign in to remove a bank.', kept:true};
+    let body=null;
+    try{body=await pp920Api('/api/plaid/items/'+encodeURIComponent(id),{method:'DELETE'})}
+    catch(err){
+      return {ok:false, code:err?.code||'DISCONNECT_FAILED', error:err?.message||'Could not remove this bank.', status:err?.status||0, kept:true};
+    }
+    if(!body || body.disconnected!==true){
+      return {ok:false, code:'DISCONNECT_FAILED', error:'The server did not confirm this connection was removed.', kept:true};
+    }
+    const n=forgetItemLocally(id);
+    return {ok:true, removed:n, body};
+  }
+  function askRemoveBank(itemId){
+    const id=String(itemId||'');
+    const rows=accountsForItem(id);
+    const name=rows.length?institution(rows[0]):'This bank';
+    const go=async()=>{
+      const r=await removeBankItem(id);
+      if(r.ok){
+        try{render()}catch(_){}
+        pp920Toast(name+' is no longer stored for this sign-in. Other banks and your PayAviator account were not changed. The account at the bank was not closed.');
+      }else if(r.code==='SIGN_IN_REQUIRED'||r.code==='UNAUTHENTICATED'||r.code==='INVALID_TOKEN'||r.status===401){
+        pp920Toast('Sign in again, then retry Remove this bank. Nothing was removed.');
+        try{window.PayAviatorAuth?.openSignIn?.({notice:'Sign in again, then tap Remove this bank. Your banks stay until removal succeeds.'})}catch(_){}
+      }else{
+        pp920Toast(name+' is still connected. Removal did not finish'+(r.error?': '+r.error:'')+'. Nothing else was changed. You can try again.');
+      }
+    };
+    const message=removalScopeText(name, rows.length?rows:[{name:'accounts from this connection'}], 'plaid');
+    if(typeof window.ppConfirm902==='function') window.ppConfirm902({title:'Remove this bank?', message, confirmText:'Remove this bank'}, go);
+    else go();
+  }
+  window.PayAviatorBankRemoval={
+    ask:askRemoveBank,
+    removeItem:removeBankItem,
+    isRemoved:id=>removedItemSet().has(String(id||'')),
+    filterAccounts:rows=>(Array.isArray(rows)?rows:[]).filter(a=>!removedItemSet().has(itemIdOf(a))),
+    filterTx:rows=>(Array.isArray(rows)?rows:[]).filter(t=>!removedItemSet().has(String(t?.item_id||t?.itemId||'')))
+  };
+  function removeButtons(rows){
+    const groups=new Map();
+    rows.forEach(a=>{
+      const id=itemIdOf(a);
+      const k=id||('local:'+key(a));
+      if(!groups.has(k)) groups.set(k,{itemId:id, localKey:id?'':key(a), rows:[a]});
+      else groups.get(k).rows.push(a);
+    });
+    return [...groups.values()].map(g=>{
+      const n=g.rows.length;
+      const label=g.itemId?(n>1?'Remove this bank ('+n+' accounts)':'Remove this bank'):'Connection id missing';
+      return '<div class="pp920-actions"><button class="pp920-action" type="button" data-pp920-remove-item="'+esc(g.itemId)+'" data-pp920-remove-local="'+(g.itemId?'':esc(g.localKey))+'">'+label+'</button></div>';
+    }).join('');
+  }
   async function pp920DisconnectItem(itemId){
-    if(!itemId || !window.PayAviatorAuth?.isSignedIn?.())return;
-    try{await pp920Api('/api/plaid/items/'+encodeURIComponent(itemId),{method:'DELETE'})}
-    catch(err){pp920Toast('Removed from PayAviator, but the bank could not be disconnected at Plaid yet: '+(err?.message||err))}
+    return removeBankItem(itemId);
   }
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function pp920AuthSection(){
@@ -22826,7 +22948,7 @@ setState(readNative());
   function pp920WireAuth(host){
     host.querySelector('[data-ppauth-signin]')?.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();if(await window.PayAviatorAuth.ensureSignedIn()){try{await pp920SyncPlaidAccounts()}catch(_){ }render()}});
     host.querySelector('[data-ppauth-signout]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{await window.PayAviatorAuth.signOut();render();pp920Toast('Signed out. Your bills and spending are still on this phone.')};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Sign out?',message:'Bank data will be removed from this phone until you sign in again. Your bills, income and spending stay.',confirmText:'Sign out'},go);else go()});
-    host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{pp920Toast('Deleting your account…');const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.ok){render();pp920Toast('Your sign-in was deleted. Linked banks were disconnected, and the bank data and cloud copies stored for this account were removed. Bills, income and spending you entered stay on this phone.')}else if(r.code!=='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error||'Could not delete your account. Please try again.')}};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message:'This asks PayAviator to remove every linked bank at Plaid, delete the bank data and cloud copies stored for this account, and then delete your sign-in. If a bank cannot be removed, the account is not deleted and you can try again. You may be asked to sign in again first. Bills, income and spending you entered stay on this phone. Backup files you saved are not deleted. Some technical records can remain; the Privacy Policy describes them.',confirmText:'Delete account'},go);else window.PayAviatorConfirm({title:'Delete account?',message:'Delete your PayAviator account and try to disconnect every bank? If a bank cannot be removed, the account stays. Data you entered stays on this phone.',confirmText:'Delete account',danger:true}).then(ok=>{if(ok)go()})});
+    host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{pp920Toast('Deleting your account…');const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.ok){render();pp920Toast('Your sign-in was deleted. Linked banks were disconnected, and the bank data and cloud copies stored for this account were removed. Bills, income and spending you entered stay on this phone.')}else if(r.code!=='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error||'Could not delete your account. Please try again.')}};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message:'This deletes your PayAviator sign-in. It also asks Plaid to unlink every bank connection on this sign-in and to delete the bank data and cloud copies stored for it. It does not close those accounts at the bank and does not cancel a Plus subscription. You do not need to give a reason. If a bank cannot be removed, the sign-in is not deleted and you can try again. You may be asked to sign in again first if your last sign-in was not recent. Bills, income and spending you entered stay on this phone. Backup files you saved are not deleted. Some technical records can remain; the Privacy Policy describes them.',confirmText:'Delete account'},go);else window.PayAviatorConfirm({title:'Delete account?',message:'Delete your PayAviator account and try to disconnect every bank? If a bank cannot be removed, the account stays. Data you entered stays on this phone.',confirmText:'Delete account',danger:true}).then(ok=>{if(ok)go()})});
     host.querySelectorAll('[data-pp414-resub]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();try{window.PayAviatorAccountGate?.openUpgrade('plus_ended')}catch(_){ }}));
     host.querySelectorAll('[data-ppauth-reconnect]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();pp920ReconnectItem(b.getAttribute('data-ppauth-reconnect'),b)}));
   }
@@ -22885,8 +23007,8 @@ setState(readNative());
     const names=Object.keys(groups);
     try{const h2=m.querySelector('.pp920-head h2');if(h2){h2.querySelectorAll('[data-pa421-badge]').forEach(n=>n.remove());if(window.PayAviatorAuth?.isSignedIn?.())h2.insertAdjacentHTML('beforeend',window.PayAviatorPlans?.planBadgeHtml(window.PayAviatorAccountGate?.billing)||'')}}catch(_){}
     host.innerHTML=pp920AuthSection()+pp920NeedsSection()+pp414PausedSection()+`<section class="pp920-summary"><div class="pp920-row"><div><div class="pp920-title">Connected banking</div><div class="pp920-sub">${names.length} institution${names.length===1?'':'s'} • ${accts.length} account${accts.length===1?'':'s'}</div></div><div style="text-align:right"><div class="pp920-sub">Bank available</div><div class="pp920-total">${money(total)}</div></div></div></section>`+
-    names.map(name=>{const rows=groups[name],bankUsed=rows.filter(isIncluded),opened=openBank===name;return `<section class="pp920-bank ${opened?'open':''}" data-bank="${encodeURIComponent(name)}"><button class="pp920-bankhead" type="button"><div><div class="pp920-title">${name}</div><div class="pp920-sub">${bankUsed.length} of ${rows.length} included in Available Now</div></div><span style="font-weight:900;font-size:1.35rem">${opened?'⌃':'⌄'}</span></button><div class="pp920-bankbody">${rows.map(a=>{const on=isIncluded(a);return `<div class="pp920-account" data-account="${encodeURIComponent(key(a))}"><div class="pp920-row"><div><div class="pp920-title">${a.name||a.subtype||a.type||'Account'}</div><div class="pp920-sub">${a.subtype||a.type||'account'}${a.mask?' •••• '+a.mask:''}</div></div><div style="text-align:right"><div class="pp920-total">${money(balance(a))}</div><div class="pp920-sub">available balance</div></div></div><div class="pp920-pill ${on?'':'off'}">${on?'Included in Available Now':(String(a.type||'').toLowerCase()==='credit'||String(a.type||'').toLowerCase()==='loan'?'Credit/loan — excluded':String(a.subtype||'').toLowerCase()==='savings'?'Savings — protected':'Not included')}</div><div class="pp920-actions"><button class="pp920-action" type="button" data-pp920-toggle="1">${on?'Exclude from Available Now':'Include in Available Now'}</button><button class="pp920-action" type="button" data-pp920-remove="1">Disconnect</button></div></div>`}).join('')}</div></section>`}).join('')+
-    '<div class="pp920-actions"><button id="pp920ConnectBank" class="pp920-action" type="button">+ Connect another bank</button><button id="pp920SyncBank" class="pp920-action" type="button">↻ Sync all accounts</button></div><div class="pp920-note"><b>Multiple banks supported:</b> connect as many institutions and accounts as you authorize. Each account can be included or excluded from Available Now independently. PayAviator uses read-only Plaid access.</div>';
+    names.map(name=>{const rows=groups[name],bankUsed=rows.filter(isIncluded),opened=openBank===name;return `<section class="pp920-bank ${opened?'open':''}" data-bank="${encodeURIComponent(name)}"><button class="pp920-bankhead" type="button"><div><div class="pp920-title">${name}</div><div class="pp920-sub">${bankUsed.length} of ${rows.length} included in Available Now</div></div><span style="font-weight:900;font-size:1.35rem">${opened?'⌃':'⌄'}</span></button><div class="pp920-bankbody">${rows.map(a=>{const on=isIncluded(a);return `<div class="pp920-account" data-account="${encodeURIComponent(key(a))}"><div class="pp920-row"><div><div class="pp920-title">${a.name||a.subtype||a.type||'Account'}</div><div class="pp920-sub">${a.subtype||a.type||'account'}${a.mask?' •••• '+a.mask:''}</div></div><div style="text-align:right"><div class="pp920-total">${money(balance(a))}</div><div class="pp920-sub">available balance</div></div></div><div class="pp920-pill ${on?'':'off'}">${on?'Included in Available Now':(String(a.type||'').toLowerCase()==='credit'||String(a.type||'').toLowerCase()==='loan'?'Credit/loan — excluded':String(a.subtype||'').toLowerCase()==='savings'?'Savings — protected':'Not included')}</div><div class="pp920-actions"><button class="pp920-action" type="button" data-pp920-toggle="1">${on?'Exclude from Available Now':'Include in Available Now'}</button></div></div>`}).join('')+removeButtons(rows)}</div></section>`}).join('')+
+    '<div class="pp920-actions"><button id="pp920ConnectBank" class="pp920-action" type="button">+ Connect another bank</button><button id="pp920SyncBank" class="pp920-action" type="button">↻ Sync all accounts</button></div><div class="pp920-note"><b>Multiple banks supported:</b> connect as many institutions and accounts as you authorize. Each account can be included or excluded from Available Now independently. Remove this bank unlinks that whole connection, including every account on it. Other banks and your PayAviator account stay. It does not close the account at the bank. PayAviator uses read-only Plaid access.</div>';
 
     const connectBtn=$('pp920ConnectBank');
     if(connectBtn){
@@ -22899,7 +23021,7 @@ setState(readNative());
     }
         host.querySelectorAll('.pp920-bankhead').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const sec=b.closest('.pp920-bank');const n=decodeURIComponent(sec.dataset.bank);openBank=openBank===n?null:n;render()}));
     host.querySelectorAll('[data-pp920-toggle]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const row=b.closest('[data-account]');const k=decodeURIComponent(row.dataset.account);const a=loadAccounts().find(x=>key(x)===k);if(!a)return;setIncluded(a,!isIncluded(a));refreshGauge();render()}));
-    host.querySelectorAll('[data-pp920-remove]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const row=b.closest('[data-account]');const k=decodeURIComponent(row.dataset.account);const a=loadAccounts().find(x=>key(x)===k);if(!a)return;const remove=()=>{const rest=loadAccounts().filter(x=>key(x)!==k);saveAccounts(rest);const c=ensureChoices();delete c[k];saveChoices(c);refreshGauge();render();const itemId=String(a.itemId||a.item_id||'');if(itemId&&!rest.some(x=>String(x.itemId||x.item_id||'')===itemId))pp920DisconnectItem(itemId)};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Disconnect account?',message:'Remove this account from PayAviator?',confirmText:'Disconnect'},remove);else remove()}));
+    host.querySelectorAll('[data-pp920-remove-item]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const itemId=b.getAttribute('data-pp920-remove-item')||'';if(itemId){askRemoveBank(itemId);return}pp920Toast('This saved row has no Plaid connection id, so it was not hidden and Plaid was not changed. Use Remove this bank on a connection that has an id.');}));
     m.classList.add('show');
   }
 
@@ -24440,7 +24562,9 @@ label[for="pp1316AddMinimum"],label[for="pp1315AddMinimum"],label[for="pp1316Edi
  document.addEventListener('click',function(e){
    const b=e.target.closest?.('.pp9163-disconnect');if(!b)return;e.preventDefault();e.stopImmediatePropagation();
    const id=b.dataset.pp9163Id||'',mask=b.dataset.pp9163Mask||'',accounts=read(ACC,[]),card=Array.isArray(accounts)?accounts.find(a=>same(a,id,mask)):null;if(!card)return;
-   const label=(card.institutionName||card.institution||card.name||'this card')+(card.mask?' •••• '+card.mask:'');const o=overlay();o.dataset.id=id;o.dataset.mask=mask;o.querySelector('#pp9164Copy').textContent='Disconnect '+label+' from PayAviator? This does not affect the actual card account.';o.classList.add('show');document.body.style.overflow='hidden';setTimeout(()=>o.querySelector('#pp9164Cancel')?.focus(),0);
+   const itemId=String(card.itemId||card.item_id||'');
+   if(itemId&&window.PayAviatorBankRemoval){window.PayAviatorBankRemoval.ask(itemId);return}
+   if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Cannot remove only this card',message:'This card has no Plaid connection id, so PayAviator will not hide it or pretend the bank was unlinked. If it belongs to a connected bank, use Remove this bank in Connected Accounts. That unlinks the whole connection after the server confirms. It does not close the card.',confirmText:'Open Connected Accounts'},()=>{try{window.openPayAviatorConnectedAccounts920&&window.openPayAviatorConnectedAccounts920()}catch(_){}});
  },true);
  document.addEventListener('click',function(e){const o=e.target.closest?.('#pp9164Disconnect');if(!o)return;if(e.target.id==='pp9164Cancel'||e.target===o){e.preventDefault();closeConfirm();return}if(e.target.id==='pp9164Go'){e.preventDefault();const id=o.dataset.id||'',mask=o.dataset.mask||'';e.target.disabled=true;closeConfirm();disconnect(id,mask);setTimeout(()=>{e.target.disabled=false},250)}},true);
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('pp9164Disconnect')?.classList.contains('show')){e.preventDefault();closeConfirm()}},true);
@@ -24906,7 +25030,7 @@ body.ppconsent-open #mb119BottomNav,body.ppconsent-open #pp925TipLauncher,body.p
     <ul class="ppc-points">
       <li><b>Your bank login goes to Plaid</b>You sign in to your bank on Plaid's secure screen. Your bank username and password go to Plaid, never to PayAviator.</li>
       <li><b>What PayAviator stores</b>An encrypted bank token, your bank's name, the connection status, and the transactions synced from your bank. This is kept on PayAviator's servers and linked to your account.</li>
-      <li><b>You're in control</b>You can disconnect a bank or delete your account in Connected Accounts. That removes the connection at Plaid and the bank data stored for it when removal succeeds. Bills you entered on this phone, backup files you saved, and some technical records can remain. The Privacy Policy describes the limits.</li>
+      <li><b>You're in control</b>Remove this bank unlinks that institution connection, including every account on it, only after the server confirms. Other banks and your sign-in stay. Deleting your PayAviator account is separate, asks for no reason, and does not cancel a subscription or close a bank account. If removal fails, that bank stays. Bills you entered, backup files, and some technical records can remain.</li>
     </ul>
     <p class="ppc-links">Learn more in the <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>PayAviator Privacy Policy</a>, the <a href="https://payaviator.app/terms.html" target="_blank" rel="noopener noreferrer" data-pa397-terms>Terms of Service</a>, and <a href="https://plaid.com/legal/#end-user-privacy-policy" target="_blank" rel="noopener noreferrer">Plaid's End User Privacy Policy</a>.</p>
     <div class="ppc-actions">
@@ -24921,7 +25045,7 @@ body.ppconsent-open #mb119BottomNav,body.ppconsent-open #pp925TipLauncher,body.p
 /* Shown before Plaid Link every time a bank is connected or reconnected.
    ask(context) resolves true on Continue, false on Not now / close / Back. */
 const CONSENT_KEY='payaviator_plaid_consent_v1';   // new key; existing keys are not touched
-const POLICY_VERSION='2026-10g';                     // Must match the Policy version printed on https://payaviator.app/privacy.html. Bump this when that page's version changes.
+const POLICY_VERSION='2026-10g';                     // Live https://payaviator.app/privacy.html only. Do not set 2026-11a-draft. Set 2026-11a only in the same approved release that publishes website version 2026-11a.
 const $=id=>document.getElementById(id);
 let resolver=null;
 function appVersion(){try{if(window.AndroidBridge&&typeof AndroidBridge.getAppVersionName==='function')return String(AndroidBridge.getAppVersionName()||'')}catch(_){}return ''}
@@ -27146,7 +27270,7 @@ async function pp982SyncLiveBank(){
   const health=await pp982RefreshEnvironment();
   const ad=await pp982Api('/api/plaid/accounts');
   try{window.PayAviatorSavePlaidItemHealth?.(ad)}catch(_){}
-  const rows=Array.isArray(ad.accounts)?ad.accounts:[];
+  const rows=(Array.isArray(ad.accounts)?ad.accounts:[]).filter(a=>!(window.PayAviatorBankRemoval&&window.PayAviatorBankRemoval.isRemoved(a?.item_id||a?.itemId)));
   const old=accounts(), oldBy=new Map(old.map(a=>[rawId(a),a]));
   const mappedRaw=rows.map(a=>{const prev=oldBy.get(String(a.account_id||a.id||''))||{};return Object.assign({},prev,{id:a.account_id||a.id,name:a.name||a.official_name||'Account',officialName:a.official_name||'',institution:a.institution_name||a.institution||'Connected institution',institutionName:a.institution_name||a.institution||'Connected institution',mask:a.mask||'',type:a.type||'',subtype:a.subtype||'',current:num(a.balances?.current??a.current),available:num(a.balances?.available??a.balances?.current??a.available??a.current),balances:(a.balances&&typeof a.balances==='object')?a.balances:null,creditLimit:num(a.credit_limit??a.balances?.limit??a.limit),availableCredit:(a.available_credit??a.balances?.available??null),balanceUsed:num(a.balance_used??a.balances?.current??a.current),utilizationPercent:(a.utilization_percent??null),balanceSource:a.balance_source||'plaid_accounts_get',itemId:a.item_id||'',lastSync:new Date().toISOString(),source:'plaid'});});const mapped=[...new Map(mappedRaw.map(a=>[key(a),a])).values()];
   localStorage.setItem(ACCOUNT_KEY,JSON.stringify(mapped));
@@ -27158,7 +27282,7 @@ async function pp982SyncLiveBank(){
   }catch(_){}
   let td={transactions:[]};
   try{td=await pp982Api('/api/plaid/transactions?limit=250')}catch(e){td={transactions:[],errors:[{code:'request_failed',message:e?.message||String(e)}]};console.warn('PayAviator transaction sync failed:',e?.message||e)}
-  const freshTx=Array.isArray(td.transactions)?td.transactions:[];
+  const freshTx=(Array.isArray(td.transactions)?td.transactions:[]).filter(t=>!(window.PayAviatorBankRemoval&&window.PayAviatorBankRemoval.isRemoved(t?.item_id||t?.itemId)));
   const tx=freshTx;
   // 3.1.5: keep only a lightweight recent cache on-device. PostgreSQL is authoritative.
   // Strip large enrichment blobs and cap the cache so WebView localStorage cannot be exhausted.
