@@ -41,6 +41,14 @@ This branch now waits for `{disconnected:true}` before it drops local accounts, 
 
 Still unsupported, and not claimed as done: removing one account inside an Item while keeping the others; closing an account at the bank; cancelling Plus as part of unlink or account deletion; a 72-hour support wait; treating website draft `2026-11a-draft` as the live policy.
 
+## Ordinary account deletion
+
+One confirmation. No reason, survey, or support wait. Manage subscription stays next to Delete and is not required. The confirmation says deletion does not cancel Google Play or Stripe billing and does not close accounts at the bank. Institution removal stays a separate action.
+
+A stale Firebase sign-in (about 4 minutes) returns before `DELETE /api/plaid/user`. The phone asks for the same account again and does not sign out, so local banks stay. A different uid after that prompt does not continue the delete. If the server returns non-success, including a 502 with `failed_item_ids`, the Firebase user is not deleted and the phone does not erase its copy. Banks the server already removed stay removed. If Firebase deletion fails after the server call succeeded, the sign-in remains and the message says server bank data may already be gone.
+
+Backend recovery commit `afc04829` (PR 15) is not integrated. A Play token that another uid already owns still stops at 409 `purchase_in_use`. This app does not grant that entitlement.
+
 ## Subscription manage and cancel
 
 Checked against backend `a91ab31` before adding the screen. `BILLING_LIVE` stays false. No purchase was started and no production portal was configured.

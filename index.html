@@ -22134,7 +22134,7 @@ const UID_KEY='payaviator_auth_uid_v1';
 const BANK_CACHE_KEYS=['payaviator_connected_accounts_v1','payaviator_bank_transactions_v954','payaviator_imported_transactions_v1','payaviator_transaction_sync_status_v313','payaviator_last_bank_sync_v960','payaviator_plaid_items_v1'];
 const RECONNECT_NOTICE_KEY='payaviator_bank_reconnect_notice_v1';
 const listeners=new Set(), pending=new Map();
-let waiters=[], mode='signin', busy=false;
+let waiters=[], mode='signin', busy=false, pendingDeleteUid='';
 function bridge(){const b=window.AndroidBridge;return b&&typeof b.authGetState==='function'?b:null}
 function readNative(){
   const b=bridge();
@@ -22168,7 +22168,10 @@ function emit(reason){
 function setState(next,reason){
   const wasIn=!!state.signedIn;
   state=Object.assign({platform:state.platform||'android'},next||{});
-  if(state.signedIn){reconcileOwner();const w=waiters;waiters=[];w.forEach(fn=>fn(true));if(isOpen())closeSheet()}
+  if(state.signedIn){
+    if(pendingDeleteUid&&state.uid&&state.uid!==pendingDeleteUid)pendingDeleteUid='';
+    reconcileOwner();const w=waiters;waiters=[];w.forEach(fn=>fn(true));if(isOpen())closeSheet()
+  }
   else if(wasIn||reason==='session_expired'||reason==='account_deleted'){
     if(localStorage.getItem(UID_KEY)){clearBankCache();localStorage.removeItem(UID_KEY)}
   }
@@ -22303,10 +22306,12 @@ window.PayAviatorAuth={
   async signOut(){const r=await call('authSignOut');return r},
   /* DELETE /api/plaid/user must succeed before the Firebase account is deleted. A failed bank removal leaves the sign-in in place. */
   async deleteAccount(){
+    const expected=state.uid||'';
     const r=await call('authDeleteAccount');
     if(r.code==='REQUIRES_RECENT_LOGIN'){
-      openSheet({notice:'For your security, sign in again with the same account. Your banks stay on this phone. Then tap Delete account once more. You do not need to give a reason.'});
-    }
+      pendingDeleteUid=expected;
+      openSheet({notice:'For your security, sign in again with the same account. Your banks stay on this phone. Nothing is removed until you tap Delete account again. You do not need to give a reason.'});
+    }else pendingDeleteUid='';
     return r;
   },
   takeReconnectNotice(){const v=localStorage.getItem(RECONNECT_NOTICE_KEY)==='1';if(v)localStorage.removeItem(RECONNECT_NOTICE_KEY);return v},
@@ -22949,7 +22954,7 @@ setState(readNative());
     host.querySelector('[data-pp-manage-sub]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();try{window.PayAviatorManageSubscription?.open?.()}catch(_){}});
     host.querySelector('[data-ppauth-signin]')?.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();if(await window.PayAviatorAuth.ensureSignedIn()){try{await pp920SyncPlaidAccounts()}catch(_){ }render()}});
     host.querySelector('[data-ppauth-signout]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{await window.PayAviatorAuth.signOut();render();pp920Toast('Signed out. Your bills and spending are still on this phone.')};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Sign out?',message:'Bank data will be removed from this phone until you sign in again. Your bills, income and spending stay.',confirmText:'Sign out'},go);else go()});
-    host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{pp920Toast('Deleting your account…');const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.ok){render();pp920Toast('Your sign-in was deleted. Linked banks were disconnected, and the bank data and cloud copies stored for this account were removed. Bills, income and spending you entered stay on this phone.')}else if(r.code!=='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error||'Could not delete your account. Please try again.')}};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message:'This deletes your PayAviator sign-in. It also asks Plaid to unlink every bank connection on this sign-in and to delete the bank data and cloud copies stored for it. It does not close those accounts at the bank. Deleting this account does not cancel Google Play or Stripe billing. You can delete without cancelling. A new sign-in does not take over the old subscription. You do not need to give a reason. If a bank cannot be removed, the sign-in is not deleted and you can try again. You may be asked to sign in again first if your last sign-in was not recent. Bills, income and spending you entered stay on this phone. Backup files you saved are not deleted. Some technical records can remain; the Privacy Policy describes them.',confirmText:'Delete account'},go);else window.PayAviatorConfirm({title:'Delete account?',message:'Delete your PayAviator account and try to disconnect every bank? If a bank cannot be removed, the account stays. Data you entered stays on this phone.',confirmText:'Delete account',danger:true}).then(ok=>{if(ok)go()})});
+    host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.code==='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error&&/may already/.test(r.error)?r.error:'Sign in again to delete this account. Nothing was removed yet.');return}if(r.ok){render();pp920Toast('Your sign-in was deleted. This did not cancel Google Play or Stripe billing and did not close accounts at the bank. Bills you entered stay on this phone.')}else{pp920Toast(r.error||'Your sign-in was not deleted. Nothing on this phone was erased. Try again.')}};const message='This deletes your PayAviator sign-in. It also asks Plaid to unlink every bank connection on this sign-in and to delete the bank data and cloud copies stored for it. It does not close those accounts at the bank. Deleting this account does not cancel Google Play or Stripe billing. Manage subscription is separate and is not required. You can delete without cancelling. A new sign-in does not take over the old subscription. You do not need to give a reason. If a bank cannot be removed, the sign-in is not deleted and you can try again. You may be asked to sign in again first if your last sign-in was not recent. Bills, income and spending you entered stay on this phone. Backup files you saved are not deleted. Some technical records can remain; the Privacy Policy describes them.';if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message,confirmText:'Delete account'},go);else window.PayAviatorConfirm({title:'Delete account?',message:'Delete your PayAviator account and try to disconnect every bank? If a bank cannot be removed, the account stays. Data you entered stays on this phone. This does not cancel billing.',confirmText:'Delete account',danger:true}).then(ok=>{if(ok)go()})});
     host.querySelectorAll('[data-pp414-resub]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();try{window.PayAviatorAccountGate?.openUpgrade('plus_ended')}catch(_){ }}));
     host.querySelectorAll('[data-ppauth-reconnect]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();pp920ReconnectItem(b.getAttribute('data-ppauth-reconnect'),b)}));
   }
@@ -26387,6 +26392,7 @@ function classifyVerify(r){
   if(r&&r.ok&&String(r.plan||'')==='premium') return {outcome:'eligible',subscriptionState:r.subscriptionState||r.state||'',expiresAt:r.expiresAt||''};
   const code=String(r&&r.code||'');
   const status=Number(r&&r.status||0);
+  /* 409 stays fail-closed. Backend recovery that would move a Play token onto a new uid is not used. */
   if(code==='PURCHASE_IN_USE'||status===409) return {outcome:'conflict'};
   if(code==='SUBSCRIPTION_INACTIVE'||status===402) return {outcome:'inactive'};
   if(code==='INVALID_PURCHASE'||code==='UNKNOWN_PRODUCT'||code==='PRODUCT_MISMATCH'||code==='MISSING_PURCHASE'||status===400) return {outcome:'rejected'};

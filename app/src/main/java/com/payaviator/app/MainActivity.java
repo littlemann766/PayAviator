@@ -1326,20 +1326,31 @@ public class MainActivity extends Activity {
             try {
                 AuthedRequest.Response r = callBackend("DELETE", "/api/plaid/user", "");
                 if (r.status < 200 || r.status >= 300) {
-                    String msg = "Could not remove your bank connections. Please try again.";
-                    String code = "DELETE_BANKS_FAILED";
+                    String msg = "Your sign-in was not deleted. PayAviator could not finish removing every bank. Try again. Banks that were already removed stay removed. Nothing on this phone was erased.";
+                    String code = "DELETE_INCOMPLETE";
                     try {
-                        JSONObject j = new JSONObject(r.body);
+                        JSONObject j = new JSONObject(r.body == null ? "" : r.body);
                         if (j.optString("code").length() > 0) code = j.optString("code");
-                        if (j.optString("error").length() > 0) msg = j.optString("error");
+                        if (j.optString("error").length() > 0) {
+                            msg = "Your sign-in was not deleted. " + j.optString("error");
+                        } else if (r.status == 502 && j.optJSONArray("failed_item_ids") != null) {
+                            code = "DELETE_INCOMPLETE";
+                        }
                         if (j.has("request_id")) android.util.Log.w("PayAviatorAuth", "delete user failed request_id=" + j.optString("request_id"));
                     } catch (Exception ignored) { }
                     deliverAuthResult(requestId, false, code, msg);
                     return;
                 }
                 runOnUiThread(() -> signIn.deleteFirebaseUser((ok, code, message) -> {
-                    deliverAuthResult(requestId, ok, code, message);
-                    pushAuthState(ok ? "account_deleted" : null);
+                    if (!ok) {
+                        String late = "REQUIRES_RECENT_LOGIN".equals(code)
+                                ? "Your sign-in is still here. Bank data on the server may already have been removed. Sign in again, then try once more. Bills on this phone were not erased."
+                                : "Your sign-in is still here. Bank data on the server may already have been removed. Try again. Bills on this phone were not erased.";
+                        deliverAuthResult(requestId, false, code == null || code.isEmpty() ? "DELETE_SIGNIN_FAILED" : code, late);
+                        return;
+                    }
+                    deliverAuthResult(requestId, true, "", "");
+                    pushAuthState("account_deleted");
                 }));
             } catch (Exception e) {
                 deliverAuthResult(requestId, false, "NETWORK", "Couldn't reach PayAviator. Check your connection and try again.");
