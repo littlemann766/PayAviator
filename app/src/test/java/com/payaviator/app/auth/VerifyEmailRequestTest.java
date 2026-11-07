@@ -13,6 +13,8 @@ public class VerifyEmailRequestTest {
     }
     @Test(expected = IllegalArgumentException.class) public void emptyKeyRejected() { VerifyEmailRequest.url(""); }
     @Test public void bodyIsVerifyEmail() throws Exception {
-        assertEquals("{\"requestType\":\"VERIFY_EMAIL\",\"idToken\":\"a.b-c_d\"}", VerifyEmailRequest.body("a.b-c_d"));
+        String body = VerifyEmailRequest.body("a.b-c_d");
+        assertEquals("{\"requestType\":\"VERIFY_EMAIL\",\"idToken\":\"a.b-c_d\"}", body);
+        assertFalse(body.contains("continueUrl"));
     }
 }

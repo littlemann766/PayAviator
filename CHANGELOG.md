@@ -1,3 +1,9 @@
+## Unreleased — verification email and Google sign-in feedback
+- Email sign-up waits until the verification-email request finishes. If Firebase does not accept it and the backup send also fails, the account stays and the screen says the email was not confirmed sent. A request Firebase accepts is labeled as a request. It is not proof the message reached an inbox.
+- Continue with Google shows a message when the account picker closes without signing in. An existing email-and-password account is not linked and is not deleted.
+- The verification request still uses the existing public web API key and does not set a continue URL. The link host remains the Firebase email template, which is not stored in this repo.
+- This does not change the tester's existing account, and it does not prove why that verification email was missing.
+
 ## 4.2.6 — Settings dialogs always complete
 - Fixed Settings > App Colors missing its color swatches and Hue / Saturation / Lightness color wheels on some phones. They are now added when the dialog opens, not by a delayed page scan that a busy screen could keep postponing.
 - Fixed the real cause of the missing Hue / Saturation / Lightness wheels: an old relabel step overwrote the wheel labels (and removed the sliders). It now only renames each row heading.
