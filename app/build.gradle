@@ -132,6 +132,8 @@ dependencies {
     implementation 'com.google.android.libraries.identity.googleid:googleid:1.2.1'
     // 4.1.0: Play Integrity standard request for the free-tier device check (backend PR #8)
     implementation 'com.google.android.play:integrity:1.4.0'
+    // Query existing Play subscriptions only. Purchases are not started from this app. BILLING_LIVE stays false.
+    implementation 'com.android.billingclient:billing:7.1.1'
 
     testImplementation 'junit:junit:4.13.2'
 }

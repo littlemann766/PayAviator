@@ -46,6 +46,7 @@ import android.widget.Toast;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.payaviator.app.auth.AuthedRequest;
+import com.payaviator.app.billing.PlayBillingQuery;
 import com.payaviator.app.auth.BackendHeaders;
 import com.payaviator.app.auth.PlayIntegrity;
 import com.payaviator.app.auth.FirebaseSignIn;
@@ -108,6 +109,8 @@ public class MainActivity extends Activity {
     private String pendingTextFilename;
     private boolean pendingTextBase64 = false;
     private FirebaseSignIn signIn;
+    /** Reads Play subscriptions already owned by this install. Does not launch a purchase. */
+    private PlayBillingQuery playBilling;
     /** 4.1.2: alert target from a notification tap, handed to the web app via takeLaunchAlert / PayAviatorOpenAlert. */
     private String pendingAlertOpen;
     private final FirebaseAuth.AuthStateListener authStateListener = a -> { pushAuthState(null); registerPushTokenIfSignedIn(); };
@@ -1344,6 +1347,22 @@ public class MainActivity extends Activity {
         }, "PayAviatorDeleteAccount").start();
     }
 
+    private void deliverPurchaseQuery(String requestId, boolean ok, String code, String purchasesJson) {
+        if (webView == null) return;
+        try {
+            JSONObject out = new JSONObject();
+            out.put("requestId", requestId == null ? "" : requestId);
+            out.put("ok", ok);
+            out.put("code", code == null ? "" : code);
+            out.put("purchases", new org.json.JSONArray(purchasesJson == null || purchasesJson.isEmpty() ? "[]" : purchasesJson));
+            final String payload = JSONObject.quote(out.toString());
+            runOnUiThread(() -> {
+                if (webView != null) webView.evaluateJavascript(
+                        "window.PayAviatorBillingPurchasesResult&&window.PayAviatorBillingPurchasesResult(" + payload + ");", null);
+            });
+        } catch (Exception ignored) { }
+    }
+
     private void deliverNativeApiResult(final String requestId, final int status, final String body, final String error) {
         if (webView == null) return;
         try {
@@ -1428,6 +1447,21 @@ public class MainActivity extends Activity {
             catch (Exception ignored) { return 0L; }
         }
 
+
+        /** Last successful Play query. Empty until billingQueryPurchases finishes. Not proof that none exist. */
+        @JavascriptInterface
+        public String billingGetPurchases() {
+            return playBilling == null ? "[]" : playBilling.lastJson();
+        }
+
+        /** Asks Google Play for subscriptions already owned by this install. Does not buy or acknowledge. */
+        @JavascriptInterface
+        public void billingQueryPurchases(final String requestId) {
+            runOnUiThread(() -> {
+                if (playBilling == null) playBilling = new PlayBillingQuery(MainActivity.this);
+                playBilling.query((ok, code, json) -> deliverPurchaseQuery(requestId, ok, code, json));
+            });
+        }
 
         @JavascriptInterface
         public void apiRequest(final String requestId, final String method, final String path, final String body) {
@@ -2389,6 +2423,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (signIn != null) signIn.removeStateListener(authStateListener);
+        if (playBilling != null) playBilling.end();
         super.onDestroy();
     }
 
