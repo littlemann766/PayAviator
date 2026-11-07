@@ -22231,11 +22231,21 @@ function closeSheet(){
   try{window.PayAviatorSheetBack&&window.PayAviatorSheetBack.remove()}catch(_){}
   if(!state.signedIn){const w=waiters;waiters=[];w.forEach(fn=>fn(false))}
 }
+function safeGoogleError(code, error){
+  const raw=String(error||'');
+  const leaked=/@/.test(raw)||/eyJ[A-Za-z0-9_-]{8,}/.test(raw);
+  if(!leaked&&raw)return raw;
+  if(code==='GOOGLE_NOT_CONFIGURED')return "Google sign-in isn't enabled for this build yet. Use email and password.";
+  if(code==='NO_GOOGLE_ACCOUNT')return 'No Google account is available on this phone. Add one in Android Settings or use email and password.';
+  if(code==='CANCELLED'||code==='GOOGLE_INCOMPLETE')return 'Google sign-in did not finish. Try again, or use email and password.';
+  return 'Google sign-in failed. Please try again.';
+}
+window.PayAviatorSafeGoogleError=safeGoogleError;
 async function run(method,...args){
   setBusy(true);setError('');
   const r=await call(method,...args);
   setBusy(false);
-  if(!r.ok)setError(r.error||(r.code==='CANCELLED'||r.code==='GOOGLE_INCOMPLETE'?'Google sign-in did not finish. Try again, or use email and password.':'Sign-in failed. Please try again.'));
+  if(!r.ok)setError(method==='authSignInWithGoogle'?safeGoogleError(r.code,r.error):(r.error||'Sign-in failed. Please try again.'));
   return r;
 }
 function wire(){
@@ -26073,7 +26083,7 @@ root.addEventListener('click',e=>{
   switch(a.dataset.onbAct){
     case 'close':close();break;
     case 'phone':msg('Phone sign-in is coming soon. Use Google or email for now.',true);break;
-    case 'google':{const bs=root.querySelectorAll('.onb-google');bs.forEach(b=>b.disabled=true);msg('');hooks.googleSignIn().then(r=>{bs.forEach(b=>b.disabled=false);if(!r.ok){msg(r.error||'Google sign-in did not finish. Try again, or use email and password.');return}localStorage.setItem(CHOICE_KEY,'account');close()});break}
+    case 'google':{const bs=root.querySelectorAll('.onb-google');bs.forEach(b=>b.disabled=true);msg('');hooks.googleSignIn().then(r=>{bs.forEach(b=>b.disabled=false);if(!r.ok){const show=window.PayAviatorSafeGoogleError?window.PayAviatorSafeGoogleError(r.code,r.error):(r.error||'Google sign-in did not finish. Try again, or use email and password.');msg(show);return}localStorage.setItem(CHOICE_KEY,'account');close()});break}
     case 'guest':localStorage.setItem(CHOICE_KEY,'guest');hooks.continueAsGuest().then(close);break;
     case 'forgot':{const v=$('ppOnbEmail').value.trim();if(!validEmail(v)){msg('Enter your email above, then tap Forgot password.');break}hooks.forgotPassword(v).then(()=>msg('If an account exists for that email, a reset link is on its way.',true));break}
     case 'bioSignIn':hooks.biometricSignIn().then(r=>r.ok?msg('Signed in with biometrics (preview).',true):msg(r.error||'Biometrics did not work. Use your password.'));break;

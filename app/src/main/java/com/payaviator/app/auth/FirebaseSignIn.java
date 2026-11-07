@@ -192,29 +192,33 @@ public final class FirebaseSignIn implements AuthedRequest.TokenSource {
     private void sendVerificationWithWebKey(final FirebaseUser u, final boolean signup, final Callback cb) {
         u.getIdToken(false).addOnCompleteListener(mainExecutor, t -> {
             final String token = t.isSuccessful() && t.getResult() != null ? t.getResult().getToken() : null;
+            final boolean tokenPresent = token != null && !token.isEmpty();
             new Thread(() -> {
                 int status = 0;
-                try { if (token != null) status = VerifyEmailRequest.send(token); } catch (Exception e) { status = 0; }
+                boolean transportFailed = false;
+                try {
+                    if (tokenPresent) status = VerifyEmailRequest.send(token);
+                } catch (Exception e) {
+                    status = 0;
+                    transportFailed = true;
+                }
                 final int st = status;
+                final boolean transport = transportFailed;
                 activity.runOnUiThread(() -> {
-                    if (st == 200) {
-                        if (cb != null) cb.done(true, signup ? "VERIFY_EMAIL_REQUESTED" : "",
-                                signup ? "Your account was created. PayAviator asked Firebase to send a verification email. Check inbox and spam. The app cannot see whether it arrived." : "");
+                    if (VerificationSend.restAccepted(tokenPresent, st, transport)) {
+                        if (cb != null) {
+                            VerificationSend.Outcome accepted = VerificationSend.accepted(signup);
+                            cb.done(accepted.ok, accepted.code, accepted.message);
+                        }
                         return;
                     }
-                    Log.w("PayAviatorAuth", "sendOobCode status " + st + "; falling back to SDK");
+                    Log.w("PayAviatorAuth", "sendOobCode " + VerificationSend.reason(tokenPresent, transport, st) + "; falling back to SDK");
                     u.sendEmailVerification().addOnCompleteListener(mainExecutor, sdk -> {
                         if (cb == null) return;
-                        if (sdk.isSuccessful()) {
-                            cb.done(true, signup ? "VERIFY_EMAIL_REQUESTED" : "",
-                                    signup ? "Your account was created. PayAviator asked Firebase to send a verification email. Check inbox and spam. The app cannot see whether it arrived." : "");
-                        } else if (signup) {
-                            cb.done(true, "VERIFY_EMAIL_FAILED",
-                                    "Your account was created and kept. PayAviator could not confirm the verification email was sent (status " + st + "). Use Send verification email. Nothing was deleted.");
-                        } else {
-                            cb.done(false, "VERIFY_EMAIL_FAILED",
-                                    "Could not confirm the verification email was sent (status " + st + "). Try again.");
-                        }
+                        VerificationSend.Outcome outcome = sdk.isSuccessful()
+                                ? VerificationSend.fallbackAccepted(signup)
+                                : VerificationSend.failed(signup, VerificationSend.reason(tokenPresent, transport, st));
+                        cb.done(outcome.ok, outcome.code, outcome.message);
                     });
                 });
             }, "PayAviatorVerifyEmail").start();
@@ -281,7 +285,7 @@ public final class FirebaseSignIn implements AuthedRequest.TokenSource {
                                             }
                                         });
                             } catch (Exception e) {
-                                Log.w(TAG, "Bad Google credential", e);
+                                Log.w(TAG, "Bad Google credential " + GoogleSignInFailure.safeDetail("", e.getMessage()));
                                 cb.done(false, "GOOGLE_FAILED", "Google sign-in failed. Please try again.");
                             }
                         } else {
@@ -291,7 +295,7 @@ public final class FirebaseSignIn implements AuthedRequest.TokenSource {
 
                     @Override
                     public void onError(GetCredentialException e) {
-                        Log.w(TAG, "Google sign-in error: " + e.getType() + " " + e.getMessage());
+                        Log.w(TAG, "Google sign-in error " + GoogleSignInFailure.safeDetail(e.getType(), e.getMessage()));
                         if (e instanceof NoCredentialException) {
                             cb.done(false, "NO_GOOGLE_ACCOUNT", "No Google account is available on this phone. Add one in Android Settings or use email and password.");
                             return;

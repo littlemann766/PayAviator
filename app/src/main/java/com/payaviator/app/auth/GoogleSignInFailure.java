@@ -40,7 +40,24 @@ public final class GoogleSignInFailure {
                 || "ERROR_EMAIL_ALREADY_IN_USE".equals(code)) {
             return "This email already has an email-and-password PayAviator account. Sign in with email and password. Google was not linked, and the account was not changed.";
         }
-        if (fallback == null || fallback.isEmpty()) return "Google sign-in failed. Please try again.";
+        if (fallback == null || fallback.isEmpty() || !redact(fallback).equals(fallback)) {
+            return "Google sign-in failed. Please try again.";
+        }
         return fallback;
+    }
+
+    /** Log text only. Drops email addresses and JWT-shaped values. */
+    public static String safeDetail(String type, String message) {
+        String kind = type == null ? "" : type.replaceAll("[^A-Za-z0-9._$]", "");
+        String text = redact(message);
+        if (text.length() > 120) text = text.substring(0, 120);
+        return (kind + " " + text).trim();
+    }
+
+    static String redact(String message) {
+        String text = message == null ? "" : message;
+        text = text.replaceAll("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", "[redacted]");
+        text = text.replaceAll("eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}", "[redacted]");
+        return text;
     }
 }
