@@ -22231,11 +22231,21 @@ function closeSheet(){
   try{window.PayAviatorSheetBack&&window.PayAviatorSheetBack.remove()}catch(_){}
   if(!state.signedIn){const w=waiters;waiters=[];w.forEach(fn=>fn(false))}
 }
+function safeGoogleError(code, error){
+  const raw=String(error||'');
+  const leaked=/@/.test(raw)||/eyJ[A-Za-z0-9_-]{8,}/.test(raw);
+  if(!leaked&&raw)return raw;
+  if(code==='GOOGLE_NOT_CONFIGURED')return "Google sign-in isn't enabled for this build yet. Use email and password.";
+  if(code==='NO_GOOGLE_ACCOUNT')return 'No Google account is available on this phone. Add one in Android Settings or use email and password.';
+  if(code==='CANCELLED'||code==='GOOGLE_INCOMPLETE')return 'Google sign-in did not finish. Try again, or use email and password.';
+  return 'Google sign-in failed. Please try again.';
+}
+window.PayAviatorSafeGoogleError=safeGoogleError;
 async function run(method,...args){
   setBusy(true);setError('');
   const r=await call(method,...args);
   setBusy(false);
-  if(!r.ok&&r.code!=='CANCELLED')setError(r.error||'Sign-in failed. Please try again.');
+  if(!r.ok)setError(method==='authSignInWithGoogle'?safeGoogleError(r.code,r.error):(r.error||'Sign-in failed. Please try again.'));
   return r;
 }
 function wire(){
@@ -22256,7 +22266,14 @@ function wire(){
     const email=$('ppAuthEmail').value.trim(),pw=$('ppAuthPassword').value;
     if(!email||!pw){setError('Enter your email and password.');return}
     if(mode==='create'&&pw.length<6){setError('Use at least 6 characters for your password.');return}
-    run(mode==='create'?'authCreateAccount':'authSignInWithEmail',email,pw).then(r=>{if(r.ok)$('ppAuthPassword').value=''});
+    run(mode==='create'?'authCreateAccount':'authSignInWithEmail',email,pw).then(r=>{
+      if(!r.ok)return;
+      $('ppAuthPassword').value='';
+      if(r.code==='VERIFY_EMAIL_FAILED'||r.code==='VERIFY_EMAIL_REQUESTED'){
+        setError(r.error||(r.code==='VERIFY_EMAIL_FAILED'?'Your account was created and kept. The verification email was not confirmed sent. Use Send verification email.':'A verification email was requested. Check inbox and spam. The app cannot see whether it arrived.'), r.code==='VERIFY_EMAIL_REQUESTED');
+        if(r.code==='VERIFY_EMAIL_FAILED'){try{window.PayAviatorAccountGate&&window.PayAviatorAccountGate.openVerify()}catch(_){}}
+      }
+    });
   });
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire,{once:true});else wire();
@@ -25922,7 +25939,7 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
    <div class="onb-or">or</div>
    <div class="onb-alt"><button type="button" class="onb-google" data-onb-act="google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg><span>Continue with Google</span></button>
    <button type="button" class="onb-google onb-phone" data-onb-act="phone"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#1f1f1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><span>Continue with phone</span></button></div>
-   <div class="onb-note"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><span><b>Check your inbox.</b> We'll email a link to verify your address (works with Gmail, Yahoo, AOL, Outlook, iCloud and more). If you don't see it, check Spam. Verify it before you link a bank.</span></div>
+   <div class="onb-note"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><span><b>Verification email.</b> After the account is created, PayAviator asks Firebase to email a link (Gmail, Yahoo, AOL, Outlook, iCloud, and more). Check inbox and spam. If nothing arrives, use Send verification email. The app cannot see whether the message reached your inbox. Verify the address before you link a bank.</span></div>
    <div class="onb-msg" data-onb-msg role="alert" aria-live="polite"></div>
    <div class="onb-foot">By creating an account you agree to our <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</div>
    <div class="onb-actions">
@@ -26066,7 +26083,7 @@ root.addEventListener('click',e=>{
   switch(a.dataset.onbAct){
     case 'close':close();break;
     case 'phone':msg('Phone sign-in is coming soon. Use Google or email for now.',true);break;
-    case 'google':{const bs=root.querySelectorAll('.onb-google');bs.forEach(b=>b.disabled=true);msg('');hooks.googleSignIn().then(r=>{bs.forEach(b=>b.disabled=false);if(!r.ok)return r.error&&msg(r.error);localStorage.setItem(CHOICE_KEY,'account');close()});break}
+    case 'google':{const bs=root.querySelectorAll('.onb-google');bs.forEach(b=>b.disabled=true);msg('');hooks.googleSignIn().then(r=>{bs.forEach(b=>b.disabled=false);if(!r.ok){const show=window.PayAviatorSafeGoogleError?window.PayAviatorSafeGoogleError(r.code,r.error):(r.error||'Google sign-in did not finish. Try again, or use email and password.');msg(show);return}localStorage.setItem(CHOICE_KEY,'account');close()});break}
     case 'guest':localStorage.setItem(CHOICE_KEY,'guest');hooks.continueAsGuest().then(close);break;
     case 'forgot':{const v=$('ppOnbEmail').value.trim();if(!validEmail(v)){msg('Enter your email above, then tap Forgot password.');break}hooks.forgotPassword(v).then(()=>msg('If an account exists for that email, a reset link is on its way.',true));break}
     case 'bioSignIn':hooks.biometricSignIn().then(r=>r.ok?msg('Signed in with biometrics (preview).',true):msg(r.error||'Biometrics did not work. Use your password.'));break;
@@ -26081,7 +26098,19 @@ $('ppOnbCreateForm').addEventListener('submit',e=>{e.preventDefault();
   if(!validEmail(em))return msg('Enter a valid email.');
   if(p.length<8)return msg('Use at least 8 characters for your password.');
   if(p!==p2)return msg('Passwords don\'t match.');
-  hooks.createAccount(em,p).then(r=>{if(!r.ok)return msg(r.error||'Could not create your account.');localStorage.setItem(CHOICE_KEY,'account');$('ppOnbNewPw').value=$('ppOnbNewPw2').value='';$('ppOnbBioSave').checked=true;show('bio')})});
+  hooks.createAccount(em,p).then(r=>{
+    if(!r.ok)return msg(r.error||'Could not create your account.');
+    localStorage.setItem(CHOICE_KEY,'account');
+    $('ppOnbNewPw').value=$('ppOnbNewPw2').value='';
+    $('ppOnbBioSave').checked=true;
+    show('bio');
+    if(r.code==='VERIFY_EMAIL_FAILED'){
+      msg(r.error||'Your account was created and kept. The verification email was not confirmed sent. Use Send verification email.');
+      try{window.PayAviatorAccountGate&&window.PayAviatorAccountGate.openVerify()}catch(_){}
+    }else if(r.code==='VERIFY_EMAIL_REQUESTED'){
+      msg(r.error||'A verification email was requested. Check inbox and spam. The app cannot see whether it arrived.',true);
+    }
+  })});
 $('ppOnbSignForm').addEventListener('submit',e=>{e.preventDefault();
   const em=$('ppOnbEmail').value.trim(),p=$('ppOnbPw').value,save=$('ppOnbSave').checked;
   if(!validEmail(em))return msg('Enter a valid email.');if(!p)return msg('Enter your password.');
@@ -26219,7 +26248,9 @@ function nativeCall(method,...args){
     const id='a410-'+Date.now().toString(36)+Math.random().toString(36).slice(2);
     const prev=window.PayAviatorAuthResult;
     const done=d=>{clearTimeout(t);if(window.PayAviatorAuthResult===mine)window.PayAviatorAuthResult=prev;resolve(d)};
-    const t=setTimeout(()=>done({ok:false,code:'TIMEOUT',error:'This is taking too long. Check your connection and try again.'}),method==='authSignInWithGoogle'?180000:45000);
+    const waitMs=method==='authSignInWithGoogle'?180000:(method==='authCreateAccount'?90000:45000);
+    const timeoutError=method==='authCreateAccount'?'This is taking too long. If the account was created, it was kept. Use Send verification email if no message arrives.':'This is taking too long. Check your connection and try again.';
+    const t=setTimeout(()=>done({ok:false,code:'TIMEOUT',error:timeoutError}),waitMs);
     const mine=function(p){let d={};try{d=typeof p==='string'?JSON.parse(p||'{}'):(p||{})}catch(_){}
       if(String(d.requestId)!==id)return prev&&prev(p);
       if(d.state&&window.PayAviatorAuthStateChanged)window.PayAviatorAuthStateChanged(JSON.stringify(d.state));done(d)};
@@ -26256,9 +26287,9 @@ window.PayAviatorBillingPurchaseResult=async function(p){
 };
 /* ---- Beth's screen hooks ---- */
 const hooks={
-  createAccount:async(email,pw)=>res(await nativeCall('authCreateAccount',email,pw)),   // native also sends the verification email
+  createAccount:async(email,pw)=>{const r=await nativeCall('authCreateAccount',email,pw);return{ok:!!r.ok,code:r.code||'',error:r.error||''}},
   signIn:async(email,pw)=>res(await nativeCall('authSignInWithEmail',email,pw)),
-  googleSignIn:async()=>res(await nativeCall('authSignInWithGoogle')),   // same native Firebase Google sign-in the old sheet used
+  googleSignIn:async()=>{const r=await nativeCall('authSignInWithGoogle');if(r.ok)return{ok:true,code:'',error:''};return{ok:false,code:r.code||'',error:r.error||'Google sign-in did not finish. Try again, or use email and password.'}},
   forgotPassword:async(email)=>{await nativeCall('authSendPasswordReset',email);return{ok:true,error:''}},
   /* No native BiometricPrompt yet: say so instead of pretending. */
   biometricSignIn:async()=>({ok:false,error:'Fingerprint and face sign-in are coming in a later update. Use your password for now.'}),
@@ -26344,10 +26375,10 @@ async function verifyAction(kind){
   const st=$('pa410VerifyStatus');
   if(kind==='send'){
     const wait=VERIFY_COOLDOWN_MS-(Date.now()-lastVerifySend);
-    if(wait>0){st.textContent='We just sent a link. Use the newest email; you can resend in '+Math.ceil(wait/1000)+'s.';return}
+    if(wait>0){st.textContent='A send was just requested. Use the newest email if one arrives; you can resend in '+Math.ceil(wait/1000)+'s.';return}
     lastVerifySend=Date.now();st.textContent='Sending…';const r=await nativeCall('authSendEmailVerification');
     if(!r.ok)lastVerifySend=0;
-    st.textContent=r.ok?'Sent. Open the link in the newest email (older links stop working), then tap "I verified, continue".':(r.error||'Could not send the email. Try again.');return}
+    st.textContent=r.code==='ALREADY_VERIFIED'?(r.error||'This email is already verified. No new message was requested.'):(r.ok?'Firebase accepted the send request. Check inbox and spam, then tap "I verified, continue". Older links stop working. The app cannot see whether the message arrived.':(r.error||'Could not send the email. Try again.'));return}
   st.textContent='Checking…';
   const {r,v}=await reloadVerified();
   if(r.ok&&v){st.textContent='Email verified. Opening your bank…';setTimeout(()=>{hide('pa410VerifyDlg');retryConnect()},600)}
