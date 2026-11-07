@@ -1,34 +1,11 @@
-# PayAviator Privacy Policy — Draft for Public Release
+# PayAviator privacy draft — withdrawn
 
-**Last updated:** September 6, 2026
+**Do not publish this file.** It is not the privacy policy, not legal advice, and not a statement that PayAviator complies with any privacy law.
 
-PayAviator is a local-first personal budgeting and bill-tracking application.
+The September 6, 2026 draft said the Android app had no Internet permission, no accounts, and no cloud sync. That described an older build. Current source does not match it. Publishing the old draft would be false.
 
-## Information you enter
-PayAviator can store information you choose to enter, such as bill names, due dates, payment amounts, income, spending, refunds, work hours, categories, reminder settings, and other budgeting information.
+The public policy is the page at https://payaviator.app/privacy.html. The public terms are at https://payaviator.app/terms.html. Support mail already used in the app is support@payaviator.app.
 
-## Where data is stored
-The current Android release stores this information locally on your device inside the application's private storage. The app does not require Android Internet permission and does not send your budgeting information to a PayAviator server.
+An evidence note for the website writer, including claims on those pages that do not match the code reviewed here, is in [PRIVACY_TERMS_AUDIT_2026-11-07.md](PRIVACY_TERMS_AUDIT_2026-11-07.md). This audit is not a compliance certification and it does not deploy anything.
 
-## Backups and exports
-Backup and export files are created only when you choose to save them. You choose where those files are stored through Android's system file picker. Anyone who gains access to an exported backup may be able to read the information inside it, so backups should be kept in a location you trust.
-
-## Notifications
-PayAviator can schedule local bill and reminder notifications on your device. Notification settings and bill/reminder information are processed locally for this purpose.
-
-## App lock
-If enabled, the optional app lock uses Android device authentication. PayAviator does not receive or store your fingerprint image or device passcode.
-
-## Analytics, advertising, accounts, and sale of data
-The current release does not include advertising SDKs, analytics SDKs, user accounts, cloud synchronization, or sale of personal data.
-
-## Data deletion
-You can delete information within the app or clear the application's storage through Android system settings. Uninstalling the app removes the app's local data from the device, except for backup/export files you separately chose to save.
-
-## Changes
-If a future version adds cloud sync, accounts, analytics, advertising, or other network features, this policy and the app's disclosures must be updated before those features are released.
-
-## Contact
-Questions or requests about your data: support@payaviator.app
-
-The current privacy policy is published at https://payaviator.app/privacy.html
+When https://payaviator.app/privacy.html changes its printed policy version, update `POLICY_VERSION` in `index.html` in the same app release. As of this note the app records `2026-10g` because that is the version printed on the live page that was fetched during the audit.

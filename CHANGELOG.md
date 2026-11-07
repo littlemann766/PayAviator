@@ -1,3 +1,8 @@
+## Unreleased — privacy and terms disclosures
+- In-app Privacy Policy and Terms of Service links now both open the public pages. The bank-consent record uses policy version 2026-10g, which is the version printed on https://payaviator.app/privacy.html at the time of the audit.
+- Account deletion, bank-consent, Safe to Spend and reminder text no longer promise complete deletion, exact alerts, or that a due date cannot be missed. Purchases stay off (`BILLING_LIVE` is false). Prices shown remain $3.99 a month and $29.99 a year.
+- The September 6, 2026 privacy draft is withdrawn. See docs/PRIVACY_TERMS_AUDIT_2026-11-07.md. This note is not a compliance certification and nothing was deployed.
+
 ## 4.2.6 — Settings dialogs always complete
 - Fixed Settings > App Colors missing its color swatches and Hue / Saturation / Lightness color wheels on some phones. They are now added when the dialog opens, not by a delayed page scan that a busy screen could keep postponing.
 - Fixed the real cause of the missing Hue / Saturation / Lightness wheels: an old relabel step overwrote the wheel labels (and removed the sliders). It now only renames each row heading.
