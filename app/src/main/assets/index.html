@@ -22916,7 +22916,7 @@ setState(readNative());
     }
     const who=st.email||st.name||'Signed in';
     let plan421='';try{plan421=window.PayAviatorPlans?.planCardHtml(window.PayAviatorAccountGate?.billing)||''}catch(_){}
-    return plan421+`<section class="ppauth-account"><div class="pp920-row"><div><div class="pp920-title">Signed in</div><div class="pp920-sub">${esc(who)}${st.provider==='google'?' • Google':''}</div><div class="pp920-sub" id="pp414SyncLine">${esc(window.PayAviatorSync?.statusLine?.()||'')}</div></div></div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-signout>Sign out</button><button type="button" class="pp920-action ppauth-danger" data-ppauth-delete>Delete account</button></div></section>`;
+    return plan421+`<section class="ppauth-account"><div class="pp920-row"><div><div class="pp920-title">Signed in</div><div class="pp920-sub">${esc(who)}${st.provider==='google'?' • Google':''}</div><div class="pp920-sub" id="pp414SyncLine">${esc(window.PayAviatorSync?.statusLine?.()||'')}</div></div></div><div class="pp920-actions"><button type="button" class="pp920-action" data-pp-manage-sub>Manage subscription</button><button type="button" class="pp920-action" data-ppauth-signout>Sign out</button><button type="button" class="pp920-action ppauth-danger" data-ppauth-delete>Delete account</button></div></section>`;
   }
   /* 4.1.4: banks paused because Plus ended (backend: items[].paused / errors[].code==='ITEM_PAUSED'). No reconnect prompt. */
   function pp414PausedList(){
@@ -22946,9 +22946,10 @@ setState(readNative());
     return rows.map(i=>`<section class="ppauth-needs" data-item="${esc(i.item_id)}"><div class="pp920-title">${esc(i.institution_name||'A connected bank')} needs attention</div><div class="pp920-sub">${i.new_accounts_available&&!i.error_code?'New accounts are available to share with PayAviator.':'Sign in to your bank again to keep balances and transactions up to date.'}</div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-reconnect="${esc(i.item_id)}">Reconnect</button></div></section>`).join('');
   }
   function pp920WireAuth(host){
+    host.querySelector('[data-pp-manage-sub]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();try{window.PayAviatorManageSubscription?.open?.()}catch(_){}});
     host.querySelector('[data-ppauth-signin]')?.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();if(await window.PayAviatorAuth.ensureSignedIn()){try{await pp920SyncPlaidAccounts()}catch(_){ }render()}});
     host.querySelector('[data-ppauth-signout]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{await window.PayAviatorAuth.signOut();render();pp920Toast('Signed out. Your bills and spending are still on this phone.')};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Sign out?',message:'Bank data will be removed from this phone until you sign in again. Your bills, income and spending stay.',confirmText:'Sign out'},go);else go()});
-    host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{pp920Toast('Deleting your account…');const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.ok){render();pp920Toast('Your sign-in was deleted. Linked banks were disconnected, and the bank data and cloud copies stored for this account were removed. Bills, income and spending you entered stay on this phone.')}else if(r.code!=='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error||'Could not delete your account. Please try again.')}};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message:'This deletes your PayAviator sign-in. It also asks Plaid to unlink every bank connection on this sign-in and to delete the bank data and cloud copies stored for it. It does not close those accounts at the bank and does not cancel a Plus subscription. You do not need to give a reason. If a bank cannot be removed, the sign-in is not deleted and you can try again. You may be asked to sign in again first if your last sign-in was not recent. Bills, income and spending you entered stay on this phone. Backup files you saved are not deleted. Some technical records can remain; the Privacy Policy describes them.',confirmText:'Delete account'},go);else window.PayAviatorConfirm({title:'Delete account?',message:'Delete your PayAviator account and try to disconnect every bank? If a bank cannot be removed, the account stays. Data you entered stays on this phone.',confirmText:'Delete account',danger:true}).then(ok=>{if(ok)go()})});
+    host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{pp920Toast('Deleting your account…');const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.ok){render();pp920Toast('Your sign-in was deleted. Linked banks were disconnected, and the bank data and cloud copies stored for this account were removed. Bills, income and spending you entered stay on this phone.')}else if(r.code!=='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error||'Could not delete your account. Please try again.')}};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message:'This deletes your PayAviator sign-in. It also asks Plaid to unlink every bank connection on this sign-in and to delete the bank data and cloud copies stored for it. It does not close those accounts at the bank. Deleting this account does not cancel Google Play or Stripe billing. You can delete without cancelling. A new sign-in does not take over the old subscription. You do not need to give a reason. If a bank cannot be removed, the sign-in is not deleted and you can try again. You may be asked to sign in again first if your last sign-in was not recent. Bills, income and spending you entered stay on this phone. Backup files you saved are not deleted. Some technical records can remain; the Privacy Policy describes them.',confirmText:'Delete account'},go);else window.PayAviatorConfirm({title:'Delete account?',message:'Delete your PayAviator account and try to disconnect every bank? If a bank cannot be removed, the account stays. Data you entered stays on this phone.',confirmText:'Delete account',danger:true}).then(ok=>{if(ok)go()})});
     host.querySelectorAll('[data-pp414-resub]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();try{window.PayAviatorAccountGate?.openUpgrade('plus_ended')}catch(_){ }}));
     host.querySelectorAll('[data-ppauth-reconnect]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();pp920ReconnectItem(b.getAttribute('data-ppauth-reconnect'),b)}));
   }
@@ -36097,5 +36098,145 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
   function init() { place(); try { new MutationObserver(soon).observe(document.body, { childList: true, subtree: true }); } catch (_) { setInterval(soon, 1500); } document.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest && ev.target.closest('[data-pai-static]'); if (b && b.matches('button')) { ev.preventDefault(); open(); return; } soon(); }, true); setInterval(function () { try { place(); } catch (_) { } }, 1000); }
   window.PayAviatorImport = { open: open, place: place };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true }); else init();
+})();
+</script>
+
+<style id="pa-sub-manage-css">
+#paSubDlg{border:0;padding:0;background:transparent;max-width:calc(100vw - 28px)}
+#paSubDlg::backdrop{background:rgba(0,8,24,.72)}
+#paSubDlg .card{width:min(440px,100%);background:#0b234b;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:18px;font:16px/1.45 system-ui,sans-serif}
+#paSubDlg h2{margin:0 0 8px;font-size:20px}
+#paSubDlg p{margin:0 0 10px}
+#paSubDlg .acts{display:grid;gap:8px;margin-top:12px}
+#paSubDlg button,#paSubDlg a.pa-sub-link{display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:12px;padding:8px 12px;font:inherit;font-weight:700;text-align:center;text-decoration:none}
+#paSubDlg button{border:0;background:#00f5ff;color:#04121f}
+#paSubDlg a.pa-sub-link{background:#1f4f86;color:#fff;border:1px solid rgba(255,255,255,.2)}
+#paSubDlg .close{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3)}
+#mb119Settings .pa-sub-entry{display:block;margin:0 0 14px}
+#mb119Settings .pa-sub-entry button{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:60px;padding:10px 16px;border-radius:20px;border:1px solid rgba(255,255,255,.12);background:#0b234b;color:#fff;font:inherit;font-size:16px;font-weight:650;text-align:left}
+#mb119Settings .pa-sub-entry small{display:block;margin-top:2px;font-size:12.5px;font-weight:500;color:rgba(255,255,255,.72)}
+</style>
+<dialog id="paSubDlg" aria-labelledby="paSubTitle">
+  <div class="card">
+    <h2 id="paSubTitle">Manage subscription</h2>
+    <p id="paSubStatus" role="status"></p>
+    <p id="paSubDetail"></p>
+    <div class="acts" id="paSubActions"></div>
+  </div>
+</dialog>
+<script id="pa-sub-manage-js">
+(function(){
+'use strict';
+/* Package is this app's applicationId (app/build.gradle). Backend unit tests use a
+   different fixture, app.payaviator; production ANDROID_PACKAGE_NAME was not read.
+   Product id comes only from GET /api/billing/status. No Play SKU is hardcoded. */
+const PLAY_PACKAGE='com.payaviator.app';
+const $=id=>document.getElementById(id);
+function auth(){return window.PayAviatorAuth||null}
+function signedIn(){try{return !!(auth()&&auth().isSignedIn())}catch(_){return false}}
+function skuOk(id){return /^[A-Za-z0-9._-]{1,80}$/.test(id)&&id.indexOf('price_')!==0}
+function playUrl(status){
+  let url='https://play.google.com/store/account/subscriptions?package='+encodeURIComponent(PLAY_PACKAGE);
+  const id=String(status&&status.productId||'');
+  if(skuOk(id)) url+='&sku='+encodeURIComponent(id);
+  return url;
+}
+function stripePortalUrl(raw){
+  try{
+    const u=new URL(String(raw||''));
+    if(u.protocol!=='https:'||u.hostname!=='billing.stripe.com') return '';
+    return u.toString();
+  }catch(_){return ''}
+}
+function show(){const d=$('paSubDlg');if(!d)return;try{if(!d.open)d.showModal()}catch(_){d.setAttribute('open','')}}
+function hide(){const d=$('paSubDlg');if(!d)return;try{d.close()}catch(_){d.removeAttribute('open')}}
+function text(id,v){const n=$(id);if(n)n.textContent=v||''}
+function clearActs(){const n=$('paSubActions');if(n)n.replaceChildren()}
+function addButton(label,fn){const b=document.createElement('button');b.type='button';b.textContent=label;b.addEventListener('click',fn);$('paSubActions').appendChild(b);return b}
+function addLink(label,url){const a=document.createElement('a');a.className='pa-sub-link';a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.dataset.paSubLink=url;a.textContent=label;$('paSubActions').appendChild(a);return a}
+function addClose(){const b=document.createElement('button');b.type='button';b.className='close';b.textContent='Close';b.addEventListener('click',hide);$('paSubActions').appendChild(b)}
+function evidence(s){
+  if(!s) return '';
+  if(s.source==='stripe'&&s.cancelAtPeriodEnd&&s.periodEnd) return 'Stripe reports renewal is off. Access continues until '+s.periodEnd+'. This screen did not cancel it.';
+  if(s.state==='SUBSCRIPTION_STATE_CANCELED'&&s.expiresAt) return 'Account status reports '+s.state+'. Plus access in this status continues until '+s.expiresAt+'. This screen did not cancel it.';
+  return '';
+}
+function portalFail(e){
+  const code=String(e&&e.code||'');
+  const status=Number(e&&e.status||0);
+  if(status===401||code==='UNAUTHENTICATED'||code==='INVALID_TOKEN'||code==='SIGN_IN_REQUIRED') return 'Sign in again, then retry. Nothing was cancelled.';
+  if(status===404||code==='NO_STRIPE_CUSTOMER') return 'No Stripe customer is stored for this sign-in. Email is not used to look one up. Nothing was cancelled.';
+  if(status===503||code==='STRIPE_NOT_CONFIGURED') return 'The Stripe billing portal is not configured on the server. Nothing was cancelled. You can email support@payaviator.app.';
+  if(status===502||code==='PORTAL_FAILED') return 'The billing portal could not be opened. Try again. Nothing was cancelled.';
+  return 'The subscription could not be checked. Nothing was cancelled.';
+}
+async function openStripe(){
+  text('paSubDetail','Asking the server for a billing portal for this sign-in. No customer id is sent from the phone.');
+  let r;
+  try{r=await window.PayAviatorBankApi('/api/billing/stripe/portal',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})}
+  catch(e){text('paSubDetail',portalFail(e));return}
+  const url=stripePortalUrl(r&&r.url);
+  if(!url){text('paSubDetail','The server did not return a Stripe billing portal address. Nothing was cancelled.');return}
+  clearActs();
+  addLink('Continue to Stripe',url);
+  addClose();
+  text('paSubDetail','Stripe opens the billing portal. PayAviator will not show this subscription as cancelled until account status says so.');
+}
+function paint(s){
+  clearActs();
+  const ev=evidence(s);
+  const source=String(s&&s.source||'');
+  const plan=String(s&&s.plan||'free');
+  if(source==='play'){
+    const sku=skuOk(String(s.productId||''));
+    text('paSubStatus','Plus on this sign-in is billed by Google Play.');
+    text('paSubDetail',(sku?'The product id from account status is included. ':'Account status did not include a product id, so the list is opened without one. ')+'Opening Google Play does not cancel by itself. '+(ev||'PayAviator will not mark this cancelled from here.'));
+    addLink('Cancel or manage in Google Play',playUrl(s));
+  }else if(source==='stripe'){
+    text('paSubStatus','Plus on this sign-in is billed by Stripe.');
+    text('paSubDetail',ev||'The server creates the billing portal for this sign-in. Nothing is marked cancelled until account status says so.');
+    addButton('Cancel or manage in Stripe',openStripe);
+  }else if(source==='comp'||plan==='comp'){
+    text('paSubStatus','This sign-in is not a paid Google Play or Stripe subscription.');
+    text('paSubDetail','There is nothing to cancel for this plan. Deleting the account is separate and is not required.');
+  }else if(plan==='premium'||plan==='plus'){
+    text('paSubStatus','Plus is on this sign-in, but the status did not say Google Play or Stripe.');
+    text('paSubDetail','Nothing was cancelled. Email support@payaviator.app from the address on this sign-in.');
+  }else{
+    text('paSubStatus','No active Plus subscription is on this sign-in.');
+    text('paSubDetail','Nothing was cancelled. You can review Google Play, or ask the server whether this sign-in has a Stripe customer. A new account does not take over an old subscription.');
+    addLink('Review Google Play subscriptions',playUrl({}));
+    addButton('Check Stripe for this sign-in',openStripe);
+  }
+  addClose();
+  show();
+}
+async function open(){
+  if(!signedIn()){
+    try{auth()&&auth().openSignIn&&auth().openSignIn({notice:'Sign in to manage a subscription. Deleting an account does not cancel billing.'})}catch(_){}
+    return;
+  }
+  text('paSubStatus','Checking this sign-in…');
+  text('paSubDetail','');
+  clearActs(); addClose(); show();
+  let s;
+  try{s=await window.PayAviatorBankApi('/api/billing/status')}
+  catch(e){text('paSubStatus','Could not check the subscription.');text('paSubDetail',portalFail(e));return}
+  paint(s||{});
+}
+function mount(){
+  const host=document.getElementById('mb119Settings');
+  if(!host||host.querySelector('[data-pa-sub-manage]'))return;
+  const box=document.createElement('div');
+  box.className='pa-sub-entry';
+  box.innerHTML='<button type="button" data-pa-sub-manage="1">Manage subscription<small>Cancel Plus in Google Play or Stripe. Deleting your account does not cancel billing.</small></button>';
+  box.querySelector('button').addEventListener('click',e=>{e.preventDefault();open()});
+  const about=host.querySelector('.pa397-about');
+  if(about) host.insertBefore(box,about); else host.appendChild(box);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true}); else mount();
+document.addEventListener('payaviator:viewchange',()=>setTimeout(mount,0));
+setTimeout(mount,400); setTimeout(mount,1500);
+window.PayAviatorManageSubscription={open,playUrl,stripePortalUrl,PLAY_PACKAGE,skuOk};
 })();
 </script>

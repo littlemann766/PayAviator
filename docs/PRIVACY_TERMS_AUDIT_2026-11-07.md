@@ -41,6 +41,19 @@ This branch now waits for `{disconnected:true}` before it drops local accounts, 
 
 Still unsupported, and not claimed as done: removing one account inside an Item while keeping the others; closing an account at the bank; cancelling Plus as part of unlink or account deletion; a 72-hour support wait; treating website draft `2026-11a-draft` as the live policy.
 
+## Subscription manage and cancel
+
+Checked against backend `a91ab31` before adding the screen. `BILLING_LIVE` stays false. No purchase was started and no production portal was configured.
+
+- `POST /api/billing/stripe/portal` (`src/stripeBilling.js`) is signed in with the Firebase token. It loads the Stripe customer id with `store.getStripeCustomer(req.userId)`. The phone does not send a customer id or an email. A missing customer is 404 `NO_STRIPE_CUSTOMER`. Missing Stripe env is 503 `STRIPE_NOT_CONFIGURED`. The response url is opened only when it is `https://billing.stripe.com/...`. `test/stripe.test.js` covers the 404 and the session created for that same user.
+- Google Play management uses the public subscriptions page. The package is this app's `applicationId`, `com.payaviator.app`. The sku is added only when `GET /api/billing/status` returns a `productId` for `source:"play"`. Backend tests use package fixture `app.payaviator` and product fixture `payaviator_premium`. Those strings are not the app id, and production `ANDROID_PACKAGE_NAME` / `GOOGLE_PLAY_PRODUCT_IDS` were not read. If the Play Console package is not `com.payaviator.app`, this deep link will not match until that env is confirmed.
+- `cancelAtPeriodEnd` and `periodEnd` are Stripe-only in `billingSummary`. Play `cancelAtPeriodEnd` is always false there. A Play state `SUBSCRIPTION_STATE_CANCELED` can still leave `plan:"premium"` until `expiresAt` (`test/billing.test.js`, "canceled-but-unexpired keeps premium"). The screen repeats those fields when they are present. It does not show Cancelled because the person opened Play or Stripe.
+- Account deletion still has one confirmation, no reason, and no requirement to cancel first. The confirmation says deletion does not cancel Google Play or Stripe billing and a new sign-in does not take over the old subscription.
+
+Deleting and creating another account does not move Plus. Entitlements stay on the old Firebase uid: `deleteUserData` does not delete `billing_entitlements` or `stripe_customers`. The same Play purchase token verified by a second uid returns 409 `purchase_in_use` (`test/billing.test.js`). The app's Restore only sends purchases from `AndroidBridge.billingGetPurchases`, and `MainActivity` does not implement that method, so Restore currently finds nothing. There is no email or customer-id transfer. A new free account can be charged again if the person subscribes while the old store subscription is still renewing. That restore gap is documented here and is not implemented.
+
+Stripe portal setup that is still outside this repo: the four Stripe env vars, and the Stripe Dashboard customer portal with cancel enabled. Until those exist the app shows `stripe_not_configured` or `no_stripe_customer` and does not pretend the subscription was cancelled.
+
 ## What the current app actually does
 
 Checked in this repo unless a backend path is named.

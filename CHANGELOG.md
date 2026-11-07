@@ -1,6 +1,7 @@
 ## Unreleased — privacy and terms disclosures
 - In-app Privacy Policy and Terms of Service links now both open the public pages. Bank-consent records stay on live policy version 2026-10g. The unpublished website draft 2026-11a-draft is not recorded and is not treated as live. A later approved publication would set the website and `POLICY_VERSION` to 2026-11a in the same release.
 - Remove this bank unlinks one Plaid connection, including every account on it, only after the server returns `{disconnected:true}`. Other banks, the PayAviator sign-in, and typed bills stay. A failed removal leaves that bank in place. The old per-account Disconnect no longer hides a row before Plaid is updated.
+- Manage subscription is in Settings and in Connected Accounts. Google Play opens the Play subscriptions page for `com.payaviator.app` using the product id from account status. Stripe asks `POST /api/billing/stripe/portal` for this sign-in and opens only a `billing.stripe.com` address. Purchases stay off. Deleting an account does not cancel billing and does not require a cancel first.
 - Account deletion, bank-consent, Safe to Spend and reminder text no longer promise complete deletion, exact alerts, or that a due date cannot be missed. Purchases stay off (`BILLING_LIVE` is false). Prices shown remain $3.99 a month and $29.99 a year.
 - The September 6, 2026 privacy draft is withdrawn. See docs/PRIVACY_TERMS_AUDIT_2026-11-07.md. This note is not a compliance certification and nothing was deployed.
 
