@@ -1495,7 +1495,13 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void authSignInWithGoogle(final String requestId) {
-            runOnUiThread(() -> signIn.signInWithGoogle((ok, code, msg) -> deliverAuthResult(requestId, ok, code, msg)));
+            runOnUiThread(() -> {
+                externalActivityInProgress = true;
+                signIn.signInWithGoogle((ok, code, msg) -> {
+                    externalActivityInProgress = false;
+                    deliverAuthResult(requestId, ok, code, msg);
+                });
+            });
         }
 
         @JavascriptInterface

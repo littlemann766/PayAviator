@@ -82,7 +82,7 @@ with sync_playwright() as p:
     check('manage is offered beside delete', pg.evaluate("!!document.querySelector('#pp920AccountsBody [data-pp-manage-sub]')"))
     copy = pg.evaluate("document.querySelector('#ppConfirm902 .pp902-confirm-copy')?.textContent||''")
     fields = pg.evaluate("document.querySelectorAll('#ppConfirm902 textarea, #ppConfirm902 input').length")
-    check('one confirmation explains billing and bank accounts', 'does not cancel Google Play or Stripe billing' in copy and 'does not close those accounts at the bank' in copy and 'is not required' in copy and 'do not need to give a reason' in copy.lower(), copy)
+    check('one confirmation explains billing and bank accounts', 'does not cancel Google Play or Stripe billing' in copy and 'they set the end date' in copy and 'does not close those accounts at the bank' in copy and 'is not required' in copy and 'do not need to give a reason' in copy.lower(), copy)
     check('confirmation has no survey fields', fields==0, fields)
     pg.evaluate("document.querySelector('#ppConfirm902 .pp902-cancel').click()")
     pg.wait_for_timeout(150)

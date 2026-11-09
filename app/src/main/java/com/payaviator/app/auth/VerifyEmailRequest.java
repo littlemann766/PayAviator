@@ -22,11 +22,12 @@ public final class VerifyEmailRequest {
     public static String body(String idToken) throws Exception {
         if (idToken == null || idToken.isEmpty()) throw new IllegalArgumentException("missing id token");
         // Built by hand so it is unit-testable without Android's org.json; ID tokens are JWTs (no quotes).
+        // No continueUrl. The link host is the Firebase email-template action URL, which is not in this repo.
         String safe = idToken.replace("\\", "\\\\").replace("\"", "\\\"");
         return "{\"requestType\":\"VERIFY_EMAIL\",\"idToken\":\"" + safe + "\"}";
     }
 
-    /** Blocking POST; returns the HTTP status (200 = email sent). Call off the main thread. */
+    /** Blocking POST. HTTP 200 means Identity Toolkit accepted the send. It does not prove inbox delivery. */
     public static int send(String idToken) throws Exception {
         java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url(WEB_API_KEY)).openConnection();
         try {

@@ -4,7 +4,7 @@
 **Audience:** the person updating https://github.com/littlemann766/PayAviator-Website
 **What this is:** a comparison of the current app source, the backend source, and the pages already published on payaviator.app. It is not a legal opinion, not a certification of compliance, and not a statement that a store listing or a server was changed.
 
-Nothing in this review was deployed. The website repository and the backend repository were not modified. No live user was deleted. No purchase flow was turned on. "Ask PayAviator" was not added.
+Nothing in this review was deployed. The website repository and the backend repository were not modified. No live user was deleted. No purchase flow was turned on. Whether an AI assistant will exist is undecided. This update does not add one.
 
 ## Sources reviewed
 
@@ -156,20 +156,9 @@ These pages already avoid a guarantee of perfect security ("No electronic storag
 
 Terms already say calculations are estimates and that operation is not guaranteed. Keep that. The Android app had stronger marketing than the terms ("Never miss a due date", "exact closed-app alerts"). Those app strings were softened in this branch. The website home and feature pages were not edited here; search them for the same promise before the next site publish.
 
-Operator name: the product owner has chosen the name **C&R Digital LLC**. Formation, ownership, jurisdiction and a legal address were **not** verified in either repo or on the live pages. Do not add that name as a registered entity, and do not invent an address. The existing public contact `support@payaviator.app` is the one in the app and on the site. Leave it.
+Operator: the owner is forming a company alone. These records do not show a completed registration, a jurisdiction, a legal address, a co-owner, or an effective date. Do not add a registered-entity name or another person to the app or the public pages. The public contact remains `support@payaviator.app`.
 
-## Before any future "Ask PayAviator" release
-
-Not in this app source, this backend source, or the current privacy/terms pages. Do not describe AI processing, model providers, or prompts as something the app does today.
-
-Before that feature is turned on, the policy and the in-app consent need a new version that states, from the real design:
-
-- that the feature is optional and education-only, and that it is not financial, tax, credit or legal advice and can be wrong
-- which provider receives the prompt, what account or bank data can be included, and whether that data is used to train a model
-- how long the provider and PayAviator keep prompts and replies, and how deletion treats them
-- that no new liability waiver or arbitration clause should be slipped in without a lawyer
-
-Do not ship the feature against policy version 2026-10g. Bump `POLICY_VERSION` when the new page is actually published.
+AI is undecided. This source has no assistant. This update does not design one, and it does not set a launch date or policy text for one.
 
 ## In-app edits on this branch (behavior unchanged)
 
@@ -197,11 +186,38 @@ Purchases stay off. Delete still calls the same API. Consent is still stored onl
 2. Production values of `FREE_TIER_COOLDOWN_DAYS`, `PLAY_INTEGRITY_ENFORCE`, Stripe keys, and Google Play billing keys. Not read, because they are secrets.
 3. Whether legacy pre-Firebase Plaid items were removed with `scripts/cleanup-legacy-items.js`. The script is manual. The privacy page says those connections will be removed after the sign-in update. This review cannot see production rows.
 4. Railway log retention, Cloudflare, Zoho, and the privacy terms of Plaid, Google, and Stripe. Not reviewed.
-5. Whether C&R Digital LLC exists, who owns the app, and any address or governing law. Do not invent them.
+5. Company formation. The owner is forming a company alone. Do not state that a company is already registered, and do not name a co-owner. Jurisdiction, address, and governing law are not in these records.
 6. Whether an age rule should be enforced, and what an email deletion request must promise. The current "30 days" and "only what the law requires" lines are not backed by code.
 7. How long `live_balance_calls`, `billing_entitlements` and `stripe_customers` should be kept after account deletion. The code keeps them. A lawyer has to decide if that is acceptable. Do not "fix" the backend only so a policy sentence becomes true; change the product decision first.
 8. Whether the stored Plaid transaction payload can contain fields the policy says are absent. No stripper was found in `store.applySync`.
-9. Any future assistant. Out of scope until it exists.
+9. AI. Undecided. Not in this build. Do not treat it as a planned feature.
+
+## Review build 4.2.8 (not merged, not on Play)
+
+Version name `4.2.8`. Android versionCode floor `420800` in `ANDROID_VERSION_CODE.txt`. Display string `BUNDLED_VERSION` in `index.html` and `app/src/main/assets/index.html`. Package remains `com.payaviator.app`.
+
+`4.2.7` is already used by tag `v4.2.7-test` (`f148cb87`, versionCode `420700`) and a successful Actions run on `release-4.2.7` (run 134). That tag is not on `main`. This review build does not include its R8 or edge-to-edge changes.
+
+Play baseline named by the owner is 4.2.6. The 4.2.6 Actions run on `main` is run 132. The workflow uses `max(400000 + run number, ANDROID_VERSION_CODE.txt)`. Run 132 is below the 4.2.6 floor `420600`, so that build's versionCode is the floor `420600`. Floor `420800` is above both `420600` and `420700`.
+
+Policy alignment for the parent, not done in this app build:
+
+- App consent: `POLICY_VERSION='2026-10g'` in both `index.html` copies.
+- Live website checkout `PayAviator-Website` `1ca81c4` prints `2026-10g` in `privacy.html`.
+- Do not set the app to `2026-11a` until the public page `https://payaviator.app/privacy.html` prints version `2026-11a` with the draft notice removed, in the same release.
+- The 72-hour first-response aim belongs on the website support page. This app does not wait 72 hours and does not make support a gate for disconnect or deletion.
+
+## Counsel checklist
+
+AI: undecided. Not in this build. Not a committed feature.
+
+Company: the owner is forming it alone. Not recorded here as registered. No co-owner is named.
+
+## Features in this review build vs not included
+
+In the build: live policy links at 2026-10g, one-confirmation account deletion, optional Manage subscription, one-bank disconnect after server confirmation, same-phone Play restore that stops on HTTP 409, and visible Google sign-in and verification-email results.
+
+Not included: backend purchase-ownership transfer after account deletion, client-side Plus, a new purchase, and a public production release.
 
 ## Check that was run
 

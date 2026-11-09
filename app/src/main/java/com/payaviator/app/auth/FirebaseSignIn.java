@@ -154,12 +154,18 @@ public final class FirebaseSignIn implements AuthedRequest.TokenSource {
             return;
         }
         // 4.1.0: linking a bank needs a verified email, so send the link right after sign-up.
-        auth.createUserWithEmailAndPassword(e, password).addOnCompleteListener(activity, t -> {
-            if (t.isSuccessful()) {
-                FirebaseUser u = currentUser();
-                if (u != null) sendVerificationWithWebKey(u, null);
-                cb.done(true, "", "");
-            } else cb.done(false, codeFor(t.getException()), messageFor(t.getException()));
+        auth.createUserWithEmailAndPassword(e, password).addOnCompleteListener(mainExecutor, t -> {
+            if (!t.isSuccessful()) {
+                cb.done(false, codeFor(t.getException()), messageFor(t.getException()));
+                return;
+            }
+            FirebaseUser u = currentUser();
+            if (u == null) {
+                cb.done(true, "VERIFY_EMAIL_FAILED",
+                        "Your account was created and kept. PayAviator could not start the verification email. Use Send verification email.");
+                return;
+            }
+            sendVerificationWithWebKey(u, true, cb);
         });
     }
 
@@ -170,26 +176,50 @@ public final class FirebaseSignIn implements AuthedRequest.TokenSource {
         if (u == null) { cb.done(false, "SIGN_IN_REQUIRED", "Sign in first."); return; }
         boolean google = false;
         for (UserInfo info : u.getProviderData()) if (GoogleAuthProvider.PROVIDER_ID.equals(info.getProviderId())) google = true;
-        if (isVerified(u.isEmailVerified(), google ? "google" : "password")) { cb.done(true, "", ""); return; }
-        sendVerificationWithWebKey(u, cb);
+        if (isVerified(u.isEmailVerified(), google ? "google" : "password")) {
+            cb.done(true, "ALREADY_VERIFIED", "This email is already verified. No new message was requested.");
+            return;
+        }
+        sendVerificationWithWebKey(u, false, cb);
     }
 
     /**
      * 4.1.2: send the verification email with the web API key so the link's apiKey is not empty
      * (see VerifyEmailRequest). Falls back to the SDK's sendEmailVerification() if the REST call fails.
+     * HTTP 200 means Firebase accepted the send. It does not prove the message reached an inbox.
+     * signup=true keeps the new account even when the send is not confirmed.
      */
-    private void sendVerificationWithWebKey(final FirebaseUser u, final Callback cb) {
-        u.getIdToken(false).addOnCompleteListener(t -> {
+    private void sendVerificationWithWebKey(final FirebaseUser u, final boolean signup, final Callback cb) {
+        u.getIdToken(false).addOnCompleteListener(mainExecutor, t -> {
             final String token = t.isSuccessful() && t.getResult() != null ? t.getResult().getToken() : null;
+            final boolean tokenPresent = token != null && !token.isEmpty();
             new Thread(() -> {
                 int status = 0;
-                try { if (token != null) status = VerifyEmailRequest.send(token); } catch (Exception e) { status = 0; }
+                boolean transportFailed = false;
+                try {
+                    if (tokenPresent) status = VerifyEmailRequest.send(token);
+                } catch (Exception e) {
+                    status = 0;
+                    transportFailed = true;
+                }
                 final int st = status;
+                final boolean transport = transportFailed;
                 activity.runOnUiThread(() -> {
-                    if (st == 200) { if (cb != null) cb.done(true, "", ""); return; }
-                    Log.w("PayAviatorAuth", "sendOobCode status " + st + "; falling back to SDK");
-                    Task<Void> sdk = u.sendEmailVerification();
-                    if (cb != null) complete(sdk, cb);
+                    if (VerificationSend.restAccepted(tokenPresent, st, transport)) {
+                        if (cb != null) {
+                            VerificationSend.Outcome accepted = VerificationSend.accepted(signup);
+                            cb.done(accepted.ok, accepted.code, accepted.message);
+                        }
+                        return;
+                    }
+                    Log.w("PayAviatorAuth", "sendOobCode " + VerificationSend.reason(tokenPresent, transport, st) + "; falling back to SDK");
+                    u.sendEmailVerification().addOnCompleteListener(mainExecutor, sdk -> {
+                        if (cb == null) return;
+                        VerificationSend.Outcome outcome = sdk.isSuccessful()
+                                ? VerificationSend.fallbackAccepted(signup)
+                                : VerificationSend.failed(signup, VerificationSend.reason(tokenPresent, transport, st));
+                        cb.done(outcome.ok, outcome.code, outcome.message);
+                    });
                 });
             }, "PayAviatorVerifyEmail").start();
         });
@@ -246,9 +276,16 @@ public final class FirebaseSignIn implements AuthedRequest.TokenSource {
                                 && GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL.equals(c.getType())) {
                             try {
                                 String idToken = GoogleIdTokenCredential.createFrom(c.getData()).getIdToken();
-                                complete(auth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)), cb);
+                                auth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null))
+                                        .addOnCompleteListener(mainExecutor, task -> {
+                                            if (task.isSuccessful()) cb.done(true, "", "");
+                                            else {
+                                                String code = codeFor(task.getException());
+                                                cb.done(false, code, GoogleSignInFailure.firebaseGoogleMessage(code, messageFor(task.getException())));
+                                            }
+                                        });
                             } catch (Exception e) {
-                                Log.w(TAG, "Bad Google credential", e);
+                                Log.w(TAG, "Bad Google credential " + GoogleSignInFailure.safeDetail("", e.getMessage()));
                                 cb.done(false, "GOOGLE_FAILED", "Google sign-in failed. Please try again.");
                             }
                         } else {
@@ -258,20 +295,14 @@ public final class FirebaseSignIn implements AuthedRequest.TokenSource {
 
                     @Override
                     public void onError(GetCredentialException e) {
-                        Log.w(TAG, "Google sign-in error: " + e.getType() + " " + e.getMessage());
-                        if (e instanceof GetCredentialCancellationException) {
-                            cb.done(false, "CANCELLED", "");
-                        } else if (e instanceof NoCredentialException) {
+                        Log.w(TAG, "Google sign-in error " + GoogleSignInFailure.safeDetail(e.getType(), e.getMessage()));
+                        if (e instanceof NoCredentialException) {
                             cb.done(false, "NO_GOOGLE_ACCOUNT", "No Google account is available on this phone. Add one in Android Settings or use email and password.");
-                        } else {
-                            String msg = String.valueOf(e.getMessage());
-                            if (msg.contains("28444") || msg.contains("10:") || msg.toLowerCase().contains("developer")) {
-                                // DEVELOPER_ERROR: this build's signing SHA-1 is not registered in Firebase.
-                                cb.done(false, "GOOGLE_NOT_CONFIGURED", "Google sign-in isn't enabled for this build yet. Use email and password.");
-                            } else {
-                                cb.done(false, "GOOGLE_FAILED", "Google sign-in failed. Please try again.");
-                            }
+                            return;
                         }
+                        GoogleSignInFailure.Outcome outcome = GoogleSignInFailure.fromCredentialError(
+                                e instanceof GetCredentialCancellationException, e.getMessage());
+                        cb.done(false, outcome.code, outcome.message);
                     }
                 });
     }

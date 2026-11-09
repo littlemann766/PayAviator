@@ -24,4 +24,4 @@ You can export a backup when you choose to. Uninstalling the app does not delete
 - That reminders are exact or that a due date cannot be missed.
 - That security, balances or calculations are guaranteed.
 - An age gate, a registered company name, a legal address, or a compliance badge, unless those are separately verified.
-- That "Ask PayAviator" or any other assistant is part of the app. It is not in this source.
+- An AI assistant. Whether one will exist is undecided. This source has none.
