@@ -25068,7 +25068,7 @@ body.ppconsent-open #mb119BottomNav,body.ppconsent-open #pp925TipLauncher,body.p
 /* Shown before Plaid Link every time a bank is connected or reconnected.
    ask(context) resolves true on Continue, false on Not now / close / Back. */
 const CONSENT_KEY='payaviator_plaid_consent_v1';   // new key; existing keys are not touched
-const POLICY_VERSION='2026-11a';                     // Ship only with https://payaviator.app/privacy.html printing 2026-11a and no draft notice. Do not record 2026-11a-draft.
+const POLICY_VERSION='2026-11a';                     // Phone record only. Not sent to the server. 4.2.6 keeps 2026-10g. Do not record 2026-11a-draft.
 const $=id=>document.getElementById(id);
 let resolver=null;
 function appVersion(){try{if(window.AndroidBridge&&typeof AndroidBridge.getAppVersionName==='function')return String(AndroidBridge.getAppVersionName()||'')}catch(_){}return ''}

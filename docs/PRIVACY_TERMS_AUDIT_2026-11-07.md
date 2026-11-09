@@ -196,7 +196,7 @@ Purchases stay off. Delete still calls the same API. Consent is still stored onl
 
 Version name `4.2.9`. Android versionCode floor `420900`. `BUNDLED_VERSION` is `4.2.9` in both `index.html` copies. Package remains `com.payaviator.app`. The prior candidate `f02bc00` was 4.2.8, floor `420800`, Actions run 135 (`42719635497`).
 
-`POLICY_VERSION` in this candidate is `2026-11a`. Website branch `cursor/privacy-terms-review-7701` at `5a32230` still marks the pages as unpublished draft `2026-11a-draft` and not effective. Live `https://payaviator.app/privacy.html` was still `2026-10g`. Do not merge this app until that live page prints `2026-11a` and the draft notice is gone. Do not record `2026-11a-draft`.
+`POLICY_VERSION` in this candidate is `2026-11a`, stored on the phone when someone continues to Plaid. It is not sent to the API. The backend has no policy-version check, so 4.2.6 can keep recording `2026-10g` while this Alpha update is in review. Do not add a server rejection of `2026-10g`. Website publication of `2026-11a` can happen while 4.2.6 is still the active Alpha. The new text describes current behavior. It is not a new data use. Live `https://payaviator.app/privacy.html` was still `2026-10g`, and website branch `cursor/privacy-terms-review-7701` at `5a32230` still says unpublished draft `2026-11a-draft`. `2026-11a-draft` is not recorded in the app.
 
 The 4.2.8 AAB certificate SHA-1 is `9E:93:4C:92:BE:E0:38:90:9B:29:B5:4F:6E:E0:F1:E7:0B:70:B6:9C` and SHA-256 begins `96:76:9C:CD`. That is the upload key. It is not proof of the Play app-signing certificate. Install over a Play copy by uploading the AAB. Do not sideload the CI APK onto that install.
 
@@ -212,7 +212,7 @@ Version name `4.2.8`. Android versionCode floor `420800` in `ANDROID_VERSION_COD
 
 Play baseline named by the owner is 4.2.6. The 4.2.6 Actions run on `main` is run 132. The workflow uses `max(400000 + run number, ANDROID_VERSION_CODE.txt)`. Run 132 is below the 4.2.6 floor `420600`, so that build's versionCode is the floor `420600`. Floor `420800` is above both `420600` and `420700`.
 
-The 4.2.8 candidate recorded `POLICY_VERSION='2026-10g'`. The 4.2.9 candidate moves that to `2026-11a` and still must not merge while the live page prints `2026-10g`. The 72-hour first-response aim belongs on the website support page. This app does not wait 72 hours and does not make support a gate for disconnect or deletion.
+The 4.2.8 candidate recorded `POLICY_VERSION='2026-10g'`. The 4.2.9 candidate records `2026-11a` on the phone only. Play's highest versionCode on November 9 was `420600` (Alpha 4.2.6, release 12). Production was not eligible. This update targets that Alpha track. The 72-hour first-response aim belongs on the website support page. This app does not wait 72 hours and does not make support a gate for disconnect or deletion.
 
 ## Counsel checklist
 

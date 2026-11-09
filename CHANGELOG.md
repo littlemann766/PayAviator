@@ -1,6 +1,6 @@
 ## 4.2.9 — Release candidate coordinated to policy 2026-11a
-- Bank-consent records `2026-11a`. Publish this app only in the same release that prints version 2026-11a on https://payaviator.app/privacy.html with the draft notice removed. The live page was still 2026-10g when this candidate was prepared. `2026-11a-draft` is not recorded.
-- Version name 4.2.9 and Android versionCode floor 420900. This is above the 4.2.8 build (floor 420800, Actions run 135). The signed file to install over a Play copy is the Play-processed AAB, not a sideloaded CI APK.
+- Bank-consent records `2026-11a` on this phone only. It is not sent to the server. Installed 4.2.6 keeps recording `2026-10g`. `2026-11a-draft` is not recorded. The public page can move to `2026-11a` while 4.2.6 remains the Alpha build in review.
+- Version name 4.2.9 and Android versionCode floor 420900. Play's highest versionCode on November 9 was 420600 (Alpha 4.2.6, release 12). Floor 420800 was not in Play. The signed file to install over a Play copy is the Play-processed AAB, not a sideloaded CI APK. This update is for that Alpha track, not production.
 - In-app purchases stay off. Restore only sends a purchase Google Play already returns to `POST /api/billing/google-play/verify`. A 409 conflict grants nothing. No new purchase is started.
 - Account deletion, one-bank removal, and Manage subscription behave as in 4.2.8. Deletion does not close a bank account and does not cancel Google Play or Stripe. The provider sets the end date.
 
