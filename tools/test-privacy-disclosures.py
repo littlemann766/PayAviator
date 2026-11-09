@@ -23,8 +23,8 @@ def check(name, cond):
     ok = ok and cond
 
 check('root index.html matches packaged asset copy', INDEX == ASSETS)
-check('policy version recorded as live 2026-10g', "const POLICY_VERSION='2026-10g';" in INDEX)
-check('unpublished 2026-11a-draft is not the recorded consent version', "POLICY_VERSION='2026-11a" not in INDEX)
+check('policy version recorded as 2026-11a', "const POLICY_VERSION='2026-11a';" in INDEX)
+check('draft 2026-11a-draft is not the recorded consent version', "POLICY_VERSION='2026-11a-draft'" not in INDEX)
 check('privacy URL present', 'https://payaviator.app/privacy.html' in INDEX)
 check('terms URL present', 'https://payaviator.app/terms.html' in INDEX)
 check('Plaid end-user policy linked from consent', 'https://plaid.com/legal/#end-user-privacy-policy' in INDEX)
@@ -81,7 +81,8 @@ else:
     try:
         status, body = fetch('https://payaviator.app/privacy.html')
         check('live privacy.html returns 200', status == 200)
-        check('live privacy.html is policy 2026-10g', '2026-10g' in body)
+        published = ('2026-11a' in body) and ('2026-11a-draft' not in body) and ('Unpublished draft' not in body)
+        check('RELEASE GATE live privacy.html prints final 2026-11a', published)
         check('live privacy.html names support@payaviator.app', 'support@payaviator.app' in body)
         status, body = fetch('https://payaviator.app/terms.html')
         check('live terms.html returns 200', status == 200)

@@ -77,7 +77,7 @@ with sync_playwright() as p:
     pg.reload()
     pg.wait_for_timeout(2500)
     check('no page errors on load', not errs, errs)
-    check('consent version is live 2026-10g', pg.evaluate("window.PayAviatorPlaidConsent?.policyVersion")=='2026-10g')
+    check('consent version is 2026-11a', pg.evaluate("window.PayAviatorPlaidConsent?.policyVersion")=='2026-11a')
     check('draft version is not recorded', pg.evaluate("window.PayAviatorPlaidConsent?.policyVersion")!='2026-11a-draft')
 
     seed(pg)

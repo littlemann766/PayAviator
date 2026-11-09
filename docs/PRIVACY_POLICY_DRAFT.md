@@ -8,4 +8,4 @@ The public policy is the page at https://payaviator.app/privacy.html. The public
 
 An evidence note for the website writer, including claims on those pages that do not match the code reviewed here, is in [PRIVACY_TERMS_AUDIT_2026-11-07.md](PRIVACY_TERMS_AUDIT_2026-11-07.md). This audit is not a compliance certification and it does not deploy anything.
 
-When https://payaviator.app/privacy.html changes its printed policy version, update `POLICY_VERSION` in `index.html` in the same app release. As of this note the app records `2026-10g` because that is the version printed on the live page that was fetched during the audit.
+When https://payaviator.app/privacy.html changes its printed policy version, update `POLICY_VERSION` in `index.html` in the same app release. The 4.2.9 candidate records `2026-11a` and must not merge until the live page prints `2026-11a` with the draft notice removed. The live page was still `2026-10g` when that candidate was prepared.

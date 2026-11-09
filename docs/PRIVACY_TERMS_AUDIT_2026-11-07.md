@@ -192,7 +192,19 @@ Purchases stay off. Delete still calls the same API. Consent is still stored onl
 8. Whether the stored Plaid transaction payload can contain fields the policy says are absent. No stripper was found in `store.applySync`.
 9. AI. Undecided. Not in this build. Do not treat it as a planned feature.
 
-## Review build 4.2.8 (not merged, not on Play)
+## Release candidate 4.2.9 (not merged)
+
+Version name `4.2.9`. Android versionCode floor `420900`. `BUNDLED_VERSION` is `4.2.9` in both `index.html` copies. Package remains `com.payaviator.app`. The prior candidate `f02bc00` was 4.2.8, floor `420800`, Actions run 135 (`42719635497`).
+
+`POLICY_VERSION` in this candidate is `2026-11a`. Website branch `cursor/privacy-terms-review-7701` at `5a32230` still marks the pages as unpublished draft `2026-11a-draft` and not effective. Live `https://payaviator.app/privacy.html` was still `2026-10g`. Do not merge this app until that live page prints `2026-11a` and the draft notice is gone. Do not record `2026-11a-draft`.
+
+The 4.2.8 AAB certificate SHA-1 is `9E:93:4C:92:BE:E0:38:90:9B:29:B5:4F:6E:E0:F1:E7:0B:70:B6:9C` and SHA-256 begins `96:76:9C:CD`. That is the upload key. It is not proof of the Play app-signing certificate. Install over a Play copy by uploading the AAB. Do not sideload the CI APK onto that install.
+
+In-app purchase launch is off (`BILLING_LIVE=false`, no `launchBillingFlow`). The Billing library is present only to query an existing purchase and send it to verify. A 409 grants nothing. Backend purchase-ownership transfer is not in this app.
+
+The owner is forming a solo Ohio company. It is not recorded as registered. No co-owner is named. AI is undecided and is not in this build.
+
+## Review build 4.2.8 (superseded by 4.2.9, not merged)
 
 Version name `4.2.8`. Android versionCode floor `420800` in `ANDROID_VERSION_CODE.txt`. Display string `BUNDLED_VERSION` in `index.html` and `app/src/main/assets/index.html`. Package remains `com.payaviator.app`.
 
@@ -200,12 +212,7 @@ Version name `4.2.8`. Android versionCode floor `420800` in `ANDROID_VERSION_COD
 
 Play baseline named by the owner is 4.2.6. The 4.2.6 Actions run on `main` is run 132. The workflow uses `max(400000 + run number, ANDROID_VERSION_CODE.txt)`. Run 132 is below the 4.2.6 floor `420600`, so that build's versionCode is the floor `420600`. Floor `420800` is above both `420600` and `420700`.
 
-Policy alignment for the parent, not done in this app build:
-
-- App consent: `POLICY_VERSION='2026-10g'` in both `index.html` copies.
-- Live website checkout `PayAviator-Website` `1ca81c4` prints `2026-10g` in `privacy.html`.
-- Do not set the app to `2026-11a` until the public page `https://payaviator.app/privacy.html` prints version `2026-11a` with the draft notice removed, in the same release.
-- The 72-hour first-response aim belongs on the website support page. This app does not wait 72 hours and does not make support a gate for disconnect or deletion.
+The 4.2.8 candidate recorded `POLICY_VERSION='2026-10g'`. The 4.2.9 candidate moves that to `2026-11a` and still must not merge while the live page prints `2026-10g`. The 72-hour first-response aim belongs on the website support page. This app does not wait 72 hours and does not make support a gate for disconnect or deletion.
 
 ## Counsel checklist
 
@@ -215,10 +222,10 @@ Company: the owner is forming it alone. Not recorded here as registered. No co-o
 
 ## Features in this review build vs not included
 
-In the build: live policy links at 2026-10g, one-confirmation account deletion, optional Manage subscription, one-bank disconnect after server confirmation, same-phone Play restore that stops on HTTP 409, and visible Google sign-in and verification-email results.
+In the 4.2.9 candidate: consent version `2026-11a` (not yet the live page), one-confirmation account deletion, optional Manage subscription, one-bank disconnect after server confirmation, same-phone Play restore that stops on HTTP 409, and visible Google sign-in and verification-email results. In-app buying stays off.
 
 Not included: backend purchase-ownership transfer after account deletion, client-side Plus, a new purchase, and a public production release.
 
 ## Check that was run
 
-`python3 tools/test-privacy-disclosures.py` checks the in-app strings, the withdrawn draft, the prices, `BILLING_LIVE=false`, the absence of an analytics SDK and of Play Billing, and that the live privacy page still says `2026-10g` and the live terms page still lists `$3.99` and `$29.99`. A passing test means those strings match. It does not mean the product complies with a privacy statute.
+`python3 tools/test-privacy-disclosures.py` checks the in-app strings, the withdrawn draft, the prices, `BILLING_LIVE=false`, no purchase launch, and whether the live privacy page prints final `2026-11a`. A file pass does not mean the product complies with a privacy statute. A live-page failure means do not merge yet.

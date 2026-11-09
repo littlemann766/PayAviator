@@ -75,7 +75,7 @@ with sync_playwright() as p:
     pg.reload()
     pg.wait_for_timeout(2500)
     check('no page errors', not errs, errs)
-    check('policy version unchanged', pg.evaluate('window.PayAviatorPlaidConsent.policyVersion')=='2026-10g')
+    check('policy version is 2026-11a', pg.evaluate('window.PayAviatorPlaidConsent.policyVersion')=='2026-11a')
 
     seed(pg, ACCTS)
     open_delete(pg)

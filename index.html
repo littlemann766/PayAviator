@@ -140,7 +140,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='4.2.8';
+  const BUNDLED_VERSION='4.2.9';
   window.PAYAVIATOR_BUNDLED_VERSION=BUNDLED_VERSION;
   /* 4.2.5: inside the Android app the screens always come from the APK; drop any service worker or cache a previous build may have left behind. */
   try{if(window.AndroidBridge&&navigator.serviceWorker&&navigator.serviceWorker.getRegistrations){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})}).catch(function(){});if(window.caches&&caches.keys)caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})}).catch(function(){})}}catch(_){}
@@ -25068,7 +25068,7 @@ body.ppconsent-open #mb119BottomNav,body.ppconsent-open #pp925TipLauncher,body.p
 /* Shown before Plaid Link every time a bank is connected or reconnected.
    ask(context) resolves true on Continue, false on Not now / close / Back. */
 const CONSENT_KEY='payaviator_plaid_consent_v1';   // new key; existing keys are not touched
-const POLICY_VERSION='2026-10g';                     // Live https://payaviator.app/privacy.html only. Do not set 2026-11a-draft. Set 2026-11a only in the same approved release that publishes website version 2026-11a.
+const POLICY_VERSION='2026-11a';                     // Ship only with https://payaviator.app/privacy.html printing 2026-11a and no draft notice. Do not record 2026-11a-draft.
 const $=id=>document.getElementById(id);
 let resolver=null;
 function appVersion(){try{if(window.AndroidBridge&&typeof AndroidBridge.getAppVersionName==='function')return String(AndroidBridge.getAppVersionName()||'')}catch(_){}return ''}

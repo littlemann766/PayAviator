@@ -1,3 +1,9 @@
+## 4.2.9 — Release candidate coordinated to policy 2026-11a
+- Bank-consent records `2026-11a`. Publish this app only in the same release that prints version 2026-11a on https://payaviator.app/privacy.html with the draft notice removed. The live page was still 2026-10g when this candidate was prepared. `2026-11a-draft` is not recorded.
+- Version name 4.2.9 and Android versionCode floor 420900. This is above the 4.2.8 build (floor 420800, Actions run 135). The signed file to install over a Play copy is the Play-processed AAB, not a sideloaded CI APK.
+- In-app purchases stay off. Restore only sends a purchase Google Play already returns to `POST /api/billing/google-play/verify`. A 409 conflict grants nothing. No new purchase is started.
+- Account deletion, one-bank removal, and Manage subscription behave as in 4.2.8. Deletion does not close a bank account and does not cancel Google Play or Stripe. The provider sets the end date.
+
 ## 4.2.8 — Review update: account controls and sign-in feedback
 - Bank-consent records stay on live policy version 2026-10g. Privacy Policy and Terms of Service both open the public pages. The unpublished website draft 2026-11a-draft is not recorded. A later approved publication sets the website and `POLICY_VERSION` to 2026-11a in the same release.
 - Remove this bank unlinks one Plaid connection, including every account on it, only after the server returns `{disconnected:true}`. Other banks and the PayAviator sign-in stay. Bills, income, and spending you typed stay. This does not close the account at the bank and does not cancel a subscription. A failed removal leaves that bank connected.
