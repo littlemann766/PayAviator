@@ -1,3 +1,7 @@
+## 4.2.10 — Play Billing Library 8 for the Alpha update
+- The query-only Play Billing library is 8.3.0. Play rejected 4.2.9 (versionCode 420900) because it packaged Billing Library 7.1.1. This build does not start a purchase. `BILLING_LIVE` stays false. Restore still sends only an already purchased subscription to the server, and HTTP 409 grants nothing.
+- Version name 4.2.10 and Android versionCode floor 421000. VersionCode 420900 was uploaded to the Alpha draft and is not reused.
+
 ## 4.2.9 — Release candidate coordinated to policy 2026-11a
 - Bank-consent records `2026-11a` on this phone only. It is not sent to the server. Installed 4.2.6 keeps recording `2026-10g`. `2026-11a-draft` is not recorded. The public page can move to `2026-11a` while 4.2.6 remains the Alpha build in review.
 - Version name 4.2.9 and Android versionCode floor 420900. Play's highest versionCode on November 9 was 420600 (Alpha 4.2.6, release 12). Floor 420800 was not in Play. The signed file to install over a Play copy is the Play-processed AAB, not a sideloaded CI APK. This update is for that Alpha track, not production.

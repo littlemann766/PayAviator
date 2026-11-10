@@ -18,7 +18,7 @@ if (parts.size() != 3 || !parts.every { it ==~ /\d+/ }) {
 def major = parts[0] as int
 def minor = parts[1] as int
 def patch = parts[2] as int
-if (minor > 99 || patch > 9) throw new GradleException('Minor must be 0-99 and patch must be 0-9.')
+if (minor > 99 || patch > 99) throw new GradleException('Minor and patch must be 0-99.')
 
 // Android update codes must never decrease, even when the public version is reset.
 // A workflow run gets 400000 + GITHUB_RUN_NUMBER; locally the safe floor is 400000.
@@ -114,7 +114,38 @@ android {
     }
 }
 
-tasks.named('preBuild').configure { dependsOn tasks.named('syncPayAviatorWebAssets') }
+tasks.register('verifyPlayBillingLibrary') {
+    doLast {
+        def checked = 0
+        ['debugRuntimeClasspath', 'releaseRuntimeClasspath'].each { configName ->
+            def configuration = configurations.findByName(configName)
+            if (configuration == null) return
+            def artifacts = configuration.resolvedConfiguration.resolvedArtifacts.findAll {
+                it.moduleVersion.id.group == 'com.android.billingclient' && it.moduleVersion.id.name == 'billing'
+            }
+            if (artifacts.isEmpty()) {
+                throw new GradleException("Play Billing library was not resolved on ${configName}.")
+            }
+            artifacts.each { artifact ->
+                def version = artifact.moduleVersion.id.version
+                def billingMajor = version.tokenize('.')[0] as int
+                if (billingMajor < 8) {
+                    throw new GradleException("Resolved Play Billing library ${version} on ${configName} is below 8.0.0.")
+                }
+                logger.lifecycle("Resolved Play Billing library ${configName} com.android.billingclient:billing:${version}")
+                checked++
+            }
+        }
+        if (checked == 0) {
+            throw new GradleException('No Android runtime classpath was available to check Play Billing.')
+        }
+    }
+}
+
+tasks.named('preBuild').configure {
+    dependsOn tasks.named('syncPayAviatorWebAssets')
+    dependsOn tasks.named('verifyPlayBillingLibrary')
+}
 
 dependencies {
     // Firebase Auth (Google + Email/Password). The google-services plugin reads app/google-services.json
@@ -133,7 +164,8 @@ dependencies {
     // 4.1.0: Play Integrity standard request for the free-tier device check (backend PR #8)
     implementation 'com.google.android.play:integrity:1.4.0'
     // Query existing Play subscriptions only. Purchases are not started from this app. BILLING_LIVE stays false.
-    implementation 'com.android.billingclient:billing:7.1.1'
+    // Play rejects a new release that packages Billing Library older than 8.0.0.
+    implementation 'com.android.billingclient:billing:8.3.0'
 
     testImplementation 'junit:junit:4.13.2'
 }
