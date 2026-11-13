@@ -1,3 +1,28 @@
+## 4.2.11 — Recurring bill unpaid status
+- Marking a recurring bill unpaid no longer leaves the green Paid pill. The pill uses that occurrence's bill id and due date. Undo restores the paid amount on the open screen before reload.
+- Version name 4.2.11 and Android versionCode floor 421100. Billing Library stays 8.3.0. `BILLING_LIVE` stays false. Policy stays 2026-11a.
+
+## 4.2.10 — Play Billing Library 8 for the Alpha update
+- The query-only Play Billing library is 8.3.0. Play rejected 4.2.9 (versionCode 420900) because it packaged Billing Library 7.1.1. This build does not start a purchase. `BILLING_LIVE` stays false. Restore still sends only an already purchased subscription to the server, and HTTP 409 grants nothing.
+- Version name 4.2.10 and Android versionCode floor 421000. VersionCode 420900 was uploaded to the Alpha draft and is not reused.
+
+## 4.2.9 — Release candidate coordinated to policy 2026-11a
+- Bank-consent records `2026-11a` on this phone only. It is not sent to the server. Installed 4.2.6 keeps recording `2026-10g`. `2026-11a-draft` is not recorded. The public page can move to `2026-11a` while 4.2.6 remains the Alpha build in review.
+- Version name 4.2.9 and Android versionCode floor 420900. Play's highest versionCode on November 9 was 420600 (Alpha 4.2.6, release 12). Floor 420800 was not in Play. The signed file to install over a Play copy is the Play-processed AAB, not a sideloaded CI APK. This update is for that Alpha track, not production.
+- In-app purchases stay off. Restore only sends a purchase Google Play already returns to `POST /api/billing/google-play/verify`. A 409 conflict grants nothing. No new purchase is started.
+- Account deletion, one-bank removal, and Manage subscription behave as in 4.2.8. Deletion does not close a bank account and does not cancel Google Play or Stripe. The provider sets the end date.
+
+## 4.2.8 — Review update: account controls and sign-in feedback
+- Bank-consent records stay on live policy version 2026-10g. Privacy Policy and Terms of Service both open the public pages. The unpublished website draft 2026-11a-draft is not recorded. A later approved publication sets the website and `POLICY_VERSION` to 2026-11a in the same release.
+- Remove this bank unlinks one Plaid connection, including every account on it, only after the server returns `{disconnected:true}`. Other banks and the PayAviator sign-in stay. Bills, income, and spending you typed stay. This does not close the account at the bank and does not cancel a subscription. A failed removal leaves that bank connected.
+- Manage subscription sits in Settings and next to Delete account. Google Play opens the Play subscriptions page for `com.payaviator.app` and uses the product id from account status. Stripe asks `POST /api/billing/stripe/portal` for this sign-in and opens only a `billing.stripe.com` address. The provider sets the end date. Purchases stay off.
+- Restore asks Google Play for subscriptions already purchased on this phone and sends each purchased token to `POST /api/billing/google-play/verify`. A 409 conflict is not granted. No new purchase is started. Recovering a deleted account is not included.
+- Delete account is one confirmation. It does not ask for a reason, a typed phrase, or a support wait. A stale sign-in must sign in again before any bank is touched, and that step does not sign the person out. If bank removal does not finish, the sign-in stays and phone data is not erased. Deletion does not cancel Google Play or Stripe billing and does not close accounts at the bank.
+- Email sign-up waits for the verification request. The screen says whether Firebase accepted it, whether a second attempt was made, or whether it could not be confirmed. That is not proof the message reached an inbox. The account stays, and Send verification email remains available.
+- Continue with Google shows a message when the account picker closes without signing in. An existing email-and-password account is not linked and is not deleted. Shown errors and the matching log lines do not include an email address or token.
+- Safe to Spend is described as an estimate. Reminders are not a guarantee that a bill will be paid on time. Prices shown remain $3.99 a month and $29.99 a year. `BILLING_LIVE` stays false.
+- Version name 4.2.8 and Android versionCode floor 420800. Version 4.2.7 remains the separate minify and edge-to-edge tag and is not part of this update. See docs/PRIVACY_TERMS_AUDIT_2026-11-07.md. This note is not a compliance certification.
+
 ## 4.2.6 — Settings dialogs always complete
 - Fixed Settings > App Colors missing its color swatches and Hue / Saturation / Lightness color wheels on some phones. They are now added when the dialog opens, not by a delayed page scan that a busy screen could keep postponing.
 - Fixed the real cause of the missing Hue / Saturation / Lightness wheels: an old relabel step overwrote the wheel labels (and removed the sliders). It now only renames each row heading.

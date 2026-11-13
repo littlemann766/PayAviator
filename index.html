@@ -140,7 +140,7 @@
 <script id="payaviator-version-authority">
 (function(){
   'use strict';
-  const BUNDLED_VERSION='4.2.6';
+  const BUNDLED_VERSION='4.2.11';
   window.PAYAVIATOR_BUNDLED_VERSION=BUNDLED_VERSION;
   /* 4.2.5: inside the Android app the screens always come from the APK; drop any service worker or cache a previous build may have left behind. */
   try{if(window.AndroidBridge&&navigator.serviceWorker&&navigator.serviceWorker.getRegistrations){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})}).catch(function(){});if(window.caches&&caches.keys)caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})}).catch(function(){})}}catch(_){}
@@ -2766,7 +2766,11 @@ function setBillPaidAmount(b,iso,amount){
 }
 function setBillPaidOnDate(b,iso,paid){
   const key=billOccurrenceKey(b,iso);
-  billOverrides[key]={paid:!!paid};
+  const prev=billOverrides[key];
+  // Merge so a deleted or moved marker on this occurrence is not erased.
+  const next=(prev&&typeof prev==='object'&&!Array.isArray(prev))?{...prev}:{};
+  next.paid=!!paid;
+  billOverrides[key]=next;
   persistBillOverrides();
 }
 
@@ -4758,6 +4762,7 @@ function render(){
     }
     const status=billStatus(b,iso);
     const el=document.createElement('div');el.className='bill '+(status==='partial'?'partial':'');
+    el.dataset.billId=String(b.id);el.dataset.billIso=iso;
     el.innerHTML=`<div class="dot" style="background:${b.color||defaultColor(b.name)}"></div><div class="billmain"><div class="name">${esc(b.name)}</div><div class="meta">${b.recurring?'Recurring • ':''}${status==='partial'?'Partial payment':'Unpaid'}</div></div><div class="amount">${money(b.amount)}</div>`;
     let pressTimer=null,longPressed=false;
     const start=(e)=>{if(e.target.closest('button'))return;longPressed=false;pressTimer=setTimeout(()=>{longPressed=true;showBill(b.id,iso)},650)};
@@ -4977,7 +4982,7 @@ function testNotification(){
     setSettingsStatus('Sound preview played. Browser notifications use the phone/browser notification sound.');
     return;
   }
-  setSettingsStatus('Sound preview played. Scheduled alerts can sound while this page is open; closed-app alerts require the installed Android app.');
+  setSettingsStatus('Sound preview played. Scheduled alerts can sound while this page is open. Closed-app reminders need the installed Android app, and the phone may delay or skip them.');
 }
 
 function openSettings(){
@@ -5357,7 +5362,7 @@ document.addEventListener('DOMContentLoaded',addDialogCloseBubbles);
 
     <div class="settings-section">
       <h3>Notifications</h3>
-      <div class="settings-help">Control bill and reminder alerts in the Android app.</div>
+      <div class="settings-help">Bill and reminder alerts are scheduled on this phone. They can be delayed or skipped (notification permission, battery limits, Doze, or a restart). They do not pay a bill and are not a promise that a due date will be caught.</div>
 
       <div class="settings-row">
         <label for="notificationsEnabled">Bill notifications</label>
@@ -5399,7 +5404,7 @@ document.addEventListener('DOMContentLoaded',addDialogCloseBubbles);
 
       <div class="settings-help">
         Bill alerts can be scheduled from the due date itself up to 31 days early.
-        Reminder alerts use the date and time saved on each reminder. Sound choices are previewed in the app and will fire while this page is open. When running as a normal browser/download page, Android controls notification sound and cannot wake this page after it is closed; exact closed-app alerts require the installed Android app notification bridge.
+        Reminder alerts use the date and time saved on each reminder. Sound choices are previewed in the app and can play while this page is open. A browser page cannot raise an alert after it is closed. The installed Android app schedules local reminders, but the phone may delay or skip them. A reminder is not a guarantee that a bill will be paid on time.
       </div>
 
       <button type="button" class="ghost settings-test" id="testNotificationBtn">Test Notification</button>
@@ -5602,10 +5607,12 @@ function enhanceMainBillList(){
   let current=''; occurrences.forEach(({b,iso})=>{
     if(current!==iso){current=iso;const h=document.createElement('div');h.className='main-bill-date';h.textContent=fmtLong(iso);list.appendChild(h)}
     const category=(b.category||'Uncategorized').trim()||'Uncategorized',status=billStatus(b,iso),el=document.createElement('div');el.className='bill '+(status==='partial'?'partial':'');
+    el.dataset.billId=String(b.id);el.dataset.billIso=iso;
     el.innerHTML=`<div class="dot" style="background:${b.color||defaultColor(b.name)}"></div><div class="billmain"><div class="name">${esc(b.name)}</div><div class="meta">${b.recurring?'Recurring • ':''}${status==='partial'?'Partial payment':'Unpaid'}${b.autopay?' • Autopay':''}</div><span class="bill-category-pill">${esc(category)}</span>${dueFlag(iso)}</div><div class="amount">${money(b.amount)}</div>`;
     let timer=null,longPressed=false; const start=e=>{if(e.target.closest('button'))return;longPressed=false;timer=setTimeout(()=>{longPressed=true;showBill(b.id,iso)},650)},cancel=()=>{if(timer){clearTimeout(timer);timer=null}};
     el.addEventListener('pointerdown',start);el.addEventListener('pointerup',e=>{cancel();if(!longPressed&&!e.target.closest('button'))showBill(b.id,iso)});el.addEventListener('pointercancel',cancel);el.addEventListener('pointerleave',cancel);list.appendChild(el);
   });
+  try{window.decorateMainBillStatuses?.()}catch(e){}
 }
 
 const v47BaseRender=render;
@@ -5872,9 +5879,34 @@ function addHealthStrip(){
  });
 }
 function updateHealthStrip(){addHealthStrip();const y=calDate.getFullYear(),m=calDate.getMonth(),income=monthlyIncomeFor(y,m),billsAmt=monthlyBillsFor(y,m),spend=otherSpendingTotal(y,m),save=savingsContributionsFor(y,m),left=income-billsAmt-spend-save;[['healthIncome',income],['healthBills',billsAmt],['healthSpending',spend],['healthSavings',save],['healthLeft',left]].forEach(([id,v])=>{const e=$(id);if(e)e.textContent=money(v)})}
-function decorateMainStatuses(){
- document.querySelectorAll('#list .bill').forEach(el=>{if(el.querySelector('.bill-status-pill'))return;const name=el.querySelector('.name')?.textContent;const dateHead=(()=>{let p=el.previousElementSibling;while(p&&!p.classList.contains('main-bill-date'))p=p.previousElementSibling;return p?.textContent||''})();if(!name||!dateHead)return;const b=bills.find(x=>x.name===name);if(!b)return;const d=new Date(dateHead);if(Number.isNaN(d.getTime()))return;const iso=toISO(d),[txt,cls]=statusInfo(b,iso);const pill=document.createElement('span');pill.className='bill-status-pill '+cls;pill.textContent=txt;el.querySelector('.billmain')?.appendChild(pill)})
+function billCardForStatus(el){
+  const id=el.dataset.billId, iso=el.dataset.billIso;
+  if(id&&iso){
+    const b=bills.find(x=>String(x.id)===String(id));
+    if(b) return {b,iso};
+  }
+  // Legacy cards have no id. A name match is safe only when that name is unique;
+  // the first same-named bill can still be paid after this occurrence was unmarked.
+  const name=el.querySelector('.name')?.textContent;
+  const dateHead=(()=>{let p=el.previousElementSibling;while(p&&!p.classList.contains('main-bill-date'))p=p.previousElementSibling;return p?.textContent||''})();
+  if(!name||!dateHead) return null;
+  const matches=bills.filter(x=>x.name===name);
+  if(matches.length!==1) return null;
+  const d=new Date(dateHead);
+  if(Number.isNaN(d.getTime())) return null;
+  return {b:matches[0], iso:toISO(d)};
 }
+function decorateMainStatuses(){
+ document.querySelectorAll('#list .bill').forEach(el=>{
+  const hit=billCardForStatus(el); if(!hit) return;
+  const [txt,cls]=statusInfo(hit.b,hit.iso);
+  let pill=el.querySelector('.bill-status-pill');
+  if(!pill){pill=document.createElement('span');el.querySelector('.billmain')?.appendChild(pill)}
+  pill.className='bill-status-pill'+(cls?(' '+cls):'');
+  pill.textContent=txt;
+ })
+}
+window.decorateMainBillStatuses=decorateMainStatuses;
 function setupPaymentFields(){
  const info=$('billPaymentInfo');if(!info||$('billPaymentDate'))return;const wrap=document.createElement('div');wrap.className='payment-extra-grid';wrap.innerHTML='<div><label>Payment date</label><input id="billPaymentDate" type="date"></div><div><label>Payment method</label><select id="billPaymentMethod"><option>Bank Account</option><option>Debit Card</option><option>Credit Card</option><option>Cash</option><option>Check</option><option>Other</option></select></div><div class="full"><label>Confirmation / reference (optional)</label><input id="billPaymentReference" type="text" placeholder="Confirmation number"></div>';const amt=$('billPaymentAmount');amt.parentNode.insertBefore(wrap,amt.nextSibling)
 }
@@ -6028,6 +6060,15 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  function applySnapshot(snap,reload=true){
    if(!snap?.storage)return false;
    clearPayAviatorStorage(); Object.entries(snap.storage).forEach(([k,v])=>localStorage.setItem(k,v));
+   // Paint the restored ledgers immediately. A reload alone leaves the Paid
+   // pill on screen until the next launch, and a slow IndexedDB delete can
+   // let the pre-undo copy win that launch.
+   try{
+     if(snap.storage[KEY]) bills=JSON.parse(snap.storage[KEY]);
+     if(snap.storage['payAviator_bill_overrides_v1']) billOverrides=JSON.parse(snap.storage['payAviator_bill_overrides_v1']);
+     if(snap.storage['payAviator_bill_paid_amounts_v1']) billPaidAmounts=JSON.parse(snap.storage['payAviator_bill_paid_amounts_v1']);
+     render(); renderCalendar();
+   }catch(e){console.warn('Undo restored storage but could not refresh the open screen.',e)}
    try{if(window.indexedDB)indexedDB.deleteDatabase(DB_NAME)}catch(e){}
    if(reload)setTimeout(()=>location.reload(),120); return true;
  }
@@ -12893,6 +12934,7 @@ body.mb-high-contrast textarea{border-width:2px!important}
       </div>
       <div class="settings-section">
         <h3>Notifications</h3>
+        <div class="settings-help">These alerts are scheduled on this phone. They can be delayed or skipped, and they do not pay a bill.</div>
         <div class="settings-row"><label>Bill notifications</label><input id="m312Notifications" class="settings-switch" type="checkbox"></div>
         <div class="settings-row"><label>Reminder notifications</label><input id="m312ReminderNotifications" class="settings-switch" type="checkbox"></div>
         <div class="settings-row"><label>Notification time</label><input id="m312NotificationTime" type="time"></div>
@@ -17362,7 +17404,7 @@ body.pp-help-off .pp-help-btn{display:none!important}
   const enabled=(key,def=true)=>{const v=localStorage.getItem(key);return v===null?def:v!=='false'};
   const setEnabled=(key,v)=>localStorage.setItem(key,v?'true':'false');
 
-  const help={"home": {"title": "Home", "intro": "Your money at a glance. The main PayAviator Gauge shows your Safe to Spend amount, based on your checking accounts and cash on hand. The Cash and Credit gauges below it show cash and credit separately.", "sections": [["Reading the gauges", ["The main PayAviator Gauge shows your Safe to Spend amount, built from your checking balances and cash on hand.", "The Cash gauge shows your cash on its own. The Credit gauge shows your credit card balances on their own.", "Available Now counts your checking accounts and cash on hand. Savings, money market, CDs, credit cards, loans and investments are not counted unless you include a savings account yourself. Use Include / Exclude in Connected Accounts to change which accounts count.","Safe to Spend is Available Now minus your Cushion and the bills you still owe. It never shows less than $0.00.", "If the gauge shows $0, check your Cushion and upcoming bills first. They may be using up all of Available Now."]], ["Cushion & Savings", ["Your Cushion starts at $0. Tap the Cushion tile under the gauge to set an amount you want kept off-limits.", "Savings is money you set aside on purpose. It is kept separate from your Cushion and from Safe to Spend."]], ["Quick actions", ["Tap Add Spending as soon as money leaves so the gauge stays current.", "Open Advanced money details or tap the Cash and Credit cards for a fuller breakdown.", "Tap ‹ and › on the Smart Money Tip card to go back or skip ahead."]]]}, "calendar": {"title": "Calendar", "intro": "Your month of bills, paychecks, reminders and work hours, laid out by date.", "sections": [["Using the calendar", ["Tap a day to see its bills, paychecks, reminders and hours.", "Swipe or use ‹ and › to change months, and tap Today to jump back.", "Use Filters to choose what shows on the calendar."]], ["Adding things", ["Add Hours, Add Bill and Add Reminder are at the top of Calendar.", "Recurring bills and paychecks repeat on their own scheduled dates.", "Use a reminder for a deadline that is not a bill, so it does not change your totals."]], ["Bill colors", ["Each bill’s color shows on its calendar dot, so you can spot it at a glance.", "Open Bill colors under the calendar and tap a color to change it.", "Paid bills show a ✓ on their date."]]]}, "bills": {"title": "Bills", "intro": "Every bill for the month in one list, sorted by due date, with what is due soon marked.", "sections": [["Finding bills", ["Bills are listed by due date, with Due Today and Due Soon labels.", "Tap a category to show only those bills.", "Tap a bill to view it, or hold it to edit."]], ["Adding & paying", ["Tap Add Bill to add a new bill. Set it to repeat only if the real bill does.", "Mark a bill paid when you pay it so Paid, Remaining and your gauge stay right.", "A partial payment lowers what is left without marking the whole bill paid."]], ["Handy extras", ["Use the Calculator at the bottom for quick math without leaving the app.", "To start a new month with the same bills, use Copy Previous Month on the Budget tab."]]]}, "spending": {"title": "Spending", "intro": "See where your money went, from paid bills, purchases you entered and connected-bank activity.", "sections": [["Reading Spending", ["Switch between Week, Month and Year to change the time period.", "Categories groups spending by type. Merchants groups it by store or company.", "Open Spending activity to see the transactions behind the chart."]], ["Adding entries", ["Add Spending records money going out. Add Refund / Funds records money coming back in.", "You can edit or delete entries you added yourself. Bank transactions come from your bank.", "If a purchase already came in from your bank, do not add it again."]]]}, "budget": {"title": "Budget", "intro": "Plan the month: set limits, track goals and see where your money is going.", "sections": [["Monthly tools", ["Monthly Budget & Limits sets your spending limit and shows how much is left.", "Monthly Snapshot sums up the month’s income, bills and spending on one screen.", "Categories shows which kinds of spending use the most money."]], ["History & planning", ["Payment History lists the bill payments you have recorded.", "Copy Previous Month copies last month’s bills into the month you are viewing.", "Paycheck Planner and Savings Goals help you plan each paycheck and save toward something specific."]], ["Payoff Planner", ["Payoff Planner shows how different payments could change a card balance and payoff date.", "Snowball and Avalanche are two payoff orders you can compare.", "Payoff dates and interest are estimates. Your card company’s statement is the final word."]]]}, "settings": {"title": "Settings", "intro": "Your account, connected banks, look, notifications, backups and app security.", "sections": [["Account & banks", ["Sign in with Google or email. Phone sign-in is coming soon.", "Connected Accounts links banks through Plaid. The free account includes 1 bank. A subscription ($3.99/month or $29.99/year) adds more.", "If a bank needs you to log in again, a Reconnect banner appears. Tap it to fix the connection.", "Disconnecting a bank removes it from PayAviator. Your actual bank account is not changed."]], ["Look & notifications", ["App Colors lets you switch between Easy and Advanced Home, change text size and contrast, and set app colors.", "Bills & Reminders sets the default reminder, notification time, sound and vibration.", "Calendar & Defaults chooses how many months to show and whether paid bills, paychecks and reminders appear."]], ["Backup & security", ["Backup & App lets you save a backup or restore one, and shows your app version.", "App Lock uses your phone’s fingerprint, face or PIN. It is required once a real bank is connected.", "Turn Tips & Tricks or Money Tips on or off under Tips & Help."]]]}};
+  const help={"home": {"title": "Home", "intro": "Your money at a glance. The main PayAviator Gauge shows your Safe to Spend amount, based on your checking accounts and cash on hand. The Cash and Credit gauges below it show cash and credit separately.", "sections": [["Reading the gauges", ["The main PayAviator Gauge shows your Safe to Spend amount, built from your checking balances and cash on hand.", "The Cash gauge shows your cash on its own. The Credit gauge shows your credit card balances on their own.", "Available Now counts your checking accounts and cash on hand. Savings, money market, CDs, credit cards, loans and investments are not counted unless you include a savings account yourself. Use Include / Exclude in Connected Accounts to change which accounts count.","Safe to Spend is Available Now minus your Cushion and the bills you still owe. It never shows less than $0.00. It is an estimate from what is in the app and can be wrong if a balance, bill or paycheck is missing, delayed or entered incorrectly. It is not your bank balance and it is not financial advice.", "If the gauge shows $0, check your Cushion and upcoming bills first. They may be using up all of Available Now."]], ["Cushion & Savings", ["Your Cushion starts at $0. Tap the Cushion tile under the gauge to set an amount you want kept off-limits.", "Savings is money you set aside on purpose. It is kept separate from your Cushion and from Safe to Spend."]], ["Quick actions", ["Tap Add Spending as soon as money leaves so the gauge stays current.", "Open Advanced money details or tap the Cash and Credit cards for a fuller breakdown.", "Tap ‹ and › on the Smart Money Tip card to go back or skip ahead."]]]}, "calendar": {"title": "Calendar", "intro": "Your month of bills, paychecks, reminders and work hours, laid out by date.", "sections": [["Using the calendar", ["Tap a day to see its bills, paychecks, reminders and hours.", "Swipe or use ‹ and › to change months, and tap Today to jump back.", "Use Filters to choose what shows on the calendar."]], ["Adding things", ["Add Hours, Add Bill and Add Reminder are at the top of Calendar.", "Recurring bills and paychecks repeat on their own scheduled dates.", "Use a reminder for a deadline that is not a bill, so it does not change your totals."]], ["Bill colors", ["Each bill’s color shows on its calendar dot, so you can spot it at a glance.", "Open Bill colors under the calendar and tap a color to change it.", "Paid bills show a ✓ on their date."]]]}, "bills": {"title": "Bills", "intro": "Every bill for the month in one list, sorted by due date, with what is due soon marked.", "sections": [["Finding bills", ["Bills are listed by due date, with Due Today and Due Soon labels.", "Tap a category to show only those bills.", "Tap a bill to view it, or hold it to edit."]], ["Adding & paying", ["Tap Add Bill to add a new bill. Set it to repeat only if the real bill does.", "Mark a bill paid when you pay it so Paid, Remaining and your gauge stay right.", "A partial payment lowers what is left without marking the whole bill paid."]], ["Handy extras", ["Use the Calculator at the bottom for quick math without leaving the app.", "To start a new month with the same bills, use Copy Previous Month on the Budget tab."]]]}, "spending": {"title": "Spending", "intro": "See where your money went, from paid bills, purchases you entered and connected-bank activity.", "sections": [["Reading Spending", ["Switch between Week, Month and Year to change the time period.", "Categories groups spending by type. Merchants groups it by store or company.", "Open Spending activity to see the transactions behind the chart."]], ["Adding entries", ["Add Spending records money going out. Add Refund / Funds records money coming back in.", "You can edit or delete entries you added yourself. Bank transactions come from your bank.", "If a purchase already came in from your bank, do not add it again."]]]}, "budget": {"title": "Budget", "intro": "Plan the month: set limits, track goals and see where your money is going.", "sections": [["Monthly tools", ["Monthly Budget & Limits sets your spending limit and shows how much is left.", "Monthly Snapshot sums up the month’s income, bills and spending on one screen.", "Categories shows which kinds of spending use the most money."]], ["History & planning", ["Payment History lists the bill payments you have recorded.", "Copy Previous Month copies last month’s bills into the month you are viewing.", "Paycheck Planner and Savings Goals help you plan each paycheck and save toward something specific."]], ["Payoff Planner", ["Payoff Planner shows how different payments could change a card balance and payoff date.", "Snowball and Avalanche are two payoff orders you can compare.", "Payoff dates and interest are estimates. Your card company’s statement is the final word."]]]}, "settings": {"title": "Settings", "intro": "Your account, connected banks, look, notifications, backups and app security.", "sections": [["Account & banks", ["Sign in with Google or email. Phone sign-in is coming soon.", "Connected Accounts links banks through Plaid. The free account includes 1 bank. A subscription ($3.99/month or $29.99/year) adds more.", "If a bank needs you to log in again, a Reconnect banner appears. Tap it to fix the connection.", "Disconnecting a bank removes it from PayAviator. Your actual bank account is not changed."]], ["Look & notifications", ["App Colors lets you switch between Easy and Advanced Home, change text size and contrast, and set app colors.", "Bills & Reminders sets the default reminder, notification time, sound and vibration.", "Calendar & Defaults chooses how many months to show and whether paid bills, paychecks and reminders appear."]], ["Backup & security", ["Backup & App lets you save a backup or restore one, and shows your app version.", "App Lock uses your phone’s fingerprint, face or PIN. It is required once a real bank is connected.", "Turn Tips & Tricks or Money Tips on or off under Tips & Help."]]]}};
 
   function ensureDialog(){
     if($('ppHelpDlg'))return;
@@ -22118,7 +22160,7 @@ body.ppauth-open #mb119BottomNav,body.ppauth-open #pp925TipLauncher{visibility:h
       <button type="button" class="ppauth-link" id="ppAuthForgot">Forgot password?</button>
     </div>
     <div class="ppauth-error" id="ppAuthError" role="alert" aria-live="polite"></div>
-    <div class="ppauth-foot">PayAviator uses read-only bank access through Plaid. Your bank login never touches PayAviator. <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>Privacy Policy</a></div>
+    <div class="ppauth-foot">PayAviator uses read-only bank access through Plaid. Your bank login never touches PayAviator. <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>Privacy Policy</a> · <a href="https://payaviator.app/terms.html" target="_blank" rel="noopener noreferrer" data-pa397-terms>Terms of Service</a></div>
     <div class="ppauth-actions">
       <button type="submit" form="ppAuthForm" class="ppauth-primary" id="ppAuthSubmit">Sign in</button>
       <button type="button" class="ppauth-later" id="ppAuthLater">Not now</button>
@@ -22133,7 +22175,7 @@ const UID_KEY='payaviator_auth_uid_v1';
 const BANK_CACHE_KEYS=['payaviator_connected_accounts_v1','payaviator_bank_transactions_v954','payaviator_imported_transactions_v1','payaviator_transaction_sync_status_v313','payaviator_last_bank_sync_v960','payaviator_plaid_items_v1'];
 const RECONNECT_NOTICE_KEY='payaviator_bank_reconnect_notice_v1';
 const listeners=new Set(), pending=new Map();
-let waiters=[], mode='signin', busy=false;
+let waiters=[], mode='signin', busy=false, pendingDeleteUid='';
 function bridge(){const b=window.AndroidBridge;return b&&typeof b.authGetState==='function'?b:null}
 function readNative(){
   const b=bridge();
@@ -22167,7 +22209,10 @@ function emit(reason){
 function setState(next,reason){
   const wasIn=!!state.signedIn;
   state=Object.assign({platform:state.platform||'android'},next||{});
-  if(state.signedIn){reconcileOwner();const w=waiters;waiters=[];w.forEach(fn=>fn(true));if(isOpen())closeSheet()}
+  if(state.signedIn){
+    if(pendingDeleteUid&&state.uid&&state.uid!==pendingDeleteUid)pendingDeleteUid='';
+    reconcileOwner();const w=waiters;waiters=[];w.forEach(fn=>fn(true));if(isOpen())closeSheet()
+  }
   else if(wasIn||reason==='session_expired'||reason==='account_deleted'){
     if(localStorage.getItem(UID_KEY)){clearBankCache();localStorage.removeItem(UID_KEY)}
   }
@@ -22231,11 +22276,21 @@ function closeSheet(){
   try{window.PayAviatorSheetBack&&window.PayAviatorSheetBack.remove()}catch(_){}
   if(!state.signedIn){const w=waiters;waiters=[];w.forEach(fn=>fn(false))}
 }
+function safeGoogleError(code, error){
+  const raw=String(error||'');
+  const leaked=/@/.test(raw)||/eyJ[A-Za-z0-9_-]{8,}/.test(raw);
+  if(!leaked&&raw)return raw;
+  if(code==='GOOGLE_NOT_CONFIGURED')return "Google sign-in isn't enabled for this build yet. Use email and password.";
+  if(code==='NO_GOOGLE_ACCOUNT')return 'No Google account is available on this phone. Add one in Android Settings or use email and password.';
+  if(code==='CANCELLED'||code==='GOOGLE_INCOMPLETE')return 'Google sign-in did not finish. Try again, or use email and password.';
+  return 'Google sign-in failed. Please try again.';
+}
+window.PayAviatorSafeGoogleError=safeGoogleError;
 async function run(method,...args){
   setBusy(true);setError('');
   const r=await call(method,...args);
   setBusy(false);
-  if(!r.ok&&r.code!=='CANCELLED')setError(r.error||'Sign-in failed. Please try again.');
+  if(!r.ok)setError(method==='authSignInWithGoogle'?safeGoogleError(r.code,r.error):(r.error||'Sign-in failed. Please try again.'));
   return r;
 }
 function wire(){
@@ -22256,7 +22311,14 @@ function wire(){
     const email=$('ppAuthEmail').value.trim(),pw=$('ppAuthPassword').value;
     if(!email||!pw){setError('Enter your email and password.');return}
     if(mode==='create'&&pw.length<6){setError('Use at least 6 characters for your password.');return}
-    run(mode==='create'?'authCreateAccount':'authSignInWithEmail',email,pw).then(r=>{if(r.ok)$('ppAuthPassword').value=''});
+    run(mode==='create'?'authCreateAccount':'authSignInWithEmail',email,pw).then(r=>{
+      if(!r.ok)return;
+      $('ppAuthPassword').value='';
+      if(r.code==='VERIFY_EMAIL_FAILED'||r.code==='VERIFY_EMAIL_REQUESTED'){
+        setError(r.error||(r.code==='VERIFY_EMAIL_FAILED'?'Your account was created and kept. The verification email was not confirmed sent. Use Send verification email.':'A verification email was requested. Check inbox and spam. The app cannot see whether it arrived.'), r.code==='VERIFY_EMAIL_REQUESTED');
+        if(r.code==='VERIFY_EMAIL_FAILED'){try{window.PayAviatorAccountGate&&window.PayAviatorAccountGate.openVerify()}catch(_){}}
+      }
+    });
   });
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire,{once:true});else wire();
@@ -22300,13 +22362,14 @@ window.PayAviatorAuth={
   openSignIn:openSheet,
   closeSignIn:closeSheet,
   async signOut(){const r=await call('authSignOut');return r},
-  /* Removes every bank at Plaid (DELETE /api/plaid/user) and then the Firebase account. */
+  /* DELETE /api/plaid/user must succeed before the Firebase account is deleted. A failed bank removal leaves the sign-in in place. */
   async deleteAccount(){
+    const expected=state.uid||'';
     const r=await call('authDeleteAccount');
     if(r.code==='REQUIRES_RECENT_LOGIN'){
-      await call('authSignOut');
-      openSheet({notice:'For your security, sign in again, then tap Delete account once more.'});
-    }
+      pendingDeleteUid=expected;
+      openSheet({notice:'For your security, sign in again with the same account. Your banks stay on this phone. Nothing is removed until you tap Delete account again. You do not need to give a reason.'});
+    }else pendingDeleteUid='';
     return r;
   },
   takeReconnectNotice(){const v=localStorage.getItem(RECONNECT_NOTICE_KEY)==='1';if(v)localStorage.removeItem(RECONNECT_NOTICE_KEY);return v},
@@ -22496,7 +22559,10 @@ setState(readNative());
   }
   const PP920_ITEMS_KEY='payaviator_plaid_items_v1';
   function pp920SaveItemHealth(data){
-    try{localStorage.setItem(PP920_ITEMS_KEY,JSON.stringify({items:Array.isArray(data?.items)?data.items:[],errors:Array.isArray(data?.errors)?data.errors:[],at:Date.now()}))}catch(_){ }
+    const dead=removedItemSet();
+    const items=(Array.isArray(data?.items)?data.items:[]).filter(i=>!dead.has(String(i?.item_id||'')));
+    const errors=(Array.isArray(data?.errors)?data.errors:[]).filter(e=>!dead.has(String(e?.item_id||'')));
+    try{localStorage.setItem(PP920_ITEMS_KEY,JSON.stringify({items,errors,at:Date.now()}))}catch(_){ }
     try{pp410FeedReconnect()}catch(_){ }
   }
   window.PayAviatorSavePlaidItemHealth=pp920SaveItemHealth;
@@ -22537,11 +22603,13 @@ setState(readNative());
     // The backend identifies the user from the Firebase token; never send a user id.
     const data=await pp920Api('/api/plaid/accounts');
     pp920SaveItemHealth(data);
-    const rows=Array.isArray(data.accounts)?data.accounts:[];
+    const rows=(Array.isArray(data.accounts)?data.accounts:[]).filter(a=>!removedItemSet().has(String(a?.item_id||a?.itemId||'')));
     // Plaid Items can remain linked when accountsGet temporarily fails (bank outage,
     // token refresh or an institution requiring update mode). Never wipe their last
     // local balance cards merely because this particular refresh has zero rows.
-    const existing=loadAccounts();
+    const existingAll=loadAccounts();
+    const existing=existingAll.filter(a=>!removedItemSet().has(itemIdOf(a)));
+    if(existing.length!==existingAll.length) saveAccounts(existing);
     if(!rows.length && Array.isArray(data.items) && data.items.length){
       const n=(Array.isArray(data.errors)?data.errors:[]).length;
       if(existing.length){
@@ -22566,8 +22634,8 @@ setState(readNative());
     // Keep previously linked accounts belonging to an Item whose live refresh
     // failed. Other Items may still return fresh data in the same response.
     const unavailableItems=new Set((Array.isArray(data.errors)?data.errors:[]).map(e=>String(e.item_id||'')));
-    const preserved=old.filter(a=>unavailableItems.has(String(a.itemId||''))&&!mapped.some(m=>String(m.id)===String(a.id)));
-    const merged=[...mapped.map(a=>Object.assign({},byId.get(String(a.id))||{},a)),...preserved];
+    const preserved=old.filter(a=>unavailableItems.has(String(a.itemId||''))&&!mapped.some(m=>String(m.id)===String(a.id))&&!removedItemSet().has(itemIdOf(a)));
+    const merged=[...mapped.map(a=>Object.assign({},byId.get(String(a.id))||{},a)),...preserved].filter(a=>!removedItemSet().has(itemIdOf(a)));
     saveAccounts(merged); ensureChoices(); refreshGauge();
     return merged;
   }
@@ -22779,10 +22847,128 @@ setState(readNative());
     }finally{if(btn && document.body.contains(btn)){btn.disabled=false;btn.textContent=old||'Reconnect'}}
   }
   window.PayAviatorReconnectPlaidItem=pp920ReconnectItem;
+  const REMOVED_ITEMS_KEY='payaviator_removed_plaid_items_v1';
+  function removalUid(){try{return String(window.PayAviatorAuth?.getState?.().uid||'')}catch(_){return ''}}
+  function removedItemSet(){
+    const uid=removalUid(); if(!uid)return new Set();
+    try{
+      const all=JSON.parse(localStorage.getItem(REMOVED_ITEMS_KEY)||'{}');
+      const a=all&&typeof all==='object'&&!Array.isArray(all)?all[uid]:[];
+      return new Set((Array.isArray(a)?a:[]).map(x=>String(x||'')).filter(Boolean));
+    }catch(_){return new Set()}
+  }
+  function rememberRemovedItem(itemId){
+    const uid=removalUid(); const id=String(itemId||''); if(!uid||!id)return;
+    let all={};
+    try{const parsed=JSON.parse(localStorage.getItem(REMOVED_ITEMS_KEY)||'{}'); if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))all=parsed}catch(_){all={}}
+    const a=Array.isArray(all[uid])?all[uid].map(String):[];
+    if(!a.includes(id)) a.push(id);
+    all[uid]=a.slice(-50);
+    try{localStorage.setItem(REMOVED_ITEMS_KEY,JSON.stringify(all))}catch(_){}
+  }
+  function itemIdOf(a){return String(a?.itemId||a?.item_id||'')}
+  function accountsForItem(itemId){const id=String(itemId||'');return loadAccounts().filter(a=>itemIdOf(a)===id)}
+  function stripItemTransactions(itemId, accountIds){
+    const id=String(itemId||'');
+    ['payaviator_bank_transactions_v954','payaviator_imported_transactions_v1'].forEach(k=>{
+      try{
+        const tx=JSON.parse(localStorage.getItem(k)||'[]');
+        if(!Array.isArray(tx))return;
+        localStorage.setItem(k,JSON.stringify(tx.filter(t=>{
+          const tid=String(t?.item_id||t?.itemId||'');
+          const aid=String(t?.account_id||t?.accountId||'');
+          return tid!==id && !accountIds.has(aid);
+        })));
+      }catch(_){}
+    });
+  }
+  function forgetItemLocally(itemId){
+    const id=String(itemId||'');
+    if(!id) return 0;
+    const before=loadAccounts();
+    const gone=before.filter(a=>itemIdOf(a)===id);
+    const rest=before.filter(a=>itemIdOf(a)!==id);
+    saveAccounts(rest);
+    const c=ensureChoices();
+    gone.forEach(a=>{delete c[key(a)]});
+    saveChoices(c);
+    const ids=new Set(gone.map(a=>String(a.id||a.account_id||'')).filter(Boolean));
+    stripItemTransactions(id, ids);
+    try{
+      const h=pp920ItemHealth();
+      pp920SaveItemHealth({items:(h.items||[]).filter(i=>String(i?.item_id||'')!==id),errors:(h.errors||[]).filter(e=>String(e?.item_id||'')!==id)});
+    }catch(_){}
+    rememberRemovedItem(id);
+    refreshGauge();
+    return gone.length;
+  }
+  function removalScopeText(name, rows, mode){
+    const bits=(rows||[]).map(a=>(a.name||a.subtype||a.type||'Account')+(a.mask?' •••• '+a.mask:''));
+    const list=bits.length?bits.join(', '):'the accounts on that connection';
+    const head=rows&&rows.length>1
+      ? 'This removes the '+name+' connection. That connection includes '+rows.length+' accounts: '+list+'.'
+      : 'This removes the '+name+' connection ('+list+'). One connection can include more than one account at the same bank, such as checking and savings.';
+    if(mode==='local') return head+' This phone has no Plaid connection id for it, so nothing is sent to Plaid and the saved row is not hidden as if the bank were unlinked. It does not close the account at the bank.';
+    return head+' PayAviator will ask the server to unlink that connection at Plaid and delete the stored token, transactions and balance for it. Other banks stay. Your sign-in stays. Bills, income and spending you entered stay. This does not close the account at the bank and does not cancel a subscription. If removal fails, this bank stays connected and you can try again. Some technical records described in the Privacy Policy can remain.';
+  }
+  async function removeBankItem(itemId){
+    const id=String(itemId||'');
+    if(!id) return {ok:false, code:'MISSING_ITEM', kept:true};
+    if(!window.PayAviatorAuth?.isSignedIn?.()) return {ok:false, code:'SIGN_IN_REQUIRED', error:'Sign in to remove a bank.', kept:true};
+    let body=null;
+    try{body=await pp920Api('/api/plaid/items/'+encodeURIComponent(id),{method:'DELETE'})}
+    catch(err){
+      return {ok:false, code:err?.code||'DISCONNECT_FAILED', error:err?.message||'Could not remove this bank.', status:err?.status||0, kept:true};
+    }
+    if(!body || body.disconnected!==true){
+      return {ok:false, code:'DISCONNECT_FAILED', error:'The server did not confirm this connection was removed.', kept:true};
+    }
+    const n=forgetItemLocally(id);
+    return {ok:true, removed:n, body};
+  }
+  function askRemoveBank(itemId){
+    const id=String(itemId||'');
+    const rows=accountsForItem(id);
+    const name=rows.length?institution(rows[0]):'This bank';
+    const go=async()=>{
+      const r=await removeBankItem(id);
+      if(r.ok){
+        try{render()}catch(_){}
+        pp920Toast(name+' is no longer stored for this sign-in. Other banks and your PayAviator account were not changed. The account at the bank was not closed.');
+      }else if(r.code==='SIGN_IN_REQUIRED'||r.code==='UNAUTHENTICATED'||r.code==='INVALID_TOKEN'||r.status===401){
+        pp920Toast('Sign in again, then retry Remove this bank. Nothing was removed.');
+        try{window.PayAviatorAuth?.openSignIn?.({notice:'Sign in again, then tap Remove this bank. Your banks stay until removal succeeds.'})}catch(_){}
+      }else{
+        pp920Toast(name+' is still connected. Removal did not finish'+(r.error?': '+r.error:'')+'. Nothing else was changed. You can try again.');
+      }
+    };
+    const message=removalScopeText(name, rows.length?rows:[{name:'accounts from this connection'}], 'plaid');
+    if(typeof window.ppConfirm902==='function') window.ppConfirm902({title:'Remove this bank?', message, confirmText:'Remove this bank'}, go);
+    else go();
+  }
+  window.PayAviatorBankRemoval={
+    ask:askRemoveBank,
+    removeItem:removeBankItem,
+    isRemoved:id=>removedItemSet().has(String(id||'')),
+    filterAccounts:rows=>(Array.isArray(rows)?rows:[]).filter(a=>!removedItemSet().has(itemIdOf(a))),
+    filterTx:rows=>(Array.isArray(rows)?rows:[]).filter(t=>!removedItemSet().has(String(t?.item_id||t?.itemId||'')))
+  };
+  function removeButtons(rows){
+    const groups=new Map();
+    rows.forEach(a=>{
+      const id=itemIdOf(a);
+      const k=id||('local:'+key(a));
+      if(!groups.has(k)) groups.set(k,{itemId:id, localKey:id?'':key(a), rows:[a]});
+      else groups.get(k).rows.push(a);
+    });
+    return [...groups.values()].map(g=>{
+      const n=g.rows.length;
+      const label=g.itemId?(n>1?'Remove this bank ('+n+' accounts)':'Remove this bank'):'Connection id missing';
+      return '<div class="pp920-actions"><button class="pp920-action" type="button" data-pp920-remove-item="'+esc(g.itemId)+'" data-pp920-remove-local="'+(g.itemId?'':esc(g.localKey))+'">'+label+'</button></div>';
+    }).join('');
+  }
   async function pp920DisconnectItem(itemId){
-    if(!itemId || !window.PayAviatorAuth?.isSignedIn?.())return;
-    try{await pp920Api('/api/plaid/items/'+encodeURIComponent(itemId),{method:'DELETE'})}
-    catch(err){pp920Toast('Removed from PayAviator, but the bank could not be disconnected at Plaid yet: '+(err?.message||err))}
+    return removeBankItem(itemId);
   }
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function pp920AuthSection(){
@@ -22793,7 +22979,7 @@ setState(readNative());
     }
     const who=st.email||st.name||'Signed in';
     let plan421='';try{plan421=window.PayAviatorPlans?.planCardHtml(window.PayAviatorAccountGate?.billing)||''}catch(_){}
-    return plan421+`<section class="ppauth-account"><div class="pp920-row"><div><div class="pp920-title">Signed in</div><div class="pp920-sub">${esc(who)}${st.provider==='google'?' • Google':''}</div><div class="pp920-sub" id="pp414SyncLine">${esc(window.PayAviatorSync?.statusLine?.()||'')}</div></div></div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-signout>Sign out</button><button type="button" class="pp920-action ppauth-danger" data-ppauth-delete>Delete account</button></div></section>`;
+    return plan421+`<section class="ppauth-account"><div class="pp920-row"><div><div class="pp920-title">Signed in</div><div class="pp920-sub">${esc(who)}${st.provider==='google'?' • Google':''}</div><div class="pp920-sub" id="pp414SyncLine">${esc(window.PayAviatorSync?.statusLine?.()||'')}</div></div></div><div class="pp920-actions"><button type="button" class="pp920-action" data-pp-manage-sub>Manage subscription</button><button type="button" class="pp920-action" data-ppauth-signout>Sign out</button><button type="button" class="pp920-action ppauth-danger" data-ppauth-delete>Delete account</button></div></section>`;
   }
   /* 4.1.4: banks paused because Plus ended (backend: items[].paused / errors[].code==='ITEM_PAUSED'). No reconnect prompt. */
   function pp414PausedList(){
@@ -22823,9 +23009,10 @@ setState(readNative());
     return rows.map(i=>`<section class="ppauth-needs" data-item="${esc(i.item_id)}"><div class="pp920-title">${esc(i.institution_name||'A connected bank')} needs attention</div><div class="pp920-sub">${i.new_accounts_available&&!i.error_code?'New accounts are available to share with PayAviator.':'Sign in to your bank again to keep balances and transactions up to date.'}</div><div class="pp920-actions"><button type="button" class="pp920-action" data-ppauth-reconnect="${esc(i.item_id)}">Reconnect</button></div></section>`).join('');
   }
   function pp920WireAuth(host){
+    host.querySelector('[data-pp-manage-sub]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();try{window.PayAviatorManageSubscription?.open?.()}catch(_){}});
     host.querySelector('[data-ppauth-signin]')?.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();if(await window.PayAviatorAuth.ensureSignedIn()){try{await pp920SyncPlaidAccounts()}catch(_){ }render()}});
     host.querySelector('[data-ppauth-signout]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{await window.PayAviatorAuth.signOut();render();pp920Toast('Signed out. Your bills and spending are still on this phone.')};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Sign out?',message:'Bank data will be removed from this phone until you sign in again. Your bills, income and spending stay.',confirmText:'Sign out'},go);else go()});
-    host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{pp920Toast('Deleting your account…');const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.ok){render();pp920Toast('Your PayAviator account and bank connections were deleted.')}else if(r.code!=='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error||'Could not delete your account. Please try again.')}};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message:'This disconnects every bank from PayAviator and Plaid, deletes the bank data stored on our servers, and deletes your sign-in. Bills, income and spending you added stay on this phone.',confirmText:'Delete account'},go);else window.PayAviatorConfirm({title:'Delete account?',message:'Delete your PayAviator account and disconnect every bank?',confirmText:'Delete account',danger:true}).then(ok=>{if(ok)go()})});
+    host.querySelector('[data-ppauth-delete]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const go=async()=>{const r=await window.PayAviatorAuth.deleteAccount();try{window.PayAviatorCloseThemeNotice?.()}catch(_){ }if(r.code==='REQUIRES_RECENT_LOGIN'){pp920Toast(r.error&&/may already/.test(r.error)?r.error:'Sign in again to delete this account. Nothing was removed yet.');return}if(r.ok){render();pp920Toast('Your sign-in was deleted. This did not cancel Google Play or Stripe billing and did not close accounts at the bank. Bills you entered stay on this phone.')}else{pp920Toast(r.error||'Your sign-in was not deleted. Nothing on this phone was erased. Try again.')}};const message='This deletes your PayAviator sign-in. It also asks Plaid to unlink every bank connection on this sign-in and to delete the bank data and cloud copies stored for it. It does not close those accounts at the bank. Deleting this account does not cancel Google Play or Stripe billing. Google Play or Stripe keeps the subscription until you cancel it there, and they set the end date. Manage subscription is separate and is not required. You can delete without cancelling. A new sign-in does not take over the old subscription. You do not need to give a reason. If a bank cannot be removed, the sign-in is not deleted and you can try again. You may be asked to sign in again first if your last sign-in was not recent. Bills, income and spending you entered stay on this phone. Backup files you saved are not deleted. Some technical records can remain; the Privacy Policy describes them.';if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Delete account?',message,confirmText:'Delete account'},go);else window.PayAviatorConfirm({title:'Delete account?',message:'Delete your PayAviator account and try to disconnect every bank? If a bank cannot be removed, the account stays. Data you entered stays on this phone. This does not cancel billing.',confirmText:'Delete account',danger:true}).then(ok=>{if(ok)go()})});
     host.querySelectorAll('[data-pp414-resub]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();try{window.PayAviatorAccountGate?.openUpgrade('plus_ended')}catch(_){ }}));
     host.querySelectorAll('[data-ppauth-reconnect]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();pp920ReconnectItem(b.getAttribute('data-ppauth-reconnect'),b)}));
   }
@@ -22884,8 +23071,8 @@ setState(readNative());
     const names=Object.keys(groups);
     try{const h2=m.querySelector('.pp920-head h2');if(h2){h2.querySelectorAll('[data-pa421-badge]').forEach(n=>n.remove());if(window.PayAviatorAuth?.isSignedIn?.())h2.insertAdjacentHTML('beforeend',window.PayAviatorPlans?.planBadgeHtml(window.PayAviatorAccountGate?.billing)||'')}}catch(_){}
     host.innerHTML=pp920AuthSection()+pp920NeedsSection()+pp414PausedSection()+`<section class="pp920-summary"><div class="pp920-row"><div><div class="pp920-title">Connected banking</div><div class="pp920-sub">${names.length} institution${names.length===1?'':'s'} • ${accts.length} account${accts.length===1?'':'s'}</div></div><div style="text-align:right"><div class="pp920-sub">Bank available</div><div class="pp920-total">${money(total)}</div></div></div></section>`+
-    names.map(name=>{const rows=groups[name],bankUsed=rows.filter(isIncluded),opened=openBank===name;return `<section class="pp920-bank ${opened?'open':''}" data-bank="${encodeURIComponent(name)}"><button class="pp920-bankhead" type="button"><div><div class="pp920-title">${name}</div><div class="pp920-sub">${bankUsed.length} of ${rows.length} included in Available Now</div></div><span style="font-weight:900;font-size:1.35rem">${opened?'⌃':'⌄'}</span></button><div class="pp920-bankbody">${rows.map(a=>{const on=isIncluded(a);return `<div class="pp920-account" data-account="${encodeURIComponent(key(a))}"><div class="pp920-row"><div><div class="pp920-title">${a.name||a.subtype||a.type||'Account'}</div><div class="pp920-sub">${a.subtype||a.type||'account'}${a.mask?' •••• '+a.mask:''}</div></div><div style="text-align:right"><div class="pp920-total">${money(balance(a))}</div><div class="pp920-sub">available balance</div></div></div><div class="pp920-pill ${on?'':'off'}">${on?'Included in Available Now':(String(a.type||'').toLowerCase()==='credit'||String(a.type||'').toLowerCase()==='loan'?'Credit/loan — excluded':String(a.subtype||'').toLowerCase()==='savings'?'Savings — protected':'Not included')}</div><div class="pp920-actions"><button class="pp920-action" type="button" data-pp920-toggle="1">${on?'Exclude from Available Now':'Include in Available Now'}</button><button class="pp920-action" type="button" data-pp920-remove="1">Disconnect</button></div></div>`}).join('')}</div></section>`}).join('')+
-    '<div class="pp920-actions"><button id="pp920ConnectBank" class="pp920-action" type="button">+ Connect another bank</button><button id="pp920SyncBank" class="pp920-action" type="button">↻ Sync all accounts</button></div><div class="pp920-note"><b>Multiple banks supported:</b> connect as many institutions and accounts as you authorize. Each account can be included or excluded from Available Now independently. PayAviator uses read-only Plaid access.</div>';
+    names.map(name=>{const rows=groups[name],bankUsed=rows.filter(isIncluded),opened=openBank===name;return `<section class="pp920-bank ${opened?'open':''}" data-bank="${encodeURIComponent(name)}"><button class="pp920-bankhead" type="button"><div><div class="pp920-title">${name}</div><div class="pp920-sub">${bankUsed.length} of ${rows.length} included in Available Now</div></div><span style="font-weight:900;font-size:1.35rem">${opened?'⌃':'⌄'}</span></button><div class="pp920-bankbody">${rows.map(a=>{const on=isIncluded(a);return `<div class="pp920-account" data-account="${encodeURIComponent(key(a))}"><div class="pp920-row"><div><div class="pp920-title">${a.name||a.subtype||a.type||'Account'}</div><div class="pp920-sub">${a.subtype||a.type||'account'}${a.mask?' •••• '+a.mask:''}</div></div><div style="text-align:right"><div class="pp920-total">${money(balance(a))}</div><div class="pp920-sub">available balance</div></div></div><div class="pp920-pill ${on?'':'off'}">${on?'Included in Available Now':(String(a.type||'').toLowerCase()==='credit'||String(a.type||'').toLowerCase()==='loan'?'Credit/loan — excluded':String(a.subtype||'').toLowerCase()==='savings'?'Savings — protected':'Not included')}</div><div class="pp920-actions"><button class="pp920-action" type="button" data-pp920-toggle="1">${on?'Exclude from Available Now':'Include in Available Now'}</button></div></div>`}).join('')+removeButtons(rows)}</div></section>`}).join('')+
+    '<div class="pp920-actions"><button id="pp920ConnectBank" class="pp920-action" type="button">+ Connect another bank</button><button id="pp920SyncBank" class="pp920-action" type="button">↻ Sync all accounts</button></div><div class="pp920-note"><b>Multiple banks supported:</b> connect as many institutions and accounts as you authorize. Each account can be included or excluded from Available Now independently. Remove this bank unlinks that whole connection, including every account on it. Other banks and your PayAviator account stay. It does not close the account at the bank. PayAviator uses read-only Plaid access.</div>';
 
     const connectBtn=$('pp920ConnectBank');
     if(connectBtn){
@@ -22898,7 +23085,7 @@ setState(readNative());
     }
         host.querySelectorAll('.pp920-bankhead').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const sec=b.closest('.pp920-bank');const n=decodeURIComponent(sec.dataset.bank);openBank=openBank===n?null:n;render()}));
     host.querySelectorAll('[data-pp920-toggle]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const row=b.closest('[data-account]');const k=decodeURIComponent(row.dataset.account);const a=loadAccounts().find(x=>key(x)===k);if(!a)return;setIncluded(a,!isIncluded(a));refreshGauge();render()}));
-    host.querySelectorAll('[data-pp920-remove]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const row=b.closest('[data-account]');const k=decodeURIComponent(row.dataset.account);const a=loadAccounts().find(x=>key(x)===k);if(!a)return;const remove=()=>{const rest=loadAccounts().filter(x=>key(x)!==k);saveAccounts(rest);const c=ensureChoices();delete c[k];saveChoices(c);refreshGauge();render();const itemId=String(a.itemId||a.item_id||'');if(itemId&&!rest.some(x=>String(x.itemId||x.item_id||'')===itemId))pp920DisconnectItem(itemId)};if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Disconnect account?',message:'Remove this account from PayAviator?',confirmText:'Disconnect'},remove);else remove()}));
+    host.querySelectorAll('[data-pp920-remove-item]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const itemId=b.getAttribute('data-pp920-remove-item')||'';if(itemId){askRemoveBank(itemId);return}pp920Toast('This saved row has no Plaid connection id, so it was not hidden and Plaid was not changed. Use Remove this bank on a connection that has an id.');}));
     m.classList.add('show');
   }
 
@@ -24439,7 +24626,9 @@ label[for="pp1316AddMinimum"],label[for="pp1315AddMinimum"],label[for="pp1316Edi
  document.addEventListener('click',function(e){
    const b=e.target.closest?.('.pp9163-disconnect');if(!b)return;e.preventDefault();e.stopImmediatePropagation();
    const id=b.dataset.pp9163Id||'',mask=b.dataset.pp9163Mask||'',accounts=read(ACC,[]),card=Array.isArray(accounts)?accounts.find(a=>same(a,id,mask)):null;if(!card)return;
-   const label=(card.institutionName||card.institution||card.name||'this card')+(card.mask?' •••• '+card.mask:'');const o=overlay();o.dataset.id=id;o.dataset.mask=mask;o.querySelector('#pp9164Copy').textContent='Disconnect '+label+' from PayAviator? This does not affect the actual card account.';o.classList.add('show');document.body.style.overflow='hidden';setTimeout(()=>o.querySelector('#pp9164Cancel')?.focus(),0);
+   const itemId=String(card.itemId||card.item_id||'');
+   if(itemId&&window.PayAviatorBankRemoval){window.PayAviatorBankRemoval.ask(itemId);return}
+   if(typeof window.ppConfirm902==='function')window.ppConfirm902({title:'Cannot remove only this card',message:'This card has no Plaid connection id, so PayAviator will not hide it or pretend the bank was unlinked. If it belongs to a connected bank, use Remove this bank in Connected Accounts. That unlinks the whole connection after the server confirms. It does not close the card.',confirmText:'Open Connected Accounts'},()=>{try{window.openPayAviatorConnectedAccounts920&&window.openPayAviatorConnectedAccounts920()}catch(_){}});
  },true);
  document.addEventListener('click',function(e){const o=e.target.closest?.('#pp9164Disconnect');if(!o)return;if(e.target.id==='pp9164Cancel'||e.target===o){e.preventDefault();closeConfirm();return}if(e.target.id==='pp9164Go'){e.preventDefault();const id=o.dataset.id||'',mask=o.dataset.mask||'';e.target.disabled=true;closeConfirm();disconnect(id,mask);setTimeout(()=>{e.target.disabled=false},250)}},true);
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('pp9164Disconnect')?.classList.contains('show')){e.preventDefault();closeConfirm()}},true);
@@ -24892,6 +25081,7 @@ body.ppconsent-open #mb119BottomNav,body.ppconsent-open #pp925TipLauncher,body.p
 .pa397-about > a::before,.pa397-about > a::after{content:""!important;position:absolute!important;top:50%!important;transform:translateY(-50%)!important}
 .pa397-about > a::before{left:26px!important;width:20px!important;height:20px!important;background:var(--pa4-accent,#00f5ff)!important;-webkit-mask:var(--pa397-i-shield) center/contain no-repeat!important;mask:var(--pa397-i-shield) center/contain no-repeat!important}
 .pa397-about > a::after{right:18px!important;width:16px!important;height:16px!important;background:var(--pa4-faint,rgba(255,255,255,.55))!important;-webkit-mask:var(--pa397-i-ext) center/contain no-repeat!important;mask:var(--pa397-i-ext) center/contain no-repeat!important}
+.pa397-about > a + a{border-top:1px solid var(--pa4-line,rgba(255,255,255,.12))!important}
 .pa397-about small{display:block!important;font-size:12.5px!important;font-weight:500!important;color:var(--pa4-muted,rgba(255,255,255,.72))!important;margin-top:2px!important}
 :root{--pa397-i-shield:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z'/%3E%3Cpath d='M9 12l2 2 4-4'/%3E%3C/svg%3E");--pa397-i-ext:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h6v6'/%3E%3Cpath d='M20 4l-9 9'/%3E%3Cpath d='M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5'/%3E%3C/svg%3E")}
 </style>
@@ -24904,9 +25094,9 @@ body.ppconsent-open #mb119BottomNav,body.ppconsent-open #pp925TipLauncher,body.p
     <ul class="ppc-points">
       <li><b>Your bank login goes to Plaid</b>You sign in to your bank on Plaid's secure screen. Your bank username and password go to Plaid, never to PayAviator.</li>
       <li><b>What PayAviator stores</b>An encrypted bank token, your bank's name, the connection status, and the transactions synced from your bank. This is kept on PayAviator's servers and linked to your account.</li>
-      <li><b>You're in control</b>You can disconnect a bank or delete your account at any time in Connected Accounts. That removes the data stored for it.</li>
+      <li><b>You're in control</b>Remove this bank unlinks that institution connection, including every account on it, only after the server confirms. Other banks and your sign-in stay. Deleting your PayAviator account is separate, asks for no reason, and does not cancel a subscription or close a bank account. If removal fails, that bank stays. Bills you entered, backup files, and some technical records can remain.</li>
     </ul>
-    <p class="ppc-links">Learn more in the <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>PayAviator Privacy Policy</a> and <a href="https://plaid.com/legal/#end-user-privacy-policy" target="_blank" rel="noopener noreferrer">Plaid's End User Privacy Policy</a>.</p>
+    <p class="ppc-links">Learn more in the <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>PayAviator Privacy Policy</a>, the <a href="https://payaviator.app/terms.html" target="_blank" rel="noopener noreferrer" data-pa397-terms>Terms of Service</a>, and <a href="https://plaid.com/legal/#end-user-privacy-policy" target="_blank" rel="noopener noreferrer">Plaid's End User Privacy Policy</a>.</p>
     <div class="ppc-actions">
       <button type="button" class="ppc-primary" id="ppConsentContinue">Continue</button>
       <button type="button" class="ppc-later" id="ppConsentLater">Not now</button>
@@ -24919,7 +25109,7 @@ body.ppconsent-open #mb119BottomNav,body.ppconsent-open #pp925TipLauncher,body.p
 /* Shown before Plaid Link every time a bank is connected or reconnected.
    ask(context) resolves true on Continue, false on Not now / close / Back. */
 const CONSENT_KEY='payaviator_plaid_consent_v1';   // new key; existing keys are not touched
-const POLICY_VERSION='2026-10e';                     // PayAviator Privacy Policy, effective October 2026
+const POLICY_VERSION='2026-11a';                     // Phone record only. Not sent to the server. 4.2.6 keeps 2026-10g. Do not record 2026-11a-draft.
 const $=id=>document.getElementById(id);
 let resolver=null;
 function appVersion(){try{if(window.AndroidBridge&&typeof AndroidBridge.getAppVersionName==='function')return String(AndroidBridge.getAppVersionName()||'')}catch(_){}return ''}
@@ -24962,7 +25152,7 @@ function wire(){
   const settings=$('mb119Settings');
   if(settings&&!settings.querySelector('.pa397-about')){
     const box=document.createElement('div');box.className='pa397-about';
-    box.innerHTML='<a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>Privacy Policy<small>How PayAviator handles your data</small></a>';
+    box.innerHTML='<a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>Privacy Policy<small>How PayAviator handles your data</small></a><a href="https://payaviator.app/terms.html" target="_blank" rel="noopener noreferrer" data-pa397-terms>Terms of Service<small>Rules for using PayAviator</small></a>';
     const ver=$('mb119Version');if(ver&&ver.parentNode===settings)settings.insertBefore(box,ver);else settings.appendChild(box);
   }
 }
@@ -25894,9 +26084,9 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
    <h2 id="ppOnbTitle">Take control of <em>every bill</em></h2>
    <p class="onb-sub">Bills, paydays and spending, all in one place.</p>
    <ul class="onb-benefits onb-stagger">
-    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span><span><b>Never miss a due date</b>See every bill on one calendar.</span></li>
+    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span><span><b>Due dates in one place</b>See bills on one calendar. Reminders are optional and your phone can delay them.</span></li>
     <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M10 10v8M14 10v8M19 10v8M3 20h18"/></svg></span><span><b>Link your bank, free</b>Your first bank syncs on us.</span></li>
-    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span><span><b>Private by design</b>Read-only access. Guest mode stays on your phone.</span></li>
+    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span><span><b>Private by design</b>Bank access is read-only. Guest mode stays on this phone.</span></li>
    </ul>
    <div class="onb-msg" data-onb-msg role="status" aria-live="polite"></div>
    <div class="onb-actions">
@@ -25922,9 +26112,9 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
    <div class="onb-or">or</div>
    <div class="onb-alt"><button type="button" class="onb-google" data-onb-act="google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg><span>Continue with Google</span></button>
    <button type="button" class="onb-google onb-phone" data-onb-act="phone"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#1f1f1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><span>Continue with phone</span></button></div>
-   <div class="onb-note"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><span><b>Check your inbox.</b> We'll email a link to verify your address (works with Gmail, Yahoo, AOL, Outlook, iCloud and more). If you don't see it, check Spam. Verify it before you link a bank.</span></div>
+   <div class="onb-note"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg><span><b>Verification email.</b> After the account is created, PayAviator asks Firebase to email a link (Gmail, Yahoo, AOL, Outlook, iCloud, and more). Check inbox and spam. If nothing arrives, use Send verification email. The app cannot see whether the message reached your inbox. Verify the address before you link a bank.</span></div>
    <div class="onb-msg" data-onb-msg role="alert" aria-live="polite"></div>
-   <div class="onb-foot">By creating an account you agree to our <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</div>
+   <div class="onb-foot">By creating an account you agree to our <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>Privacy Policy</a>. Read the <a href="https://payaviator.app/terms.html" target="_blank" rel="noopener noreferrer" data-pa397-terms>Terms of Service</a>.</div>
    <div class="onb-actions">
     <button type="submit" form="ppOnbCreateForm" class="onb-primary">Create account</button>
     <button type="button" class="onb-link" data-onb-go="signin">Have an account? Sign in</button>
@@ -25975,7 +26165,7 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
    <p class="onb-sub">Linking a bank needs a free account so your data stays private to you.</p>
    <ul class="onb-benefits onb-stagger">
     <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M20 12v8H4v-8"/><rect x="2" y="7" width="20" height="5" rx="1"/><path d="M12 20V7"/><path d="M12 7c-2-4-6-3-5 0M12 7c2-4 6-3 5 0"/></svg></span><span><b>Your first bank is free</b>Balances and transactions sync automatically.</span></li>
-    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span><span><b>Nothing is lost</b>Your bills, income and spending stay on this phone.</span></li>
+    <li><span class="onb-bi"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span><span><b>Nothing is lost</b>Your bills, income and spending stay on this phone. If you sign in, a copy can also sync to your account.</span></li>
    </ul>
    <div class="onb-actions">
     <button type="button" class="onb-primary" data-onb-go="create">Sign up with email</button>
@@ -25997,7 +26187,7 @@ body.ppOnb-open #mb119BottomNav,body.ppOnb-open #pp925TipLauncher,body.ppOnb-ope
     <button type="button" class="onb-plan upg-plan" role="radio" aria-checked="true" data-onb-plan="mo"><small>Monthly</small><strong data-onb-amt="mo"></strong><span>per month</span><em class="upg-note">Billed monthly</em></button>
     <button type="button" class="onb-plan upg-plan best" role="radio" aria-checked="false" data-onb-plan="yr"><span class="onb-flag"></span><small>Yearly</small><strong data-onb-amt="yr"></strong><span data-onb-save>per year</span><em class="upg-note">Billed yearly</em></button>
    </div>
-   <label class="upg-agree"><input type="checkbox" id="ppOnbAgree"> <span>I agree to the <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer">Terms &amp; Privacy Policy</a></span></label>
+   <label class="upg-agree"><input type="checkbox" id="ppOnbAgree"> <span>I agree to the <a href="https://payaviator.app/terms.html" target="_blank" rel="noopener noreferrer" data-pa397-terms>Terms of Service</a> and <a href="https://payaviator.app/privacy.html" target="_blank" rel="noopener noreferrer" data-pa397-privacy>Privacy Policy</a></span></label>
    <div class="onb-foot upg-fine" id="ppOnbPriceFine"></div>
    <div class="onb-msg" data-onb-msg role="alert" aria-live="polite"></div>
    <div class="onb-actions">
@@ -26066,14 +26256,14 @@ root.addEventListener('click',e=>{
   switch(a.dataset.onbAct){
     case 'close':close();break;
     case 'phone':msg('Phone sign-in is coming soon. Use Google or email for now.',true);break;
-    case 'google':{const bs=root.querySelectorAll('.onb-google');bs.forEach(b=>b.disabled=true);msg('');hooks.googleSignIn().then(r=>{bs.forEach(b=>b.disabled=false);if(!r.ok)return r.error&&msg(r.error);localStorage.setItem(CHOICE_KEY,'account');close()});break}
+    case 'google':{const bs=root.querySelectorAll('.onb-google');bs.forEach(b=>b.disabled=true);msg('');hooks.googleSignIn().then(r=>{bs.forEach(b=>b.disabled=false);if(!r.ok){const show=window.PayAviatorSafeGoogleError?window.PayAviatorSafeGoogleError(r.code,r.error):(r.error||'Google sign-in did not finish. Try again, or use email and password.');msg(show);return}localStorage.setItem(CHOICE_KEY,'account');close()});break}
     case 'guest':localStorage.setItem(CHOICE_KEY,'guest');hooks.continueAsGuest().then(close);break;
     case 'forgot':{const v=$('ppOnbEmail').value.trim();if(!validEmail(v)){msg('Enter your email above, then tap Forgot password.');break}hooks.forgotPassword(v).then(()=>msg('If an account exists for that email, a reset link is on its way.',true));break}
     case 'bioSignIn':hooks.biometricSignIn().then(r=>r.ok?msg('Signed in with biometrics (preview).',true):msg(r.error||'Biometrics did not work. Use your password.'));break;
     case 'bioOn':{const s=$('ppOnbBioSave').checked;hooks.enableBiometrics({saveEmail:s}).then(r=>{if(r.ok)close();else msg(r.error||'Could not turn on biometrics.')});break}
     case 'bioSkip':hooks.skipBiometrics().then(close);break;
     case 'subscribe':if(!$('ppOnbAgree').checked){msg('Please tick the agree box first.');break}a.disabled=true;hooks.startSubscription({amount:PRICES[plan],period:plan}).then(r=>{a.disabled=false;r.ok?msg('Plus is active (preview). You can link another bank now.',true):msg(r.error||'Purchase was not completed.')});break;
-    case 'restore':hooks.restorePurchase().then(r=>r.ok?msg('Purchase check finished (preview).',true):msg(r.error||'No purchase found for this Google account.'));break;
+    case 'restore':hooks.restorePurchase().then(r=>msg(r.message||r.error||(r.ok?'Checked Google Play.':'Purchase was not restored.'),!!r.ok));break;
   }
 });
 $('ppOnbCreateForm').addEventListener('submit',e=>{e.preventDefault();
@@ -26081,7 +26271,19 @@ $('ppOnbCreateForm').addEventListener('submit',e=>{e.preventDefault();
   if(!validEmail(em))return msg('Enter a valid email.');
   if(p.length<8)return msg('Use at least 8 characters for your password.');
   if(p!==p2)return msg('Passwords don\'t match.');
-  hooks.createAccount(em,p).then(r=>{if(!r.ok)return msg(r.error||'Could not create your account.');localStorage.setItem(CHOICE_KEY,'account');$('ppOnbNewPw').value=$('ppOnbNewPw2').value='';$('ppOnbBioSave').checked=true;show('bio')})});
+  hooks.createAccount(em,p).then(r=>{
+    if(!r.ok)return msg(r.error||'Could not create your account.');
+    localStorage.setItem(CHOICE_KEY,'account');
+    $('ppOnbNewPw').value=$('ppOnbNewPw2').value='';
+    $('ppOnbBioSave').checked=true;
+    show('bio');
+    if(r.code==='VERIFY_EMAIL_FAILED'){
+      msg(r.error||'Your account was created and kept. The verification email was not confirmed sent. Use Send verification email.');
+      try{window.PayAviatorAccountGate&&window.PayAviatorAccountGate.openVerify()}catch(_){}
+    }else if(r.code==='VERIFY_EMAIL_REQUESTED'){
+      msg(r.error||'A verification email was requested. Check inbox and spam. The app cannot see whether it arrived.',true);
+    }
+  })});
 $('ppOnbSignForm').addEventListener('submit',e=>{e.preventDefault();
   const em=$('ppOnbEmail').value.trim(),p=$('ppOnbPw').value,save=$('ppOnbSave').checked;
   if(!validEmail(em))return msg('Enter a valid email.');if(!p)return msg('Enter your password.');
@@ -26128,7 +26330,7 @@ else if(SHOW_ON_LAUNCH&&localStorage.getItem(CHOICE_KEY)==null&&!(window.PayAvia
 .pa410-dlg .form-actions button{width:100%;min-height:48px!important;height:auto!important;padding:12px 14px!important;flex:0 0 auto!important}
 .pa410-dlg{max-height:92vh;overflow:auto}
 #ppOnb .pa410-reason{margin:0 0 10px;font-weight:600}
-#ppOnb.pa410-nosell [data-onb-act="restore"]{display:none!important}
+/* Restore stays visible while purchases are off. It only queries Play; it does not subscribe. */
 #ppOnb .pa410-soon{margin:6px 0 12px;font-weight:800;font-size:1.05rem;text-align:center}
 /* 4.1.3 Upgrade (Plus) redesign: original palette, side-by-side plans that shrink (never stack) at large text. */
 #ppOnb .upg{--u-navy:#0d2a55;--u-navy2:#173f79;--u-cyan:#16e4ea;--u-green:#3ddc97;--u-amber:#fbbf24;text-align:center!important}
@@ -26219,7 +26421,9 @@ function nativeCall(method,...args){
     const id='a410-'+Date.now().toString(36)+Math.random().toString(36).slice(2);
     const prev=window.PayAviatorAuthResult;
     const done=d=>{clearTimeout(t);if(window.PayAviatorAuthResult===mine)window.PayAviatorAuthResult=prev;resolve(d)};
-    const t=setTimeout(()=>done({ok:false,code:'TIMEOUT',error:'This is taking too long. Check your connection and try again.'}),method==='authSignInWithGoogle'?180000:45000);
+    const waitMs=method==='authSignInWithGoogle'?180000:(method==='authCreateAccount'?90000:45000);
+    const timeoutError=method==='authCreateAccount'?'This is taking too long. If the account was created, it was kept. Use Send verification email if no message arrives.':'This is taking too long. Check your connection and try again.';
+    const t=setTimeout(()=>done({ok:false,code:'TIMEOUT',error:timeoutError}),waitMs);
     const mine=function(p){let d={};try{d=typeof p==='string'?JSON.parse(p||'{}'):(p||{})}catch(_){}
       if(String(d.requestId)!==id)return prev&&prev(p);
       if(d.state&&window.PayAviatorAuthStateChanged)window.PayAviatorAuthStateChanged(JSON.stringify(d.state));done(d)};
@@ -26240,13 +26444,72 @@ async function verifyPurchase(p){
   try{const r=await api('/api/billing/google-play/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:String(p.productId),purchaseToken:String(p.purchaseToken)})});await refreshStatus();return Object.assign({ok:true},r)}
   catch(e){return{ok:false,code:e.code||'ERROR',status:e.status||0,error:e.message}}
 }
-function nativePurchases(){const b=bridge('billingGetPurchases');if(!b)return[];try{const l=JSON.parse(b.billingGetPurchases()||'[]');return Array.isArray(l)?l:[]}catch(_){return[]}}
-async function restore(){
-  const a=auth();if(!a||!a.isSignedIn())return{ok:false,found:0};
-  const list=nativePurchases();let any=false,r503=false;
-  for(const p of list){const r=await verifyPurchase(p);any=any||r.ok;r503=r503||r.status===503}
-  await refreshStatus();return{ok:any,found:list.length,unavailable:r503||billing.status===503||billing.billingConfigured===false};
+function queryDevicePurchases(){
+  return new Promise(resolve=>{
+    const b=bridge('billingQueryPurchases');
+    if(!b){resolve({ok:false,code:'PLAY_QUERY_UNAVAILABLE',purchases:[]});return}
+    const id='pq-'+Date.now().toString(36)+Math.random().toString(36).slice(2);
+    const prev=window.PayAviatorBillingPurchasesResult;
+    const timer=setTimeout(()=>finish({ok:false,code:'PLAY_QUERY_TIMEOUT',purchases:[]}),20000);
+    function finish(d){clearTimeout(timer);if(window.PayAviatorBillingPurchasesResult===mine)window.PayAviatorBillingPurchasesResult=prev;resolve(d)}
+    function mine(p){let d={};try{d=typeof p==='string'?JSON.parse(p||'{}'):(p||{})}catch(_){d={}}
+      if(String(d.requestId||'')!==id){if(typeof prev==='function')prev(p);return}
+      const list=Array.isArray(d.purchases)?d.purchases:[];
+      finish({ok:!!d.ok,code:d.code||'',purchases:list})}
+    window.PayAviatorBillingPurchasesResult=mine;
+    try{b.billingQueryPurchases(id)}catch(_){finish({ok:false,code:'PLAY_QUERY_UNAVAILABLE',purchases:[]})}
+  });
 }
+function classifyVerify(r){
+  if(r&&r.ok&&String(r.plan||'')==='premium') return {outcome:'eligible',subscriptionState:r.subscriptionState||r.state||'',expiresAt:r.expiresAt||''};
+  const code=String(r&&r.code||'');
+  const status=Number(r&&r.status||0);
+  /* 409 stays fail-closed. Backend recovery that would move a Play token onto a new uid is not used. */
+  if(code==='PURCHASE_IN_USE'||status===409) return {outcome:'conflict'};
+  if(code==='SUBSCRIPTION_INACTIVE'||status===402) return {outcome:'inactive'};
+  if(code==='INVALID_PURCHASE'||code==='UNKNOWN_PRODUCT'||code==='PRODUCT_MISMATCH'||code==='MISSING_PURCHASE'||status===400) return {outcome:'rejected'};
+  if(status===503||code==='BILLING_NOT_CONFIGURED') return {outcome:'not_configured'};
+  if(status===502||code==='VERIFY_FAILED') return {outcome:'retry'};
+  return {outcome:'failed',code};
+}
+function restoreMessage(r){
+  const outcome=r&&r.outcome||'';
+  if(outcome==='eligible'){
+    const until=r.expiresAt?(' until '+r.expiresAt):'';
+    const state=r.subscriptionState?(' Server state: '+r.subscriptionState+'.'):'';
+    return 'This sign-in matches a Google Play subscription the server still treats as eligible'+until+'.'+state+' No new purchase was started. Deleting the account does not cancel it at Google Play.';
+  }
+  if(outcome==='conflict') return 'This Google Play subscription is already recorded for a different PayAviator sign-in. It was not moved, and no new purchase was started. Recovering a deleted account needs a server step that is not available yet.';
+  if(outcome==='inactive') return 'Google Play returned a purchase. The server says it is not active. Nothing was granted, and no new purchase was started.';
+  if(outcome==='rejected') return 'The server rejected this purchase. Nothing was granted, and no new purchase was started.';
+  if(outcome==='not_configured') return 'The server is not configured to verify Google Play purchases. Nothing was granted.';
+  if(outcome==='retry') return 'The server could not verify the purchase. Try again. Nothing was granted.';
+  if(outcome==='none') return 'Google Play did not return a subscription for this app on this phone. Nothing was granted. This does not restore a Stripe subscription or move one onto a new account.';
+  if(outcome==='sign_in_required') return 'Sign in to the PayAviator account that should receive the subscription. Nothing was granted.';
+  if(outcome==='PLAY_QUERY_UNAVAILABLE') return 'This install cannot query Google Play purchases. Nothing was granted.';
+  return 'Google Play could not be queried. Nothing was granted.';
+}
+async function restore(){
+  const a=auth();
+  if(!a||!a.isSignedIn()) return {ok:false,outcome:'sign_in_required',found:0,purchasesStarted:false,message:restoreMessage({outcome:'sign_in_required'})};
+  const q=await queryDevicePurchases();
+  if(!q.ok){
+    const outcome=q.code||'query_failed';
+    return {ok:false,outcome,found:0,purchasesStarted:false,message:restoreMessage({outcome})};
+  }
+  const list=(Array.isArray(q.purchases)?q.purchases:[]).filter(p=>p&&p.productId&&p.purchaseToken&&Number(p.purchaseState)===1);
+  if(!list.length) return {ok:false,outcome:'none',found:0,purchasesStarted:false,message:restoreMessage({outcome:'none'})};
+  let chosen=null;
+  for(const p of list){
+    const r=await verifyPurchase(p);
+    const c=classifyVerify(r);
+    if(!chosen||c.outcome==='eligible'||(c.outcome==='conflict'&&chosen.outcome!=='eligible')) chosen=c;
+    if(c.outcome==='eligible'||c.outcome==='conflict') break;
+  }
+  const out=chosen||{outcome:'failed'};
+  return {ok:out.outcome==='eligible',outcome:out.outcome,subscriptionState:out.subscriptionState||'',expiresAt:out.expiresAt||'',found:list.length,purchasesStarted:false,message:restoreMessage(out)};
+}
+window.PayAviatorRestorePurchase={run:restore,classifyVerify,restoreMessage};
 let purchaseWaiter=null;
 /* Native Play Billing (later) calls this with {productId,purchaseToken} or {cancelled:true}. */
 window.PayAviatorBillingPurchaseResult=async function(p){
@@ -26256,9 +26519,9 @@ window.PayAviatorBillingPurchaseResult=async function(p){
 };
 /* ---- Beth's screen hooks ---- */
 const hooks={
-  createAccount:async(email,pw)=>res(await nativeCall('authCreateAccount',email,pw)),   // native also sends the verification email
+  createAccount:async(email,pw)=>{const r=await nativeCall('authCreateAccount',email,pw);return{ok:!!r.ok,code:r.code||'',error:r.error||''}},
   signIn:async(email,pw)=>res(await nativeCall('authSignInWithEmail',email,pw)),
-  googleSignIn:async()=>res(await nativeCall('authSignInWithGoogle')),   // same native Firebase Google sign-in the old sheet used
+  googleSignIn:async()=>{const r=await nativeCall('authSignInWithGoogle');if(r.ok)return{ok:true,code:'',error:''};return{ok:false,code:r.code||'',error:r.error||'Google sign-in did not finish. Try again, or use email and password.'}},
   forgotPassword:async(email)=>{await nativeCall('authSendPasswordReset',email);return{ok:true,error:''}},
   /* No native BiometricPrompt yet: say so instead of pretending. */
   biometricSignIn:async()=>({ok:false,error:'Fingerprint and face sign-in are coming in a later update. Use your password for now.'}),
@@ -26273,7 +26536,7 @@ const hooks={
     if(r.code==='cancelled')return{ok:false,error:''};
     return{ok:false,error:r.status===503?NOT_YET:(r.error||'We couldn\'t confirm the purchase. Try again.')};
   },
-  restorePurchase:async()=>{const r=await restore();if(r.ok)return{ok:true,error:''};return{ok:false,error:r.unavailable?NOT_YET:'No purchase found for this Google account.'}},
+  restorePurchase:async()=>{const r=await restore();return{ok:!!r.ok,error:r.ok?'':(r.message||'Purchase was not restored.'),message:r.message||''}},
   onClose:async()=>{setTimeout(()=>{try{window.PayAviatorSetupWizard&&window.PayAviatorSetupWizard.maybeShow()}catch(_){}},300);const w=signinWaiters.splice(0);const ok=!!(auth()&&auth().isSignedIn());w.forEach(f=>f(ok));return{ok:true}}
 };
 const signinWaiters=[];
@@ -26344,10 +26607,10 @@ async function verifyAction(kind){
   const st=$('pa410VerifyStatus');
   if(kind==='send'){
     const wait=VERIFY_COOLDOWN_MS-(Date.now()-lastVerifySend);
-    if(wait>0){st.textContent='We just sent a link. Use the newest email; you can resend in '+Math.ceil(wait/1000)+'s.';return}
+    if(wait>0){st.textContent='A send was just requested. Use the newest email if one arrives; you can resend in '+Math.ceil(wait/1000)+'s.';return}
     lastVerifySend=Date.now();st.textContent='Sending…';const r=await nativeCall('authSendEmailVerification');
     if(!r.ok)lastVerifySend=0;
-    st.textContent=r.ok?'Sent. Open the link in the newest email (older links stop working), then tap "I verified, continue".':(r.error||'Could not send the email. Try again.');return}
+    st.textContent=r.code==='ALREADY_VERIFIED'?(r.error||'This email is already verified. No new message was requested.'):(r.ok?'Firebase accepted the send request. Check inbox and spam, then tap "I verified, continue". Older links stop working. The app cannot see whether the message arrived.':(r.error||'Could not send the email. Try again.'));return}
   st.textContent='Checking…';
   const {r,v}=await reloadVerified();
   if(r.ok&&v){st.textContent='Email verified. Opening your bank…';setTimeout(()=>{hide('pa410VerifyDlg');retryConnect()},600)}
@@ -27144,7 +27407,7 @@ async function pp982SyncLiveBank(){
   const health=await pp982RefreshEnvironment();
   const ad=await pp982Api('/api/plaid/accounts');
   try{window.PayAviatorSavePlaidItemHealth?.(ad)}catch(_){}
-  const rows=Array.isArray(ad.accounts)?ad.accounts:[];
+  const rows=(Array.isArray(ad.accounts)?ad.accounts:[]).filter(a=>!(window.PayAviatorBankRemoval&&window.PayAviatorBankRemoval.isRemoved(a?.item_id||a?.itemId)));
   const old=accounts(), oldBy=new Map(old.map(a=>[rawId(a),a]));
   const mappedRaw=rows.map(a=>{const prev=oldBy.get(String(a.account_id||a.id||''))||{};return Object.assign({},prev,{id:a.account_id||a.id,name:a.name||a.official_name||'Account',officialName:a.official_name||'',institution:a.institution_name||a.institution||'Connected institution',institutionName:a.institution_name||a.institution||'Connected institution',mask:a.mask||'',type:a.type||'',subtype:a.subtype||'',current:num(a.balances?.current??a.current),available:num(a.balances?.available??a.balances?.current??a.available??a.current),balances:(a.balances&&typeof a.balances==='object')?a.balances:null,creditLimit:num(a.credit_limit??a.balances?.limit??a.limit),availableCredit:(a.available_credit??a.balances?.available??null),balanceUsed:num(a.balance_used??a.balances?.current??a.current),utilizationPercent:(a.utilization_percent??null),balanceSource:a.balance_source||'plaid_accounts_get',itemId:a.item_id||'',lastSync:new Date().toISOString(),source:'plaid'});});const mapped=[...new Map(mappedRaw.map(a=>[key(a),a])).values()];
   localStorage.setItem(ACCOUNT_KEY,JSON.stringify(mapped));
@@ -27156,7 +27419,7 @@ async function pp982SyncLiveBank(){
   }catch(_){}
   let td={transactions:[]};
   try{td=await pp982Api('/api/plaid/transactions?limit=250')}catch(e){td={transactions:[],errors:[{code:'request_failed',message:e?.message||String(e)}]};console.warn('PayAviator transaction sync failed:',e?.message||e)}
-  const freshTx=Array.isArray(td.transactions)?td.transactions:[];
+  const freshTx=(Array.isArray(td.transactions)?td.transactions:[]).filter(t=>!(window.PayAviatorBankRemoval&&window.PayAviatorBankRemoval.isRemoved(t?.item_id||t?.itemId)));
   const tx=freshTx;
   // 3.1.5: keep only a lightweight recent cache on-device. PostgreSQL is authoritative.
   // Strip large enrichment blobs and cap the cache so WebView localStorage cannot be exhausted.
@@ -35971,5 +36234,156 @@ html:not(#pa4-a):not(#pa4-b):not(#pa4-c):not(#pa421) body.pp-help-off.pp-bell-of
   function init() { place(); try { new MutationObserver(soon).observe(document.body, { childList: true, subtree: true }); } catch (_) { setInterval(soon, 1500); } document.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest && ev.target.closest('[data-pai-static]'); if (b && b.matches('button')) { ev.preventDefault(); open(); return; } soon(); }, true); setInterval(function () { try { place(); } catch (_) { } }, 1000); }
   window.PayAviatorImport = { open: open, place: place };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true }); else init();
+})();
+</script>
+
+<style id="pa-sub-manage-css">
+#paSubDlg{border:0;padding:0;background:transparent;max-width:calc(100vw - 28px)}
+#paSubDlg::backdrop{background:rgba(0,8,24,.72)}
+#paSubDlg .card{width:min(440px,100%);background:#0b234b;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:18px;font:16px/1.45 system-ui,sans-serif}
+#paSubDlg h2{margin:0 0 8px;font-size:20px}
+#paSubDlg p{margin:0 0 10px}
+#paSubDlg .acts{display:grid;gap:8px;margin-top:12px}
+#paSubDlg button,#paSubDlg a.pa-sub-link{display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:12px;padding:8px 12px;font:inherit;font-weight:700;text-align:center;text-decoration:none}
+#paSubDlg button{border:0;background:#00f5ff;color:#04121f}
+#paSubDlg a.pa-sub-link{background:#1f4f86;color:#fff;border:1px solid rgba(255,255,255,.2)}
+#paSubDlg .close{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3)}
+#mb119Settings .pa-sub-entry{display:block;margin:0 0 14px}
+#mb119Settings .pa-sub-entry button{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:60px;padding:10px 16px;border-radius:20px;border:1px solid rgba(255,255,255,.12);background:#0b234b;color:#fff;font:inherit;font-size:16px;font-weight:650;text-align:left}
+#mb119Settings .pa-sub-entry small{display:block;margin-top:2px;font-size:12.5px;font-weight:500;color:rgba(255,255,255,.72)}
+</style>
+<dialog id="paSubDlg" aria-labelledby="paSubTitle">
+  <div class="card">
+    <h2 id="paSubTitle">Manage subscription</h2>
+    <p id="paSubStatus" role="status"></p>
+    <p id="paSubDetail"></p>
+    <div class="acts" id="paSubActions"></div>
+  </div>
+</dialog>
+<script id="pa-sub-manage-js">
+(function(){
+'use strict';
+/* Package is this app's applicationId (app/build.gradle). Backend unit tests use a
+   different fixture, app.payaviator; production ANDROID_PACKAGE_NAME was not read.
+   Product id comes only from GET /api/billing/status. No Play SKU is hardcoded. */
+const PLAY_PACKAGE='com.payaviator.app';
+const $=id=>document.getElementById(id);
+function auth(){return window.PayAviatorAuth||null}
+function signedIn(){try{return !!(auth()&&auth().isSignedIn())}catch(_){return false}}
+function skuOk(id){return /^[A-Za-z0-9._-]{1,80}$/.test(id)&&id.indexOf('price_')!==0}
+function playUrl(status){
+  let url='https://play.google.com/store/account/subscriptions?package='+encodeURIComponent(PLAY_PACKAGE);
+  const id=String(status&&status.productId||'');
+  if(skuOk(id)) url+='&sku='+encodeURIComponent(id);
+  return url;
+}
+function stripePortalUrl(raw){
+  try{
+    const u=new URL(String(raw||''));
+    if(u.protocol!=='https:'||u.hostname!=='billing.stripe.com') return '';
+    return u.toString();
+  }catch(_){return ''}
+}
+function show(){const d=$('paSubDlg');if(!d)return;try{if(!d.open)d.showModal()}catch(_){d.setAttribute('open','')}}
+function hide(){const d=$('paSubDlg');if(!d)return;try{d.close()}catch(_){d.removeAttribute('open')}}
+function text(id,v){const n=$(id);if(n)n.textContent=v||''}
+function clearActs(){const n=$('paSubActions');if(n)n.replaceChildren()}
+function addButton(label,fn){const b=document.createElement('button');b.type='button';b.textContent=label;b.addEventListener('click',fn);$('paSubActions').appendChild(b);return b}
+function addLink(label,url){const a=document.createElement('a');a.className='pa-sub-link';a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.dataset.paSubLink=url;a.textContent=label;$('paSubActions').appendChild(a);return a}
+function addClose(){
+  addButton('Restore Google Play purchase',runRestore);
+  const b=document.createElement('button');b.type='button';b.className='close';b.textContent='Close';b.addEventListener('click',hide);$('paSubActions').appendChild(b);
+}
+async function runRestore(){
+  text('paSubDetail','Checking Google Play for a subscription already owned on this phone. A new purchase will not be started.');
+  const fn=window.PayAviatorRestorePurchase&&window.PayAviatorRestorePurchase.run;
+  if(typeof fn!=='function'){text('paSubDetail','Restore is not available in this build. Nothing was granted.');return}
+  let r=null;
+  try{r=await fn()}catch(_){r=null}
+  text('paSubDetail',(r&&r.message)||'Purchase was not restored. Nothing was granted.');
+}
+function evidence(s){
+  if(!s) return '';
+  if(s.source==='stripe'&&s.cancelAtPeriodEnd&&s.periodEnd) return 'Stripe reports renewal is off. Access continues until '+s.periodEnd+'. This screen did not cancel it.';
+  if(s.state==='SUBSCRIPTION_STATE_CANCELED'&&s.expiresAt) return 'Account status reports '+s.state+'. Plus access in this status continues until '+s.expiresAt+'. This screen did not cancel it.';
+  return '';
+}
+function portalFail(e){
+  const code=String(e&&e.code||'');
+  const status=Number(e&&e.status||0);
+  if(status===401||code==='UNAUTHENTICATED'||code==='INVALID_TOKEN'||code==='SIGN_IN_REQUIRED') return 'Sign in again, then retry. Nothing was cancelled.';
+  if(status===404||code==='NO_STRIPE_CUSTOMER') return 'No Stripe customer is stored for this sign-in. Email is not used to look one up. Nothing was cancelled.';
+  if(status===503||code==='STRIPE_NOT_CONFIGURED') return 'The Stripe billing portal is not configured on the server. Nothing was cancelled. You can email support@payaviator.app.';
+  if(status===502||code==='PORTAL_FAILED') return 'The billing portal could not be opened. Try again. Nothing was cancelled.';
+  return 'The subscription could not be checked. Nothing was cancelled.';
+}
+async function openStripe(){
+  text('paSubDetail','Asking the server for a billing portal for this sign-in. No customer id is sent from the phone.');
+  let r;
+  try{r=await window.PayAviatorBankApi('/api/billing/stripe/portal',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})}
+  catch(e){text('paSubDetail',portalFail(e));return}
+  const url=stripePortalUrl(r&&r.url);
+  if(!url){text('paSubDetail','The server did not return a Stripe billing portal address. Nothing was cancelled.');return}
+  clearActs();
+  addLink('Continue to Stripe',url);
+  addClose();
+  text('paSubDetail','Stripe opens the billing portal. PayAviator will not show this subscription as cancelled until account status says so.');
+}
+function paint(s){
+  clearActs();
+  const ev=evidence(s);
+  const source=String(s&&s.source||'');
+  const plan=String(s&&s.plan||'free');
+  if(source==='play'){
+    const sku=skuOk(String(s.productId||''));
+    text('paSubStatus','Plus on this sign-in is billed by Google Play.');
+    text('paSubDetail',(sku?'The product id from account status is included. ':'Account status did not include a product id, so the list is opened without one. ')+'Opening Google Play does not cancel by itself. '+(ev||'PayAviator will not mark this cancelled from here.'));
+    addLink('Cancel or manage in Google Play',playUrl(s));
+  }else if(source==='stripe'){
+    text('paSubStatus','Plus on this sign-in is billed by Stripe.');
+    text('paSubDetail',ev||'The server creates the billing portal for this sign-in. Nothing is marked cancelled until account status says so.');
+    addButton('Cancel or manage in Stripe',openStripe);
+  }else if(source==='comp'||plan==='comp'){
+    text('paSubStatus','This sign-in is not a paid Google Play or Stripe subscription.');
+    text('paSubDetail','There is nothing to cancel for this plan. Deleting the account is separate and is not required.');
+  }else if(plan==='premium'||plan==='plus'){
+    text('paSubStatus','Plus is on this sign-in, but the status did not say Google Play or Stripe.');
+    text('paSubDetail','Nothing was cancelled. Email support@payaviator.app from the address on this sign-in.');
+  }else{
+    text('paSubStatus','No active Plus subscription is on this sign-in.');
+    text('paSubDetail','Nothing was cancelled. You can review Google Play, or ask the server whether this sign-in has a Stripe customer. A new account does not take over an old subscription.');
+    addLink('Review Google Play subscriptions',playUrl({}));
+    addButton('Check Stripe for this sign-in',openStripe);
+  }
+  addClose();
+  show();
+}
+async function open(){
+  if(!signedIn()){
+    try{auth()&&auth().openSignIn&&auth().openSignIn({notice:'Sign in to manage a subscription. Deleting an account does not cancel billing.'})}catch(_){}
+    return;
+  }
+  text('paSubStatus','Checking this sign-in…');
+  text('paSubDetail','');
+  clearActs(); addClose(); show();
+  let s;
+  try{s=await window.PayAviatorBankApi('/api/billing/status')}
+  catch(e){text('paSubStatus','Could not check the subscription.');text('paSubDetail',portalFail(e));return}
+  paint(s||{});
+}
+function mount(){
+  const host=document.getElementById('mb119Settings');
+  if(!host||host.querySelector('[data-pa-sub-manage]'))return;
+  const box=document.createElement('div');
+  box.className='pa-sub-entry';
+  box.innerHTML='<button type="button" data-pa-sub-manage="1">Manage subscription<small>Cancel Plus in Google Play or Stripe. They set the end date. Deleting your account does not cancel billing.</small></button>';
+  box.querySelector('button').addEventListener('click',e=>{e.preventDefault();open()});
+  const about=host.querySelector('.pa397-about');
+  if(about) host.insertBefore(box,about); else host.appendChild(box);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true}); else mount();
+document.addEventListener('payaviator:viewchange',()=>setTimeout(mount,0));
+setTimeout(mount,400); setTimeout(mount,1500);
+window.PayAviatorManageSubscription={open,playUrl,stripePortalUrl,PLAY_PACKAGE,skuOk};
 })();
 </script>

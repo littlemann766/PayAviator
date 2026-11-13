@@ -1,6 +1,6 @@
 # PayAviator
 
-PayAviator is a local-first Android app for tracking bills, income and spending. It shows how much is safe to spend right now. Your budget data stays on your phone. Bank linking through Plaid is optional and read-only.
+PayAviator is a local-first Android app for tracking bills, income and spending. It shows an estimate of how much is safe to spend right now. Bills, income and spending stay on the phone. If you sign in with a verified account, a copy can also sync. Bank linking through Plaid is optional and read-only.
 
 <p>
   <img src="docs/screenshots/home.png" alt="Home: PayAviator gauge and Safe to Spend" width="260">
@@ -15,7 +15,7 @@ PayAviator is a local-first Android app for tracking bills, income and spending.
 - **Safe to Spend gauge:** your available balance minus the cushion you choose to protect, plus Cash and Credit gauges.
 - **Payoff Planner:** snowball plan with extra payments, payoff date, interest and credit-utilization preview.
 - **Bank linking (optional, Android):** read-only balances and transactions through the PayAviator backend and Plaid.
-- **Privacy and security:** optional app lock using the phone's own PIN or fingerprint, your own backup and restore, no ads or analytics.
+- **Privacy and security:** optional app lock using the phone's own PIN or fingerprint, your own backup and restore. This source has no advertising or analytics SDK. Sign-in, bank linking and cloud sync are optional and use the network. See [docs/PRIVACY_TERMS_AUDIT_2026-11-07.md](docs/PRIVACY_TERMS_AUDIT_2026-11-07.md). The public policy is https://payaviator.app/privacy.html and the public terms are https://payaviator.app/terms.html.
 
 ## Repository layout
 
@@ -74,7 +74,8 @@ Always sign with the current PayAviator release key, which was introduced in 3.9
 - [docs/SECURITY-HARDENING-9.8.9.md](docs/SECURITY-HARDENING-9.8.9.md)
 - [docs/CONNECTED_ACCOUNTS_PLAN.md](docs/CONNECTED_ACCOUNTS_PLAN.md)
 - [docs/FIREBASE_SIGNIN.md](docs/FIREBASE_SIGNIN.md): sign-in for bank features and the backend token contract
-- [docs/PRIVACY_POLICY_DRAFT.md](docs/PRIVACY_POLICY_DRAFT.md), [docs/PLAY_STORE_LISTING_DRAFT.md](docs/PLAY_STORE_LISTING_DRAFT.md)
+- [docs/PRIVACY_TERMS_AUDIT_2026-11-07.md](docs/PRIVACY_TERMS_AUDIT_2026-11-07.md): evidence note for privacy and terms. Not a compliance certification.
+- [docs/PRIVACY_POLICY_DRAFT.md](docs/PRIVACY_POLICY_DRAFT.md), [docs/PLAY_STORE_LISTING_DRAFT.md](docs/PLAY_STORE_LISTING_DRAFT.md): older drafts. Do not publish the withdrawn privacy draft.
 
 ### Banking persistence (3.10.0)
 Deploy backend 3.1.8 before connecting again and set a working PostgreSQL `DATABASE_URL` reference in Railway. No Plaid or database secrets belong in this ZIP.
