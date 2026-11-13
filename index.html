@@ -2766,7 +2766,11 @@ function setBillPaidAmount(b,iso,amount){
 }
 function setBillPaidOnDate(b,iso,paid){
   const key=billOccurrenceKey(b,iso);
-  billOverrides[key]={paid:!!paid};
+  const prev=billOverrides[key];
+  // Merge so a deleted or moved marker on this occurrence is not erased.
+  const next=(prev&&typeof prev==='object'&&!Array.isArray(prev))?{...prev}:{};
+  next.paid=!!paid;
+  billOverrides[key]=next;
   persistBillOverrides();
 }
 
@@ -4758,6 +4762,7 @@ function render(){
     }
     const status=billStatus(b,iso);
     const el=document.createElement('div');el.className='bill '+(status==='partial'?'partial':'');
+    el.dataset.billId=String(b.id);el.dataset.billIso=iso;
     el.innerHTML=`<div class="dot" style="background:${b.color||defaultColor(b.name)}"></div><div class="billmain"><div class="name">${esc(b.name)}</div><div class="meta">${b.recurring?'Recurring • ':''}${status==='partial'?'Partial payment':'Unpaid'}</div></div><div class="amount">${money(b.amount)}</div>`;
     let pressTimer=null,longPressed=false;
     const start=(e)=>{if(e.target.closest('button'))return;longPressed=false;pressTimer=setTimeout(()=>{longPressed=true;showBill(b.id,iso)},650)};
@@ -5602,10 +5607,12 @@ function enhanceMainBillList(){
   let current=''; occurrences.forEach(({b,iso})=>{
     if(current!==iso){current=iso;const h=document.createElement('div');h.className='main-bill-date';h.textContent=fmtLong(iso);list.appendChild(h)}
     const category=(b.category||'Uncategorized').trim()||'Uncategorized',status=billStatus(b,iso),el=document.createElement('div');el.className='bill '+(status==='partial'?'partial':'');
+    el.dataset.billId=String(b.id);el.dataset.billIso=iso;
     el.innerHTML=`<div class="dot" style="background:${b.color||defaultColor(b.name)}"></div><div class="billmain"><div class="name">${esc(b.name)}</div><div class="meta">${b.recurring?'Recurring • ':''}${status==='partial'?'Partial payment':'Unpaid'}${b.autopay?' • Autopay':''}</div><span class="bill-category-pill">${esc(category)}</span>${dueFlag(iso)}</div><div class="amount">${money(b.amount)}</div>`;
     let timer=null,longPressed=false; const start=e=>{if(e.target.closest('button'))return;longPressed=false;timer=setTimeout(()=>{longPressed=true;showBill(b.id,iso)},650)},cancel=()=>{if(timer){clearTimeout(timer);timer=null}};
     el.addEventListener('pointerdown',start);el.addEventListener('pointerup',e=>{cancel();if(!longPressed&&!e.target.closest('button'))showBill(b.id,iso)});el.addEventListener('pointercancel',cancel);el.addEventListener('pointerleave',cancel);list.appendChild(el);
   });
+  try{window.decorateMainBillStatuses?.()}catch(e){}
 }
 
 const v47BaseRender=render;
@@ -5872,9 +5879,34 @@ function addHealthStrip(){
  });
 }
 function updateHealthStrip(){addHealthStrip();const y=calDate.getFullYear(),m=calDate.getMonth(),income=monthlyIncomeFor(y,m),billsAmt=monthlyBillsFor(y,m),spend=otherSpendingTotal(y,m),save=savingsContributionsFor(y,m),left=income-billsAmt-spend-save;[['healthIncome',income],['healthBills',billsAmt],['healthSpending',spend],['healthSavings',save],['healthLeft',left]].forEach(([id,v])=>{const e=$(id);if(e)e.textContent=money(v)})}
-function decorateMainStatuses(){
- document.querySelectorAll('#list .bill').forEach(el=>{if(el.querySelector('.bill-status-pill'))return;const name=el.querySelector('.name')?.textContent;const dateHead=(()=>{let p=el.previousElementSibling;while(p&&!p.classList.contains('main-bill-date'))p=p.previousElementSibling;return p?.textContent||''})();if(!name||!dateHead)return;const b=bills.find(x=>x.name===name);if(!b)return;const d=new Date(dateHead);if(Number.isNaN(d.getTime()))return;const iso=toISO(d),[txt,cls]=statusInfo(b,iso);const pill=document.createElement('span');pill.className='bill-status-pill '+cls;pill.textContent=txt;el.querySelector('.billmain')?.appendChild(pill)})
+function billCardForStatus(el){
+  const id=el.dataset.billId, iso=el.dataset.billIso;
+  if(id&&iso){
+    const b=bills.find(x=>String(x.id)===String(id));
+    if(b) return {b,iso};
+  }
+  // Legacy cards have no id. A name match is safe only when that name is unique;
+  // the first same-named bill can still be paid after this occurrence was unmarked.
+  const name=el.querySelector('.name')?.textContent;
+  const dateHead=(()=>{let p=el.previousElementSibling;while(p&&!p.classList.contains('main-bill-date'))p=p.previousElementSibling;return p?.textContent||''})();
+  if(!name||!dateHead) return null;
+  const matches=bills.filter(x=>x.name===name);
+  if(matches.length!==1) return null;
+  const d=new Date(dateHead);
+  if(Number.isNaN(d.getTime())) return null;
+  return {b:matches[0], iso:toISO(d)};
 }
+function decorateMainStatuses(){
+ document.querySelectorAll('#list .bill').forEach(el=>{
+  const hit=billCardForStatus(el); if(!hit) return;
+  const [txt,cls]=statusInfo(hit.b,hit.iso);
+  let pill=el.querySelector('.bill-status-pill');
+  if(!pill){pill=document.createElement('span');el.querySelector('.billmain')?.appendChild(pill)}
+  pill.className='bill-status-pill'+(cls?(' '+cls):'');
+  pill.textContent=txt;
+ })
+}
+window.decorateMainBillStatuses=decorateMainStatuses;
 function setupPaymentFields(){
  const info=$('billPaymentInfo');if(!info||$('billPaymentDate'))return;const wrap=document.createElement('div');wrap.className='payment-extra-grid';wrap.innerHTML='<div><label>Payment date</label><input id="billPaymentDate" type="date"></div><div><label>Payment method</label><select id="billPaymentMethod"><option>Bank Account</option><option>Debit Card</option><option>Credit Card</option><option>Cash</option><option>Check</option><option>Other</option></select></div><div class="full"><label>Confirmation / reference (optional)</label><input id="billPaymentReference" type="text" placeholder="Confirmation number"></div>';const amt=$('billPaymentAmount');amt.parentNode.insertBefore(wrap,amt.nextSibling)
 }
@@ -6028,6 +6060,15 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  function applySnapshot(snap,reload=true){
    if(!snap?.storage)return false;
    clearPayAviatorStorage(); Object.entries(snap.storage).forEach(([k,v])=>localStorage.setItem(k,v));
+   // Paint the restored ledgers immediately. A reload alone leaves the Paid
+   // pill on screen until the next launch, and a slow IndexedDB delete can
+   // let the pre-undo copy win that launch.
+   try{
+     if(snap.storage[KEY]) bills=JSON.parse(snap.storage[KEY]);
+     if(snap.storage['payAviator_bill_overrides_v1']) billOverrides=JSON.parse(snap.storage['payAviator_bill_overrides_v1']);
+     if(snap.storage['payAviator_bill_paid_amounts_v1']) billPaidAmounts=JSON.parse(snap.storage['payAviator_bill_paid_amounts_v1']);
+     render(); renderCalendar();
+   }catch(e){console.warn('Undo restored storage but could not refresh the open screen.',e)}
    try{if(window.indexedDB)indexedDB.deleteDatabase(DB_NAME)}catch(e){}
    if(reload)setTimeout(()=>location.reload(),120); return true;
  }
