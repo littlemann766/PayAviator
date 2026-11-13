@@ -1,3 +1,7 @@
+## 4.2.11 — Recurring bill unpaid status
+- Marking a recurring bill unpaid no longer leaves the green Paid pill. The pill uses that occurrence's bill id and due date. Undo restores the paid amount on the open screen before reload.
+- Version name 4.2.11 and Android versionCode floor 421100. Billing Library stays 8.3.0. `BILLING_LIVE` stays false. Policy stays 2026-11a.
+
 ## 4.2.10 — Play Billing Library 8 for the Alpha update
 - The query-only Play Billing library is 8.3.0. Play rejected 4.2.9 (versionCode 420900) because it packaged Billing Library 7.1.1. This build does not start a purchase. `BILLING_LIVE` stays false. Restore still sends only an already purchased subscription to the server, and HTTP 409 grants nothing.
 - Version name 4.2.10 and Android versionCode floor 421000. VersionCode 420900 was uploaded to the Alpha draft and is not reused.
